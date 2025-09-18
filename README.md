@@ -30,11 +30,11 @@ from ade import Ade
 
 client = Ade(
     apikey=os.environ.get("ADE_API_KEY"),  # This is the default and can be omitted
+    # defaults to "production".
+    environment="eu-production",
 )
 
-response = client.ade.parse(
-    document=b"/path/to/file",
-)
+response = client.ade.parse()
 print(response.chunks)
 ```
 
@@ -54,13 +54,13 @@ from ade import AsyncAde
 
 client = AsyncAde(
     apikey=os.environ.get("ADE_API_KEY"),  # This is the default and can be omitted
+    # defaults to "production".
+    environment="eu-production",
 )
 
 
 async def main() -> None:
-    response = await client.ade.parse(
-        document=b"/path/to/file",
-    )
+    response = await client.ade.parse()
     print(response.chunks)
 
 
@@ -93,9 +93,7 @@ async def main() -> None:
         apikey="My Apikey",
         http_client=DefaultAioHttpClient(),
     ) as client:
-        response = await client.ade.parse(
-            document=b"/path/to/file",
-        )
+        response = await client.ade.parse()
         print(response.chunks)
 
 
