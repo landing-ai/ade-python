@@ -1,6 +1,6 @@
 [project]
-name = "ade"
-version = "0.0.1"
+name = "ade-python"
+version = "0.1.0"
 description = "The official Python library for the ade API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -35,8 +35,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/stainless-sdks/ade-python"
-Repository = "https://github.com/stainless-sdks/ade-python"
+Homepage = "https://github.com/landing-ai/ade-python"
+Repository = "https://github.com/landing-ai/ade-python"
 
 [project.optional-dependencies]
 aiohttp = ["aiohttp", "httpx_aiohttp>=0.1.8"]
@@ -124,7 +124,7 @@ path = "README.md"
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 # replace relative links with absolute links
 pattern = '\[(.+?)\]\(((?!https?://)\S+?)\)'
-replacement = '[\1](https://github.com/stainless-sdks/ade-python/tree/main/\g<2>)'
+replacement = '[\1](https://github.com/landing-ai/ade-python/tree/main/\g<2>)'
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
