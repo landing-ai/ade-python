@@ -36,7 +36,7 @@ client = Ade(
 )
 
 response = client.ade.parse(
-    document=b"fs.createReadStream('/path/to/file')",
+    document=b"/path/to/file",
 )
 print(response.chunks)
 ```
@@ -62,7 +62,7 @@ client = AsyncAde(
 
 async def main() -> None:
     response = await client.ade.parse(
-        document=b"fs.createReadStream('/path/to/file')",
+        document=b"/path/to/file",
     )
     print(response.chunks)
 
@@ -97,7 +97,7 @@ async def main() -> None:
         http_client=DefaultAioHttpClient(),
     ) as client:
         response = await client.ade.parse(
-            document=b"fs.createReadStream('/path/to/file')",
+            document=b"/path/to/file",
         )
         print(response.chunks)
 
