@@ -32,7 +32,7 @@ class AdeResource(SyncAPIResource):
         This property can be used as a prefix for any HTTP method call to return
         the raw response object instead of the parsed content.
 
-        For more information, see https://www.github.com/stainless-sdks/ade-python#accessing-raw-response-data-eg-headers
+        For more information, see https://www.github.com/landing-ai/ade-python#accessing-raw-response-data-eg-headers
         """
         return AdeResourceWithRawResponse(self)
 
@@ -41,7 +41,7 @@ class AdeResource(SyncAPIResource):
         """
         An alternative to `.with_raw_response` that doesn't eagerly read the response body.
 
-        For more information, see https://www.github.com/stainless-sdks/ade-python#with_streaming_response
+        For more information, see https://www.github.com/landing-ai/ade-python#with_streaming_response
         """
         return AdeResourceWithStreamingResponse(self)
 
@@ -182,7 +182,7 @@ class AsyncAdeResource(AsyncAPIResource):
         This property can be used as a prefix for any HTTP method call to return
         the raw response object instead of the parsed content.
 
-        For more information, see https://www.github.com/stainless-sdks/ade-python#accessing-raw-response-data-eg-headers
+        For more information, see https://www.github.com/landing-ai/ade-python#accessing-raw-response-data-eg-headers
         """
         return AsyncAdeResourceWithRawResponse(self)
 
@@ -191,7 +191,7 @@ class AsyncAdeResource(AsyncAPIResource):
         """
         An alternative to `.with_raw_response` that doesn't eagerly read the response body.
 
-        For more information, see https://www.github.com/stainless-sdks/ade-python#with_streaming_response
+        For more information, see https://www.github.com/landing-ai/ade-python#with_streaming_response
         """
         return AsyncAdeResourceWithStreamingResponse(self)
 
