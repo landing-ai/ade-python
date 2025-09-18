@@ -1,5 +1,5 @@
 [project]
-name = "ade"
+name = "ade-python"
 version = "0.0.1"
 description = "The official Python library for the ade API"
 dynamic = ["readme"]
