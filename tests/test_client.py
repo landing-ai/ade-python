@@ -550,6 +550,14 @@ class TestAde:
             client = Ade(apikey=apikey, _strict_response_validation=True)
             assert client.base_url == "http://localhost:5000/from/env/"
 
+        # explicit environment arg requires explicitness
+        with update_env(ADE_BASE_URL="http://localhost:5000/from/env"):
+            with pytest.raises(ValueError, match=r"you must pass base_url=None"):
+                Ade(apikey=apikey, _strict_response_validation=True, environment="production")
+
+            client = Ade(base_url=None, apikey=apikey, _strict_response_validation=True, environment="production")
+            assert str(client.base_url).startswith("https://api.va.landing.ai")
+
     @pytest.mark.parametrize(
         "client",
         [
@@ -1346,6 +1354,14 @@ class TestAsyncAde:
         with update_env(ADE_BASE_URL="http://localhost:5000/from/env"):
             client = AsyncAde(apikey=apikey, _strict_response_validation=True)
             assert client.base_url == "http://localhost:5000/from/env/"
+
+        # explicit environment arg requires explicitness
+        with update_env(ADE_BASE_URL="http://localhost:5000/from/env"):
+            with pytest.raises(ValueError, match=r"you must pass base_url=None"):
+                AsyncAde(apikey=apikey, _strict_response_validation=True, environment="production")
+
+            client = AsyncAde(base_url=None, apikey=apikey, _strict_response_validation=True, environment="production")
+            assert str(client.base_url).startswith("https://api.va.landing.ai")
 
     @pytest.mark.parametrize(
         "client",

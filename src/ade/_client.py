@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Union, Mapping
-from typing_extensions import Self, override
+from typing import Any, Dict, Union, Mapping, cast
+from typing_extensions import Self, Literal, override
 
 import httpx
 
@@ -30,7 +30,22 @@ from ._base_client import (
     AsyncAPIClient,
 )
 
-__all__ = ["Timeout", "Transport", "ProxiesTypes", "RequestOptions", "Ade", "AsyncAde", "Client", "AsyncClient"]
+__all__ = [
+    "ENVIRONMENTS",
+    "Timeout",
+    "Transport",
+    "ProxiesTypes",
+    "RequestOptions",
+    "Ade",
+    "AsyncAde",
+    "Client",
+    "AsyncClient",
+]
+
+ENVIRONMENTS: Dict[str, str] = {
+    "production": "https://api.va.landing.ai",
+    "eu-production": "https://va.eu-west-1.landing.ai",
+}
 
 
 class Ade(SyncAPIClient):
@@ -41,11 +56,14 @@ class Ade(SyncAPIClient):
     # client options
     apikey: str
 
+    _environment: Literal["production", "eu-production"] | NotGiven
+
     def __init__(
         self,
         *,
         apikey: str | None = None,
-        base_url: str | httpx.URL | None = None,
+        environment: Literal["production", "eu-production"] | NotGiven = NOT_GIVEN,
+        base_url: str | httpx.URL | None | NotGiven = NOT_GIVEN,
         timeout: Union[float, Timeout, None, NotGiven] = NOT_GIVEN,
         max_retries: int = DEFAULT_MAX_RETRIES,
         default_headers: Mapping[str, str] | None = None,
@@ -76,10 +94,31 @@ class Ade(SyncAPIClient):
             )
         self.apikey = apikey
 
-        if base_url is None:
-            base_url = os.environ.get("ADE_BASE_URL")
-        if base_url is None:
-            base_url = f"https://api.va.landing.ai"
+        self._environment = environment
+
+        base_url_env = os.environ.get("ADE_BASE_URL")
+        if is_given(base_url) and base_url is not None:
+            # cast required because mypy doesn't understand the type narrowing
+            base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
+        elif is_given(environment):
+            if base_url_env and base_url is not None:
+                raise ValueError(
+                    "Ambiguous URL; The `ADE_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
+                )
+
+            try:
+                base_url = ENVIRONMENTS[environment]
+            except KeyError as exc:
+                raise ValueError(f"Unknown environment: {environment}") from exc
+        elif base_url_env is not None:
+            base_url = base_url_env
+        else:
+            self._environment = environment = "production"
+
+            try:
+                base_url = ENVIRONMENTS[environment]
+            except KeyError as exc:
+                raise ValueError(f"Unknown environment: {environment}") from exc
 
         super().__init__(
             version=__version__,
@@ -120,6 +159,7 @@ class Ade(SyncAPIClient):
         self,
         *,
         apikey: str | None = None,
+        environment: Literal["production", "eu-production"] | None = None,
         base_url: str | httpx.URL | None = None,
         timeout: float | Timeout | None | NotGiven = NOT_GIVEN,
         http_client: httpx.Client | None = None,
@@ -155,6 +195,7 @@ class Ade(SyncAPIClient):
         return self.__class__(
             apikey=apikey or self.apikey,
             base_url=base_url or self.base_url,
+            environment=environment or self._environment,
             timeout=self.timeout if isinstance(timeout, NotGiven) else timeout,
             http_client=http_client,
             max_retries=max_retries if is_given(max_retries) else self.max_retries,
@@ -209,11 +250,14 @@ class AsyncAde(AsyncAPIClient):
     # client options
     apikey: str
 
+    _environment: Literal["production", "eu-production"] | NotGiven
+
     def __init__(
         self,
         *,
         apikey: str | None = None,
-        base_url: str | httpx.URL | None = None,
+        environment: Literal["production", "eu-production"] | NotGiven = NOT_GIVEN,
+        base_url: str | httpx.URL | None | NotGiven = NOT_GIVEN,
         timeout: Union[float, Timeout, None, NotGiven] = NOT_GIVEN,
         max_retries: int = DEFAULT_MAX_RETRIES,
         default_headers: Mapping[str, str] | None = None,
@@ -244,10 +288,31 @@ class AsyncAde(AsyncAPIClient):
             )
         self.apikey = apikey
 
-        if base_url is None:
-            base_url = os.environ.get("ADE_BASE_URL")
-        if base_url is None:
-            base_url = f"https://api.va.landing.ai"
+        self._environment = environment
+
+        base_url_env = os.environ.get("ADE_BASE_URL")
+        if is_given(base_url) and base_url is not None:
+            # cast required because mypy doesn't understand the type narrowing
+            base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
+        elif is_given(environment):
+            if base_url_env and base_url is not None:
+                raise ValueError(
+                    "Ambiguous URL; The `ADE_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
+                )
+
+            try:
+                base_url = ENVIRONMENTS[environment]
+            except KeyError as exc:
+                raise ValueError(f"Unknown environment: {environment}") from exc
+        elif base_url_env is not None:
+            base_url = base_url_env
+        else:
+            self._environment = environment = "production"
+
+            try:
+                base_url = ENVIRONMENTS[environment]
+            except KeyError as exc:
+                raise ValueError(f"Unknown environment: {environment}") from exc
 
         super().__init__(
             version=__version__,
@@ -288,6 +353,7 @@ class AsyncAde(AsyncAPIClient):
         self,
         *,
         apikey: str | None = None,
+        environment: Literal["production", "eu-production"] | None = None,
         base_url: str | httpx.URL | None = None,
         timeout: float | Timeout | None | NotGiven = NOT_GIVEN,
         http_client: httpx.AsyncClient | None = None,
@@ -323,6 +389,7 @@ class AsyncAde(AsyncAPIClient):
         return self.__class__(
             apikey=apikey or self.apikey,
             base_url=base_url or self.base_url,
+            environment=environment or self._environment,
             timeout=self.timeout if isinstance(timeout, NotGiven) else timeout,
             http_client=http_client,
             max_retries=max_retries if is_given(max_retries) else self.max_retries,
