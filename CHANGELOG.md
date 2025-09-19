@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 (2025-09-19)
+
+Full Changelog: [v0.2.0...v0.2.1](https://github.com/landing-ai/ade-python/compare/v0.2.0...v0.2.1)
+
+### Chores
+
+* **types:** change optional parameter type from NotGiven to Omit ([29a0a2d](https://github.com/landing-ai/ade-python/commit/29a0a2de368b135025a8379e26634f4dc5d6a1e8))
+
 ## 0.2.0 (2025-09-18)
 
 Full Changelog: [v0.1.0...v0.2.0](https://github.com/landing-ai/ade-python/compare/v0.1.0...v0.2.0)
