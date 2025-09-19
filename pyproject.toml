@@ -40,6 +40,12 @@ Repository = "https://github.com/landing-ai/ade-python"
 
 [project.optional-dependencies]
 aiohttp = ["aiohttp", "httpx_aiohttp>=0.1.8"]
+visualization = [
+    "opencv-python>=4.8.0",
+    "Pillow>=10.0.0",
+    "pymupdf>=1.23.0",
+    "numpy>=1.24.0",
+]
 
 [tool.rye]
 managed = true

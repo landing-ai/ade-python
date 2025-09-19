@@ -40,6 +40,9 @@ from ._exceptions import (
 from ._base_client import DefaultHttpxClient, DefaultAioHttpClient, DefaultAsyncHttpxClient
 from ._utils._logs import setup_logging as _setup_logging
 
+# Import custom visualization utilities
+from .lib import VisualizationConfig, visualize_parse_response, save_chunk_images
+
 __all__ = [
     "types",
     "__version__",
@@ -83,6 +86,10 @@ __all__ = [
     "DefaultHttpxClient",
     "DefaultAsyncHttpxClient",
     "DefaultAioHttpClient",
+    # Visualization utilities
+    "VisualizationConfig",
+    "visualize_parse_response",
+    "save_chunk_images",
 ]
 
 if not _t.TYPE_CHECKING:
