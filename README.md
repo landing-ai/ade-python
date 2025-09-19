@@ -13,6 +13,8 @@ It is generated with [Stainless](https://www.stainless.com/).
 
 The full API of this library can be found in [api.md](api.md).
 
+For visualization of parsing results, see the [Visualization Guide](VISUALIZATION_GUIDE.md).
+
 ## Installation
 
 ```sh
