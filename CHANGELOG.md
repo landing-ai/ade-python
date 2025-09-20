@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2 (2025-09-20)
+
+Full Changelog: [v0.2.1...v0.2.2](https://github.com/landing-ai/ade-python/compare/v0.2.1...v0.2.2)
+
+### Chores
+
+* do not install brew dependencies in ./scripts/bootstrap by default ([5848b5d](https://github.com/landing-ai/ade-python/commit/5848b5d709c7067d601ca075373fadc5dc4c337c))
+
 ## 0.2.1 (2025-09-19)
 
 Full Changelog: [v0.2.0...v0.2.1](https://github.com/landing-ai/ade-python/compare/v0.2.0...v0.2.1)
