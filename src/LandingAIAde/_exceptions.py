@@ -18,11 +18,11 @@ __all__ = [
 ]
 
 
-class AdeError(Exception):
+class LandingaiError(Exception):
     pass
 
 
-class APIError(AdeError):
+class APIError(LandingaiError):
     message: str
     request: httpx.Request
 

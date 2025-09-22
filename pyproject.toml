@@ -1,11 +1,11 @@
 [project]
 name = "landingai-ade"
 version = "0.2.2"
-description = "The official Python library for the ade API"
+description = "The official Python library for the landingai API"
 dynamic = ["readme"]
 license = "Apache-2.0"
 authors = [
-{ name = "Ade", email = "" },
+{ name = "Landingai", email = "" },
 ]
 dependencies = [
     "httpx>=0.23.0, <1",
@@ -78,14 +78,14 @@ format = { chain = [
 "check:ruff" = "ruff check ."
 "fix:ruff" = "ruff check --fix ."
 
-"check:importable" = "python -c 'import ade'"
+"check:importable" = "python -c 'import LandingAIAde'"
 
 typecheck = { chain = [
   "typecheck:pyright",
   "typecheck:mypy"
 ]}
 "typecheck:pyright" = "pyright"
-"typecheck:verify-types" = "pyright --verifytypes ade --ignoreexternal"
+"typecheck:verify-types" = "pyright --verifytypes LandingAIAde --ignoreexternal"
 "typecheck:mypy" = "mypy ."
 
 [build-system]
@@ -98,7 +98,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ade"]
+packages = ["src/LandingAIAde"]
 
 [tool.hatch.build.targets.sdist]
 # Basically everything except hidden files/directories (such as .github, .devcontainers, .python-version, etc)
@@ -166,7 +166,7 @@ show_error_codes = true
 #
 # We also exclude our `tests` as mypy doesn't always infer
 # types correctly and Pyright will still catch any type errors.
-exclude = ['src/ade/_files.py', '_dev/.*.py', 'tests/.*']
+exclude = ['src/LandingAIAde/_files.py', '_dev/.*.py', 'tests/.*']
 
 strict_equality = true
 implicit_reexport = true
@@ -254,7 +254,7 @@ length-sort = true
 length-sort-straight = true
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
-known-first-party = ["ade", "tests"]
+known-first-party = ["LandingAIAde", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "bin/**.py" = ["T201", "T203"]

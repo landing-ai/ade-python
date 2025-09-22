@@ -7,14 +7,14 @@ from ._types import NOT_GIVEN, Omit, NoneType, NotGiven, Transport, ProxiesTypes
 from ._utils import file_from_path
 from ._client import (
     ENVIRONMENTS,
-    Ade,
     Client,
     Stream,
     Timeout,
-    AsyncAde,
+    Landingai,
     Transport,
     AsyncClient,
     AsyncStream,
+    AsyncLandingai,
     RequestOptions,
 )
 from ._models import BaseModel
@@ -22,11 +22,11 @@ from ._version import __title__, __version__
 from ._response import APIResponse as APIResponse, AsyncAPIResponse as AsyncAPIResponse
 from ._constants import DEFAULT_TIMEOUT, DEFAULT_MAX_RETRIES, DEFAULT_CONNECTION_LIMITS
 from ._exceptions import (
-    AdeError,
     APIError,
     ConflictError,
     NotFoundError,
     APIStatusError,
+    LandingaiError,
     RateLimitError,
     APITimeoutError,
     BadRequestError,
@@ -52,7 +52,7 @@ __all__ = [
     "not_given",
     "Omit",
     "omit",
-    "AdeError",
+    "LandingaiError",
     "APIError",
     "APIStatusError",
     "APITimeoutError",
@@ -72,8 +72,8 @@ __all__ = [
     "AsyncClient",
     "Stream",
     "AsyncStream",
-    "Ade",
-    "AsyncAde",
+    "Landingai",
+    "AsyncLandingai",
     "ENVIRONMENTS",
     "file_from_path",
     "BaseModel",
@@ -93,12 +93,12 @@ _setup_logging()
 # Update the __module__ attribute for exported symbols so that
 # error messages point to this module instead of the module
 # it was originally defined in, e.g.
-# ade._exceptions.NotFoundError -> ade.NotFoundError
+# LandingAIAde._exceptions.NotFoundError -> LandingAIAde.NotFoundError
 __locals = locals()
 for __name in __all__:
     if not __name.startswith("__"):
         try:
-            __locals[__name].__module__ = "ade"
+            __locals[__name].__module__ = "LandingAIAde"
         except (TypeError, AttributeError):
             # Some of our exported symbols are builtins which we can't set attributes for.
             pass

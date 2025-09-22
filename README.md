@@ -1,9 +1,9 @@
-# Ade Python API library
+# Landingai Python API library
 
 <!-- prettier-ignore -->
 [![PyPI version](https://img.shields.io/pypi/v/landingai-ade.svg?label=pypi%20(stable))](https://pypi.org/project/landingai-ade/)
 
-The Ade Python library provides convenient access to the Ade REST API from any Python 3.8+
+The Landingai Python library provides convenient access to the Landingai REST API from any Python 3.8+
 application. The library includes type definitions for all request params and response fields,
 and offers both synchronous and asynchronous clients powered by [httpx](https://github.com/encode/httpx).
 
@@ -11,7 +11,7 @@ It is generated with [Stainless](https://www.stainless.com/).
 
 ## Documentation
 
-The full API of this library can be found in [api.md](api.md).
+The REST API documentation can be found on [docs.landing.ai](https://docs.landing.ai/). The full API of this library can be found in [api.md](api.md).
 
 ## Installation
 
@@ -26,9 +26,9 @@ The full API of this library can be found in [api.md](api.md).
 
 ```python
 import os
-from ade import Ade
+from LandingAIAde import Landingai
 
-client = Ade(
+client = Landingai(
     apikey=os.environ.get("ADE_API_KEY"),  # This is the default and can be omitted
     # defaults to "production".
     environment="eu-production",
@@ -45,14 +45,14 @@ so that your Apikey is not stored in source control.
 
 ## Async usage
 
-Simply import `AsyncAde` instead of `Ade` and use `await` with each API call:
+Simply import `AsyncLandingai` instead of `Landingai` and use `await` with each API call:
 
 ```python
 import os
 import asyncio
-from ade import AsyncAde
+from LandingAIAde import AsyncLandingai
 
-client = AsyncAde(
+client = AsyncLandingai(
     apikey=os.environ.get("ADE_API_KEY"),  # This is the default and can be omitted
     # defaults to "production".
     environment="eu-production",
@@ -84,12 +84,12 @@ Then you can enable it by instantiating the client with `http_client=DefaultAioH
 
 ```python
 import asyncio
-from ade import DefaultAioHttpClient
-from ade import AsyncAde
+from LandingAIAde import DefaultAioHttpClient
+from LandingAIAde import AsyncLandingai
 
 
 async def main() -> None:
-    async with AsyncAde(
+    async with AsyncLandingai(
         apikey="My Apikey",
         http_client=DefaultAioHttpClient(),
     ) as client:
@@ -115,9 +115,9 @@ Request parameters that correspond to file uploads can be passed as `bytes`, or 
 
 ```python
 from pathlib import Path
-from ade import Ade
+from LandingAIAde import Landingai
 
-client = Ade()
+client = Landingai()
 
 client.ade.parse(
     document=Path("/path/to/file"),
@@ -128,27 +128,27 @@ The async client uses the exact same interface. If you pass a [`PathLike`](https
 
 ## Handling errors
 
-When the library is unable to connect to the API (for example, due to network connection problems or a timeout), a subclass of `ade.APIConnectionError` is raised.
+When the library is unable to connect to the API (for example, due to network connection problems or a timeout), a subclass of `LandingAIAde.APIConnectionError` is raised.
 
 When the API returns a non-success status code (that is, 4xx or 5xx
-response), a subclass of `ade.APIStatusError` is raised, containing `status_code` and `response` properties.
+response), a subclass of `LandingAIAde.APIStatusError` is raised, containing `status_code` and `response` properties.
 
-All errors inherit from `ade.APIError`.
+All errors inherit from `LandingAIAde.APIError`.
 
 ```python
-import ade
-from ade import Ade
+import LandingAIAde
+from LandingAIAde import Landingai
 
-client = Ade()
+client = Landingai()
 
 try:
     client.ade.parse()
-except ade.APIConnectionError as e:
+except LandingAIAde.APIConnectionError as e:
     print("The server could not be reached")
     print(e.__cause__)  # an underlying Exception, likely raised within httpx.
-except ade.RateLimitError as e:
+except LandingAIAde.RateLimitError as e:
     print("A 429 status code was received; we should back off a bit.")
-except ade.APIStatusError as e:
+except LandingAIAde.APIStatusError as e:
     print("Another non-200-range status code was received")
     print(e.status_code)
     print(e.response)
@@ -176,10 +176,10 @@ Connection errors (for example, due to a network connectivity problem), 408 Requ
 You can use the `max_retries` option to configure or disable retry settings:
 
 ```python
-from ade import Ade
+from LandingAIAde import Landingai
 
 # Configure the default for all requests:
-client = Ade(
+client = Landingai(
     # default is 2
     max_retries=0,
 )
@@ -194,16 +194,16 @@ By default requests time out after 1 minute. You can configure this with a `time
 which accepts a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration) object:
 
 ```python
-from ade import Ade
+from LandingAIAde import Landingai
 
 # Configure the default for all requests:
-client = Ade(
+client = Landingai(
     # 20 seconds (default is 1 minute)
     timeout=20.0,
 )
 
 # More granular control:
-client = Ade(
+client = Landingai(
     timeout=httpx.Timeout(60.0, read=5.0, write=10.0, connect=2.0),
 )
 
@@ -221,10 +221,10 @@ Note that requests that time out are [retried twice by default](#retries).
 
 We use the standard library [`logging`](https://docs.python.org/3/library/logging.html) module.
 
-You can enable logging by setting the environment variable `ADE_LOG` to `info`.
+You can enable logging by setting the environment variable `LANDINGAI_LOG` to `info`.
 
 ```shell
-$ export ADE_LOG=info
+$ export LANDINGAI_LOG=info
 ```
 
 Or to `debug` for more verbose logging.
@@ -246,9 +246,9 @@ if response.my_field is None:
 The "raw" Response object can be accessed by prefixing `.with_raw_response.` to any HTTP method call, e.g.,
 
 ```py
-from ade import Ade
+from LandingAIAde import Landingai
 
-client = Ade()
+client = Landingai()
 response = client.ade.with_raw_response.parse()
 print(response.headers.get('X-My-Header'))
 
@@ -256,9 +256,9 @@ ade = response.parse()  # get the object that `ade.parse()` would have returned
 print(ade.chunks)
 ```
 
-These methods return an [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/ade/_response.py) object.
+These methods return an [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/LandingAIAde/_response.py) object.
 
-The async client returns an [`AsyncAPIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/ade/_response.py) with the same structure, the only difference being `await`able methods for reading the response content.
+The async client returns an [`AsyncAPIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/LandingAIAde/_response.py) with the same structure, the only difference being `await`able methods for reading the response content.
 
 #### `.with_streaming_response`
 
@@ -320,10 +320,10 @@ You can directly override the [httpx client](https://www.python-httpx.org/api/#c
 
 ```python
 import httpx
-from ade import Ade, DefaultHttpxClient
+from LandingAIAde import Landingai, DefaultHttpxClient
 
-client = Ade(
-    # Or use the `ADE_BASE_URL` env var
+client = Landingai(
+    # Or use the `LANDINGAI_BASE_URL` env var
     base_url="http://my.test.server.example.com:8083",
     http_client=DefaultHttpxClient(
         proxy="http://my.test.proxy.example.com",
@@ -343,9 +343,9 @@ client.with_options(http_client=DefaultHttpxClient(...))
 By default the library closes underlying HTTP connections whenever the client is [garbage collected](https://docs.python.org/3/reference/datamodel.html#object.__del__). You can manually close the client using the `.close()` method if desired, or with a context manager that closes when exiting.
 
 ```py
-from ade import Ade
+from LandingAIAde import Landingai
 
-with Ade() as client:
+with Landingai() as client:
   # make requests here
   ...
 
@@ -371,8 +371,8 @@ If you've upgraded to the latest version but aren't seeing any new features you 
 You can determine the version that is being used at runtime with:
 
 ```py
-import ade
-print(ade.__version__)
+import LandingAIAde
+print(LandingAIAde.__version__)
 ```
 
 ## Requirements
