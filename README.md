@@ -34,7 +34,7 @@ client = Landingai(
     environment="eu",
 )
 
-response = client.ade.parse()
+response = client.parse()
 print(response.chunks)
 ```
 
@@ -60,7 +60,7 @@ client = AsyncLandingai(
 
 
 async def main() -> None:
-    response = await client.ade.parse()
+    response = await client.parse()
     print(response.chunks)
 
 
@@ -93,7 +93,7 @@ async def main() -> None:
         apikey="My Apikey",
         http_client=DefaultAioHttpClient(),
     ) as client:
-        response = await client.ade.parse()
+        response = await client.parse()
         print(response.chunks)
 
 
@@ -119,7 +119,7 @@ from LandingAIAde import Landingai
 
 client = Landingai()
 
-client.ade.parse(
+client.parse(
     document=Path("/path/to/file"),
 )
 ```
@@ -142,7 +142,7 @@ from LandingAIAde import Landingai
 client = Landingai()
 
 try:
-    client.ade.parse()
+    client.parse()
 except LandingAIAde.APIConnectionError as e:
     print("The server could not be reached")
     print(e.__cause__)  # an underlying Exception, likely raised within httpx.
@@ -185,7 +185,7 @@ client = Landingai(
 )
 
 # Or, configure per-request:
-client.with_options(max_retries=5).ade.parse()
+client.with_options(max_retries=5).parse()
 ```
 
 ### Timeouts
@@ -208,7 +208,7 @@ client = Landingai(
 )
 
 # Override per-request:
-client.with_options(timeout=5.0).ade.parse()
+client.with_options(timeout=5.0).parse()
 ```
 
 On timeout, an `APITimeoutError` is thrown.
@@ -249,11 +249,11 @@ The "raw" Response object can be accessed by prefixing `.with_raw_response.` to 
 from LandingAIAde import Landingai
 
 client = Landingai()
-response = client.ade.with_raw_response.parse()
+response = client.with_raw_response.parse()
 print(response.headers.get('X-My-Header'))
 
-ade = response.parse()  # get the object that `ade.parse()` would have returned
-print(ade.chunks)
+client = response.parse()  # get the object that `parse()` would have returned
+print(client.chunks)
 ```
 
 These methods return an [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/LandingAIAde/_response.py) object.
@@ -267,7 +267,7 @@ The above interface eagerly reads the full response body when you make the reque
 To stream the response body, use `.with_streaming_response` instead, which requires a context manager and only reads the response body once you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()` or `.parse()`. In the async client, these are async methods.
 
 ```python
-with client.ade.with_streaming_response.parse() as response:
+with client.with_streaming_response.parse() as response:
     print(response.headers.get("X-My-Header"))
 
     for line in response.iter_lines():

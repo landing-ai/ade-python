@@ -7,10 +7,10 @@ from typing_extensions import Required, TypedDict
 
 from .._types import FileTypes
 
-__all__ = ["AdeExtractParams"]
+__all__ = ["ClientExtractParams"]
 
 
-class AdeExtractParams(TypedDict, total=False):
+class ClientExtractParams(TypedDict, total=False):
     schema: Required[str]
     """JSON schema for field extraction.
 

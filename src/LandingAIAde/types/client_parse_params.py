@@ -7,10 +7,10 @@ from typing_extensions import Literal, TypedDict
 
 from .._types import FileTypes
 
-__all__ = ["AdeParseParams"]
+__all__ = ["ClientParseParams"]
 
 
-class AdeParseParams(TypedDict, total=False):
+class ClientParseParams(TypedDict, total=False):
     document: Optional[FileTypes]
     """A file to be parsed.
 
