@@ -1,5 +1,5 @@
 [project]
-name = "ade-python"
+name = "landingai-ade"
 version = "0.2.1"
 description = "The official Python library for the ade API"
 dynamic = ["readme"]
