@@ -1,7 +1,7 @@
 # Ade Python API library
 
 <!-- prettier-ignore -->
-[![PyPI version](https://img.shields.io/pypi/v/ade-python.svg?label=pypi%20(stable))](https://pypi.org/project/ade-python/)
+[![PyPI version](https://img.shields.io/pypi/v/landingai-ade.svg?label=pypi%20(stable))](https://pypi.org/project/landingai-ade/)
 
 The Ade Python library provides convenient access to the Ade REST API from any Python 3.8+
 application. The library includes type definitions for all request params and response fields,
@@ -17,7 +17,7 @@ The full API of this library can be found in [api.md](api.md).
 
 ```sh
 # install from PyPI
-pip install ade-python
+pip install landingai-ade
 ```
 
 ## Usage
@@ -77,7 +77,7 @@ You can enable this by installing `aiohttp`:
 
 ```sh
 # install from PyPI
-pip install ade-python[aiohttp]
+pip install landingai-ade[aiohttp]
 ```
 
 Then you can enable it by instantiating the client with `http_client=DefaultAioHttpClient()`:
