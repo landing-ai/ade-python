@@ -6,7 +6,7 @@ from pydantic import Field as FieldInfo
 
 from .._models import BaseModel
 
-__all__ = ["AdeParseResponse", "Chunk", "ChunkGrounding", "ChunkGroundingBox", "Metadata", "Split"]
+__all__ = ["ParseResponse", "Chunk", "ChunkGrounding", "ChunkGroundingBox", "Metadata", "Split"]
 
 
 class ChunkGroundingBox(BaseModel):
@@ -61,7 +61,7 @@ class Split(BaseModel):
     pages: List[int]
 
 
-class AdeParseResponse(BaseModel):
+class ParseResponse(BaseModel):
     chunks: List[Chunk]
 
     markdown: str
