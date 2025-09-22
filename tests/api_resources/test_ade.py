@@ -7,9 +7,9 @@ from typing import Any, cast
 
 import pytest
 
-from ade import Ade, AsyncAde
-from ade.types import AdeParseResponse, AdeExtractResponse
 from tests.utils import assert_matches_type
+from LandingAIAde import Landingai, AsyncLandingai
+from LandingAIAde.types import AdeParseResponse, AdeExtractResponse
 
 base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 
@@ -19,7 +19,7 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_method_extract(self, client: Ade) -> None:
+    def test_method_extract(self, client: Landingai) -> None:
         ade = client.ade.extract(
             schema="schema",
         )
@@ -27,7 +27,7 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_method_extract_with_all_params(self, client: Ade) -> None:
+    def test_method_extract_with_all_params(self, client: Landingai) -> None:
         ade = client.ade.extract(
             schema="schema",
             markdown=b"raw file contents",
@@ -37,7 +37,7 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_raw_response_extract(self, client: Ade) -> None:
+    def test_raw_response_extract(self, client: Landingai) -> None:
         response = client.ade.with_raw_response.extract(
             schema="schema",
         )
@@ -49,7 +49,7 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_streaming_response_extract(self, client: Ade) -> None:
+    def test_streaming_response_extract(self, client: Landingai) -> None:
         with client.ade.with_streaming_response.extract(
             schema="schema",
         ) as response:
@@ -63,13 +63,13 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_method_parse(self, client: Ade) -> None:
+    def test_method_parse(self, client: Landingai) -> None:
         ade = client.ade.parse()
         assert_matches_type(AdeParseResponse, ade, path=["response"])
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_method_parse_with_all_params(self, client: Ade) -> None:
+    def test_method_parse_with_all_params(self, client: Landingai) -> None:
         ade = client.ade.parse(
             document=b"raw file contents",
             document_url="document_url",
@@ -79,7 +79,7 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_raw_response_parse(self, client: Ade) -> None:
+    def test_raw_response_parse(self, client: Landingai) -> None:
         response = client.ade.with_raw_response.parse()
 
         assert response.is_closed is True
@@ -89,7 +89,7 @@ class TestAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    def test_streaming_response_parse(self, client: Ade) -> None:
+    def test_streaming_response_parse(self, client: Landingai) -> None:
         with client.ade.with_streaming_response.parse() as response:
             assert not response.is_closed
             assert response.http_request.headers.get("X-Stainless-Lang") == "python"
@@ -107,7 +107,7 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_method_extract(self, async_client: AsyncAde) -> None:
+    async def test_method_extract(self, async_client: AsyncLandingai) -> None:
         ade = await async_client.ade.extract(
             schema="schema",
         )
@@ -115,7 +115,7 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_method_extract_with_all_params(self, async_client: AsyncAde) -> None:
+    async def test_method_extract_with_all_params(self, async_client: AsyncLandingai) -> None:
         ade = await async_client.ade.extract(
             schema="schema",
             markdown=b"raw file contents",
@@ -125,7 +125,7 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_raw_response_extract(self, async_client: AsyncAde) -> None:
+    async def test_raw_response_extract(self, async_client: AsyncLandingai) -> None:
         response = await async_client.ade.with_raw_response.extract(
             schema="schema",
         )
@@ -137,7 +137,7 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_streaming_response_extract(self, async_client: AsyncAde) -> None:
+    async def test_streaming_response_extract(self, async_client: AsyncLandingai) -> None:
         async with async_client.ade.with_streaming_response.extract(
             schema="schema",
         ) as response:
@@ -151,13 +151,13 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_method_parse(self, async_client: AsyncAde) -> None:
+    async def test_method_parse(self, async_client: AsyncLandingai) -> None:
         ade = await async_client.ade.parse()
         assert_matches_type(AdeParseResponse, ade, path=["response"])
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_method_parse_with_all_params(self, async_client: AsyncAde) -> None:
+    async def test_method_parse_with_all_params(self, async_client: AsyncLandingai) -> None:
         ade = await async_client.ade.parse(
             document=b"raw file contents",
             document_url="document_url",
@@ -167,7 +167,7 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_raw_response_parse(self, async_client: AsyncAde) -> None:
+    async def test_raw_response_parse(self, async_client: AsyncLandingai) -> None:
         response = await async_client.ade.with_raw_response.parse()
 
         assert response.is_closed is True
@@ -177,7 +177,7 @@ class TestAsyncAde:
 
     @pytest.mark.skip(reason="Prism tests are disabled")
     @parametrize
-    async def test_streaming_response_parse(self, async_client: AsyncAde) -> None:
+    async def test_streaming_response_parse(self, async_client: AsyncLandingai) -> None:
         async with async_client.ade.with_streaming_response.parse() as response:
             assert not response.is_closed
             assert response.http_request.headers.get("X-Stainless-Lang") == "python"

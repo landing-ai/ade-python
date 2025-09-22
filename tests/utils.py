@@ -8,8 +8,8 @@ from typing import Any, TypeVar, Iterator, Sequence, cast
 from datetime import date, datetime
 from typing_extensions import Literal, get_args, get_origin, assert_type
 
-from ade._types import Omit, NoneType
-from ade._utils import (
+from LandingAIAde._types import Omit, NoneType
+from LandingAIAde._utils import (
     is_dict,
     is_list,
     is_list_type,
@@ -19,8 +19,8 @@ from ade._utils import (
     is_annotated_type,
     is_type_alias_type,
 )
-from ade._compat import PYDANTIC_V1, field_outer_type, get_model_fields
-from ade._models import BaseModel
+from LandingAIAde._compat import PYDANTIC_V1, field_outer_type, get_model_fields
+from LandingAIAde._models import BaseModel
 
 BaseModelT = TypeVar("BaseModelT", bound=BaseModel)
 

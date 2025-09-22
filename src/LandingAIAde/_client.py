@@ -23,7 +23,7 @@ from ._utils import is_given, get_async_library
 from ._version import __version__
 from .resources import ade
 from ._streaming import Stream as Stream, AsyncStream as AsyncStream
-from ._exceptions import AdeError, APIStatusError
+from ._exceptions import APIStatusError, LandingaiError
 from ._base_client import (
     DEFAULT_MAX_RETRIES,
     SyncAPIClient,
@@ -36,8 +36,8 @@ __all__ = [
     "Transport",
     "ProxiesTypes",
     "RequestOptions",
-    "Ade",
-    "AsyncAde",
+    "Landingai",
+    "AsyncLandingai",
     "Client",
     "AsyncClient",
 ]
@@ -48,10 +48,10 @@ ENVIRONMENTS: Dict[str, str] = {
 }
 
 
-class Ade(SyncAPIClient):
+class Landingai(SyncAPIClient):
     ade: ade.AdeResource
-    with_raw_response: AdeWithRawResponse
-    with_streaming_response: AdeWithStreamedResponse
+    with_raw_response: LandingaiWithRawResponse
+    with_streaming_response: LandingaiWithStreamedResponse
 
     # client options
     apikey: str
@@ -82,28 +82,28 @@ class Ade(SyncAPIClient):
         # part of our public interface in the future.
         _strict_response_validation: bool = False,
     ) -> None:
-        """Construct a new synchronous Ade client instance.
+        """Construct a new synchronous Landingai client instance.
 
         This automatically infers the `apikey` argument from the `ADE_API_KEY` environment variable if it is not provided.
         """
         if apikey is None:
             apikey = os.environ.get("ADE_API_KEY")
         if apikey is None:
-            raise AdeError(
+            raise LandingaiError(
                 "The apikey client option must be set either by passing apikey to the client or by setting the ADE_API_KEY environment variable"
             )
         self.apikey = apikey
 
         self._environment = environment
 
-        base_url_env = os.environ.get("ADE_BASE_URL")
+        base_url_env = os.environ.get("LANDINGAI_BASE_URL")
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
             base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
         elif is_given(environment):
             if base_url_env and base_url is not None:
                 raise ValueError(
-                    "Ambiguous URL; The `ADE_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
+                    "Ambiguous URL; The `LANDINGAI_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
                 )
 
             try:
@@ -132,8 +132,8 @@ class Ade(SyncAPIClient):
         )
 
         self.ade = ade.AdeResource(self)
-        self.with_raw_response = AdeWithRawResponse(self)
-        self.with_streaming_response = AdeWithStreamedResponse(self)
+        self.with_raw_response = LandingaiWithRawResponse(self)
+        self.with_streaming_response = LandingaiWithStreamedResponse(self)
 
     @property
     @override
@@ -242,10 +242,10 @@ class Ade(SyncAPIClient):
         return APIStatusError(err_msg, response=response, body=body)
 
 
-class AsyncAde(AsyncAPIClient):
+class AsyncLandingai(AsyncAPIClient):
     ade: ade.AsyncAdeResource
-    with_raw_response: AsyncAdeWithRawResponse
-    with_streaming_response: AsyncAdeWithStreamedResponse
+    with_raw_response: AsyncLandingaiWithRawResponse
+    with_streaming_response: AsyncLandingaiWithStreamedResponse
 
     # client options
     apikey: str
@@ -276,28 +276,28 @@ class AsyncAde(AsyncAPIClient):
         # part of our public interface in the future.
         _strict_response_validation: bool = False,
     ) -> None:
-        """Construct a new async AsyncAde client instance.
+        """Construct a new async AsyncLandingai client instance.
 
         This automatically infers the `apikey` argument from the `ADE_API_KEY` environment variable if it is not provided.
         """
         if apikey is None:
             apikey = os.environ.get("ADE_API_KEY")
         if apikey is None:
-            raise AdeError(
+            raise LandingaiError(
                 "The apikey client option must be set either by passing apikey to the client or by setting the ADE_API_KEY environment variable"
             )
         self.apikey = apikey
 
         self._environment = environment
 
-        base_url_env = os.environ.get("ADE_BASE_URL")
+        base_url_env = os.environ.get("LANDINGAI_BASE_URL")
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
             base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
         elif is_given(environment):
             if base_url_env and base_url is not None:
                 raise ValueError(
-                    "Ambiguous URL; The `ADE_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
+                    "Ambiguous URL; The `LANDINGAI_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
                 )
 
             try:
@@ -326,8 +326,8 @@ class AsyncAde(AsyncAPIClient):
         )
 
         self.ade = ade.AsyncAdeResource(self)
-        self.with_raw_response = AsyncAdeWithRawResponse(self)
-        self.with_streaming_response = AsyncAdeWithStreamedResponse(self)
+        self.with_raw_response = AsyncLandingaiWithRawResponse(self)
+        self.with_streaming_response = AsyncLandingaiWithStreamedResponse(self)
 
     @property
     @override
@@ -436,26 +436,26 @@ class AsyncAde(AsyncAPIClient):
         return APIStatusError(err_msg, response=response, body=body)
 
 
-class AdeWithRawResponse:
-    def __init__(self, client: Ade) -> None:
+class LandingaiWithRawResponse:
+    def __init__(self, client: Landingai) -> None:
         self.ade = ade.AdeResourceWithRawResponse(client.ade)
 
 
-class AsyncAdeWithRawResponse:
-    def __init__(self, client: AsyncAde) -> None:
+class AsyncLandingaiWithRawResponse:
+    def __init__(self, client: AsyncLandingai) -> None:
         self.ade = ade.AsyncAdeResourceWithRawResponse(client.ade)
 
 
-class AdeWithStreamedResponse:
-    def __init__(self, client: Ade) -> None:
+class LandingaiWithStreamedResponse:
+    def __init__(self, client: Landingai) -> None:
         self.ade = ade.AdeResourceWithStreamingResponse(client.ade)
 
 
-class AsyncAdeWithStreamedResponse:
-    def __init__(self, client: AsyncAde) -> None:
+class AsyncLandingaiWithStreamedResponse:
+    def __init__(self, client: AsyncLandingai) -> None:
         self.ade = ade.AsyncAdeResourceWithStreamingResponse(client.ade)
 
 
-Client = Ade
+Client = Landingai
 
-AsyncClient = AsyncAde
+AsyncClient = AsyncLandingai
