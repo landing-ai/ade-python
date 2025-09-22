@@ -10,15 +10,15 @@ import httpx
 import pytest
 from pytest_asyncio import is_async_test
 
-from ade import Ade, AsyncAde, DefaultAioHttpClient
-from ade._utils import is_dict
+from LandingAIAde import Landingai, AsyncLandingai, DefaultAioHttpClient
+from LandingAIAde._utils import is_dict
 
 if TYPE_CHECKING:
     from _pytest.fixtures import FixtureRequest  # pyright: ignore[reportPrivateImportUsage]
 
 pytest.register_assert_rewrite("tests.utils")
 
-logging.getLogger("ade").setLevel(logging.DEBUG)
+logging.getLogger("LandingAIAde").setLevel(logging.DEBUG)
 
 
 # automatically add `pytest.mark.asyncio()` to all of our async tests
@@ -49,17 +49,17 @@ apikey = "My Apikey"
 
 
 @pytest.fixture(scope="session")
-def client(request: FixtureRequest) -> Iterator[Ade]:
+def client(request: FixtureRequest) -> Iterator[Landingai]:
     strict = getattr(request, "param", True)
     if not isinstance(strict, bool):
         raise TypeError(f"Unexpected fixture parameter type {type(strict)}, expected {bool}")
 
-    with Ade(base_url=base_url, apikey=apikey, _strict_response_validation=strict) as client:
+    with Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=strict) as client:
         yield client
 
 
 @pytest.fixture(scope="session")
-async def async_client(request: FixtureRequest) -> AsyncIterator[AsyncAde]:
+async def async_client(request: FixtureRequest) -> AsyncIterator[AsyncLandingai]:
     param = getattr(request, "param", True)
 
     # defaults
@@ -78,7 +78,7 @@ async def async_client(request: FixtureRequest) -> AsyncIterator[AsyncAde]:
     else:
         raise TypeError(f"Unexpected fixture parameter type {type(param)}, expected bool or dict")
 
-    async with AsyncAde(
+    async with AsyncLandingai(
         base_url=base_url, apikey=apikey, _strict_response_validation=strict, http_client=http_client
     ) as client:
         yield client
