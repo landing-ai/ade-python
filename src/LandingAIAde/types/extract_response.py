@@ -4,7 +4,7 @@ from typing import Optional
 
 from .._models import BaseModel
 
-__all__ = ["AdeExtractResponse", "Metadata"]
+__all__ = ["ExtractResponse", "Metadata"]
 
 
 class Metadata(BaseModel):
@@ -19,7 +19,7 @@ class Metadata(BaseModel):
     version: str
 
 
-class AdeExtractResponse(BaseModel):
+class ExtractResponse(BaseModel):
     extraction: object
     """The extracted key-value pairs."""
 

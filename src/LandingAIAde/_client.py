@@ -3,32 +3,53 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Mapping, cast
+from typing import Any, Dict, Mapping, Optional, cast
 from typing_extensions import Self, Literal, override
 
 import httpx
 
 from . import _exceptions
 from ._qs import Querystring
+from .types import client_parse_params, client_extract_params
 from ._types import (
+    Body,
     Omit,
+    Query,
+    Headers,
     Timeout,
     NotGiven,
+    FileTypes,
     Transport,
     ProxiesTypes,
     RequestOptions,
+    omit,
     not_given,
 )
-from ._utils import is_given, get_async_library
+from ._utils import (
+    is_given,
+    extract_files,
+    maybe_transform,
+    deepcopy_minimal,
+    get_async_library,
+    async_maybe_transform,
+)
 from ._version import __version__
-from .resources import ade
+from ._response import (
+    to_raw_response_wrapper,
+    to_streamed_response_wrapper,
+    async_to_raw_response_wrapper,
+    async_to_streamed_response_wrapper,
+)
 from ._streaming import Stream as Stream, AsyncStream as AsyncStream
 from ._exceptions import APIStatusError, LandingaiError
 from ._base_client import (
     DEFAULT_MAX_RETRIES,
     SyncAPIClient,
     AsyncAPIClient,
+    make_request_options,
 )
+from .types.parse_response import ParseResponse
+from .types.extract_response import ExtractResponse
 
 __all__ = [
     "ENVIRONMENTS",
@@ -49,7 +70,6 @@ ENVIRONMENTS: Dict[str, str] = {
 
 
 class Landingai(SyncAPIClient):
-    ade: ade.AdeResource
     with_raw_response: LandingaiWithRawResponse
     with_streaming_response: LandingaiWithStreamedResponse
 
@@ -131,7 +151,6 @@ class Landingai(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.ade = ade.AdeResource(self)
         self.with_raw_response = LandingaiWithRawResponse(self)
         self.with_streaming_response = LandingaiWithStreamedResponse(self)
 
@@ -208,6 +227,135 @@ class Landingai(SyncAPIClient):
     # client.with_options(timeout=10).foo.create(...)
     with_options = copy
 
+    def extract(
+        self,
+        *,
+        schema: str,
+        markdown: Optional[FileTypes] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ExtractResponse:
+        """
+        Extract structured data from Markdown using a JSON schema.
+
+        This endpoint processes Markdown content and extracts structured data according
+        to the provided JSON schema.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/extract`.
+
+        Args:
+          schema: JSON schema for field extraction. This schema determines what key-values pairs
+              are extracted from the Markdown. The schema must be a valid JSON object and will
+              be validated before processing the document.
+
+          markdown: The Markdown file to extract data from.
+
+          markdown_url: The URL to the Markdown file to extract data from.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "schema": schema,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/extract",
+            body=maybe_transform(body, client_extract_params.ClientExtractParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExtractResponse,
+        )
+
+    def parse(
+        self,
+        *,
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        split: Optional[Literal["page"]] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ParseResponse:
+        """
+        Parse a document.
+
+        This endpoint parses documents and structured Markdown, chunks, and metadata.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
+
+        Args:
+          document: A file to be parsed. The file can be a PDF (50 pages max) or an image (50MB).
+              See the list of supported file types here
+              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
+              document_url parameter must be provided.
+
+          document_url: The URL to the file to be parsed. The file can be a PDF (50 pages max) or an
+              image (50MB). See the list of supported file types here
+              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
+              document parameter must be provided.
+
+          split: If you want to split documents into smaller sections, include the split
+              parameter. Set the parameter to page to split documents at the page level. The
+              splits object in the API output will contain a set of data for each page.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "document": document,
+                "document_url": document_url,
+                "split": split,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/parse",
+            body=maybe_transform(body, client_parse_params.ClientParseParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ParseResponse,
+        )
+
     @override
     def _make_status_error(
         self,
@@ -243,7 +391,6 @@ class Landingai(SyncAPIClient):
 
 
 class AsyncLandingai(AsyncAPIClient):
-    ade: ade.AsyncAdeResource
     with_raw_response: AsyncLandingaiWithRawResponse
     with_streaming_response: AsyncLandingaiWithStreamedResponse
 
@@ -325,7 +472,6 @@ class AsyncLandingai(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.ade = ade.AsyncAdeResource(self)
         self.with_raw_response = AsyncLandingaiWithRawResponse(self)
         self.with_streaming_response = AsyncLandingaiWithStreamedResponse(self)
 
@@ -402,6 +548,135 @@ class AsyncLandingai(AsyncAPIClient):
     # client.with_options(timeout=10).foo.create(...)
     with_options = copy
 
+    async def extract(
+        self,
+        *,
+        schema: str,
+        markdown: Optional[FileTypes] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ExtractResponse:
+        """
+        Extract structured data from Markdown using a JSON schema.
+
+        This endpoint processes Markdown content and extracts structured data according
+        to the provided JSON schema.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/extract`.
+
+        Args:
+          schema: JSON schema for field extraction. This schema determines what key-values pairs
+              are extracted from the Markdown. The schema must be a valid JSON object and will
+              be validated before processing the document.
+
+          markdown: The Markdown file to extract data from.
+
+          markdown_url: The URL to the Markdown file to extract data from.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "schema": schema,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/extract",
+            body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExtractResponse,
+        )
+
+    async def parse(
+        self,
+        *,
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        split: Optional[Literal["page"]] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ParseResponse:
+        """
+        Parse a document.
+
+        This endpoint parses documents and structured Markdown, chunks, and metadata.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
+
+        Args:
+          document: A file to be parsed. The file can be a PDF (50 pages max) or an image (50MB).
+              See the list of supported file types here
+              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
+              document_url parameter must be provided.
+
+          document_url: The URL to the file to be parsed. The file can be a PDF (50 pages max) or an
+              image (50MB). See the list of supported file types here
+              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
+              document parameter must be provided.
+
+          split: If you want to split documents into smaller sections, include the split
+              parameter. Set the parameter to page to split documents at the page level. The
+              splits object in the API output will contain a set of data for each page.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "document": document,
+                "document_url": document_url,
+                "split": split,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/parse",
+            body=await async_maybe_transform(body, client_parse_params.ClientParseParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ParseResponse,
+        )
+
     @override
     def _make_status_error(
         self,
@@ -438,22 +713,42 @@ class AsyncLandingai(AsyncAPIClient):
 
 class LandingaiWithRawResponse:
     def __init__(self, client: Landingai) -> None:
-        self.ade = ade.AdeResourceWithRawResponse(client.ade)
+        self.extract = to_raw_response_wrapper(
+            client.extract,
+        )
+        self.parse = to_raw_response_wrapper(
+            client.parse,
+        )
 
 
 class AsyncLandingaiWithRawResponse:
     def __init__(self, client: AsyncLandingai) -> None:
-        self.ade = ade.AsyncAdeResourceWithRawResponse(client.ade)
+        self.extract = async_to_raw_response_wrapper(
+            client.extract,
+        )
+        self.parse = async_to_raw_response_wrapper(
+            client.parse,
+        )
 
 
 class LandingaiWithStreamedResponse:
     def __init__(self, client: Landingai) -> None:
-        self.ade = ade.AdeResourceWithStreamingResponse(client.ade)
+        self.extract = to_streamed_response_wrapper(
+            client.extract,
+        )
+        self.parse = to_streamed_response_wrapper(
+            client.parse,
+        )
 
 
 class AsyncLandingaiWithStreamedResponse:
     def __init__(self, client: AsyncLandingai) -> None:
-        self.ade = ade.AsyncAdeResourceWithStreamingResponse(client.ade)
+        self.extract = async_to_streamed_response_wrapper(
+            client.extract,
+        )
+        self.parse = async_to_streamed_response_wrapper(
+            client.parse,
+        )
 
 
 Client = Landingai
