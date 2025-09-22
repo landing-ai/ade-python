@@ -31,7 +31,7 @@ from LandingAIAde import Landingai
 client = Landingai(
     apikey=os.environ.get("ADE_API_KEY"),  # This is the default and can be omitted
     # defaults to "production".
-    environment="eu-production",
+    environment="eu",
 )
 
 response = client.ade.parse()
@@ -55,7 +55,7 @@ from LandingAIAde import AsyncLandingai
 client = AsyncLandingai(
     apikey=os.environ.get("ADE_API_KEY"),  # This is the default and can be omitted
     # defaults to "production".
-    environment="eu-production",
+    environment="eu",
 )
 
 
