@@ -88,7 +88,7 @@ def _pdf_page_to_image(pdf_doc: Any, page_idx: int, dpi: int = 150) -> Any:  # r
     )
     # Ensure the image has 3 channels
     if img.shape[-1] == 4:  # If RGBA, drop the alpha channel
-        img = img[..., :3]
+        img = img[..., :3]  # type: ignore[assignment]
     return img
 
 

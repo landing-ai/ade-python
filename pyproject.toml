@@ -213,6 +213,10 @@ module = "black.files.*"
 ignore_errors = true
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "pymupdf"
+ignore_missing_imports = true
+
 
 [tool.ruff]
 line-length = 120
