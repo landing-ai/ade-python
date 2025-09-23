@@ -1,37 +1,52 @@
 """Visualization utilities for ADE parsing results."""
+# pyright: reportMissingTypeStubs=false
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
+# pyright: reportUnknownVariableType=false, reportUnknownParameterType=false
 
 import math
-from typing import TYPE_CHECKING, List, Union, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Union, Literal, Optional
 from pathlib import Path
 from collections import defaultdict
 
+# Type checking imports
 if TYPE_CHECKING:
+    import cv2
     import numpy as np
+    import pymupdf
     from PIL import Image
 
     from LandingAIAde.types import ParseResponse
 
 from .config import VisualizationConfig
 
+
+# Runtime state for visualization availability
+class _VisualizationState:
+    """Container for visualization library availability state."""
+    available: bool = False
+    import_error: Optional[ImportError] = None
+
+_viz_state = _VisualizationState()
+
 # Import visualization dependencies with graceful fallback
 try:
     import cv2
     import numpy as np
-    import pymupdf
+    import pymupdf  # type: ignore[import-untyped]
     from PIL import Image
-    VISUALIZATION_AVAILABLE = True
+    _viz_state.available = True
 except ImportError as e:
-    VISUALIZATION_AVAILABLE = False
-    _import_error = e
+    _viz_state.available = False
+    _viz_state.import_error = e
 
 
 def _check_visualization_dependencies() -> None:
     """Check if visualization dependencies are available."""
-    if not VISUALIZATION_AVAILABLE:
+    if not _viz_state.available:
         raise ImportError(
             "Visualization dependencies are not installed. "
             "Please install them with: pip install 'ade-python[visualization]'"
-        ) from _import_error
+        ) from _viz_state.import_error
 
 
 def _get_file_type(file_path: Path) -> Literal["pdf", "image"]:
@@ -54,7 +69,7 @@ def _get_file_type(file_path: Path) -> Literal["pdf", "image"]:
         return "pdf" if file_path.suffix.lower() == ".pdf" else "image"
 
 
-def _pdf_page_to_image(pdf_doc: "pymupdf.Document", page_idx: int, dpi: int = 150) -> "np.ndarray":
+def _pdf_page_to_image(pdf_doc: Any, page_idx: int, dpi: int = 150) -> Any:  # returns NDArray, pdf_doc: pymupdf.Document
     """Convert a PDF page to an image.
 
     Args:
@@ -67,9 +82,9 @@ def _pdf_page_to_image(pdf_doc: "pymupdf.Document", page_idx: int, dpi: int = 15
     """
     page = pdf_doc[page_idx]
     # Scale image and use RGB colorspace
-    pix = page.get_pixmap(dpi=dpi, colorspace=pymupdf.csRGB)
-    img: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-        pix.h, pix.w, -1
+    pix = page.get_pixmap(dpi=dpi, colorspace=pymupdf.csRGB)  # type: ignore[attr-defined]
+    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(  # type: ignore[attr-defined]
+        pix.h, pix.w, -1  # type: ignore[attr-defined]
     )
     # Ensure the image has 3 channels
     if img.shape[-1] == 4:  # If RGBA, drop the alpha channel
@@ -77,7 +92,7 @@ def _pdf_page_to_image(pdf_doc: "pymupdf.Document", page_idx: int, dpi: int = 15
     return img
 
 
-def _read_image(image_path: Union[str, Path]) -> "np.ndarray":
+def _read_image(image_path: Union[str, Path]) -> Any:  # returns NDArray
     """Read an image file and return as RGB numpy array.
 
     Args:
@@ -103,10 +118,10 @@ def _read_image(image_path: Union[str, Path]) -> "np.ndarray":
 
 
 def _draw_bounding_box(
-    img: "np.ndarray",
-    box: dict,
+    img: Any,  # NDArray
+    box: Dict[str, Any],
     text: str,
-    color_bgr: tuple,
+    color_bgr: "tuple[int, int, int]",
     config: VisualizationConfig
 ) -> None:
     """Draw a bounding box with label on the image.
@@ -130,7 +145,7 @@ def _draw_bounding_box(
     cv2.rectangle(img, (xmin, ymin), (xmax, ymax), color_bgr, config.thickness)
 
     # Calculate text size
-    (text_width, text_height), baseline = cv2.getTextSize(
+    (text_width, text_height), _ = cv2.getTextSize(
         text, config.font, config.font_scale, config.thickness
     )
 
@@ -210,17 +225,22 @@ def visualize_parse_response(
         img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
         # Draw all chunks
-        for i, chunk in enumerate(response.chunks):
-            if chunk.grounding and chunk.grounding.box:
-                box_dict = {
-                    "left": chunk.grounding.box.left,
-                    "top": chunk.grounding.box.top,
-                    "right": chunk.grounding.box.right,
-                    "bottom": chunk.grounding.box.bottom,
-                }
-                color = config.get_color(chunk.type)
-                label = f"{i} {chunk.type}"
-                _draw_bounding_box(img_bgr, box_dict, label, color, config)
+        chunks = getattr(response, 'chunks', [])
+        for i, chunk in enumerate(chunks):
+            grounding = getattr(chunk, 'grounding', None)
+            if grounding:
+                box = getattr(grounding, 'box', None)
+                if box:
+                    box_dict = {
+                        "left": getattr(box, 'left', 0),
+                        "top": getattr(box, 'top', 0),
+                        "right": getattr(box, 'right', 0),
+                        "bottom": getattr(box, 'bottom', 0),
+                    }
+                    chunk_type = getattr(chunk, 'type', 'unknown')
+                    color = config.get_color(chunk_type)
+                    label = f"{i} {chunk_type}"
+                    _draw_bounding_box(img_bgr, box_dict, label, color, config)
 
         # Convert back to RGB for PIL
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -236,13 +256,15 @@ def visualize_parse_response(
     else:  # PDF
         # Group chunks by page
         chunks_by_page = defaultdict(list)
-        for chunk in response.chunks:
-            if chunk.grounding:
-                page_idx = chunk.grounding.page
+        chunks = getattr(response, 'chunks', [])
+        for chunk in chunks:
+            grounding = getattr(chunk, 'grounding', None)
+            if grounding:
+                page_idx = getattr(grounding, 'page', 0)
                 chunks_by_page[page_idx].append(chunk)
 
         # Process each page
-        with pymupdf.open(document_path) as pdf_doc:
+        with pymupdf.open(document_path) as pdf_doc:  # type: ignore[attr-defined]
             num_pages = len(pdf_doc)
 
             for page_idx in range(num_pages):
@@ -253,16 +275,20 @@ def visualize_parse_response(
                 # Draw chunks for this page
                 if page_idx in chunks_by_page:
                     for i, chunk in enumerate(chunks_by_page[page_idx]):
-                        if chunk.grounding and chunk.grounding.box:
-                            box_dict = {
-                                "left": chunk.grounding.box.left,
-                                "top": chunk.grounding.box.top,
-                                "right": chunk.grounding.box.right,
-                                "bottom": chunk.grounding.box.bottom,
-                            }
-                            color = config.get_color(chunk.type)
-                            label = f"{i} {chunk.type}"
-                            _draw_bounding_box(img_bgr, box_dict, label, color, config)
+                        grounding = getattr(chunk, 'grounding', None)
+                        if grounding:
+                            box = getattr(grounding, 'box', None)
+                            if box:
+                                box_dict = {
+                                    "left": getattr(box, 'left', 0),
+                                    "top": getattr(box, 'top', 0),
+                                    "right": getattr(box, 'right', 0),
+                                    "bottom": getattr(box, 'bottom', 0),
+                                }
+                                chunk_type = getattr(chunk, 'type', 'unknown')
+                                color = config.get_color(chunk_type)
+                                label = f"{i} {chunk_type}"
+                                _draw_bounding_box(img_bgr, box_dict, label, color, config)
 
                 # Convert back to RGB for PIL
                 img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -284,7 +310,7 @@ def save_chunk_images(
     response: "ParseResponse",
     output_dir: Union[str, Path],
     dpi: int = 150
-) -> dict:
+) -> Dict[str, List[Path]]:
     """Extract and save individual chunk images based on their bounding boxes.
 
     Args:
@@ -312,35 +338,42 @@ def save_chunk_images(
         img = _read_image(document_path)
         height, width = img.shape[:2]
 
-        for chunk in response.chunks:
-            if not chunk.grounding:
+        chunks = getattr(response, 'chunks', [])
+        for chunk in chunks:
+            grounding = getattr(chunk, 'grounding', None)
+            if not grounding:
                 continue
 
-            chunk_id = str(hash(chunk.markdown[:50])) if hasattr(chunk, 'markdown') else chunk.type
+            markdown = getattr(chunk, 'markdown', '')
+            chunk_type = getattr(chunk, 'type', 'unknown')
+            chunk_id = str(hash(markdown[:50])) if markdown else chunk_type
 
-            if not chunk.grounding or not chunk.grounding.box:
+            box = getattr(grounding, 'box', None)
+            if not box:
                 continue
 
             # Extract region
-            xmin = max(0, math.floor(chunk.grounding.box.left * width))
-            ymin = max(0, math.floor(chunk.grounding.box.top * height))
-            xmax = min(width, math.ceil(chunk.grounding.box.right * width))
-            ymax = min(height, math.ceil(chunk.grounding.box.bottom * height))
+            xmin = max(0, math.floor(getattr(box, 'left', 0) * width))
+            ymin = max(0, math.floor(getattr(box, 'top', 0) * height))
+            xmax = min(width, math.ceil(getattr(box, 'right', 1) * width))
+            ymax = min(height, math.ceil(getattr(box, 'bottom', 1) * height))
 
             cropped = img[ymin:ymax, xmin:xmax]
 
             # Save cropped image
-            save_path = output_dir / f"{chunk.type}_{chunk_id}.png"
+            save_path = output_dir / f"{chunk_type}_{chunk_id}.png"
             Image.fromarray(cropped).save(save_path)
             saved_paths[chunk_id].append(save_path)
 
     else:  # PDF
-        with pymupdf.open(document_path) as pdf_doc:
+        with pymupdf.open(document_path) as pdf_doc:  # type: ignore[attr-defined]
             # Group chunks by page
             chunks_by_page = defaultdict(list)
-            for chunk in response.chunks:
-                if chunk.grounding:
-                    page_idx = chunk.grounding.page
+            chunks = getattr(response, 'chunks', [])
+            for chunk in chunks:
+                grounding = getattr(chunk, 'grounding', None)
+                if grounding:
+                    page_idx = getattr(grounding, 'page', 0)
                     chunks_by_page[page_idx].append(chunk)
 
             # Process each page
@@ -356,21 +389,27 @@ def save_chunk_images(
                 page_dir.mkdir(exist_ok=True)
 
                 for chunk in chunks:
-                    chunk_id = str(hash(chunk.markdown[:50])) if hasattr(chunk, 'markdown') else chunk.type
+                    markdown = getattr(chunk, 'markdown', '')
+                    chunk_type = getattr(chunk, 'type', 'unknown')
+                    chunk_id = str(hash(markdown[:50])) if markdown else chunk_type
 
-                    if not chunk.grounding or not chunk.grounding.box:
+                    grounding = getattr(chunk, 'grounding', None)
+                    if not grounding:
+                        continue
+                    box = getattr(grounding, 'box', None)
+                    if not box:
                         continue
 
                     # Extract region
-                    xmin = max(0, math.floor(chunk.grounding.box.left * width))
-                    ymin = max(0, math.floor(chunk.grounding.box.top * height))
-                    xmax = min(width, math.ceil(chunk.grounding.box.right * width))
-                    ymax = min(height, math.ceil(chunk.grounding.box.bottom * height))
+                    xmin = max(0, math.floor(getattr(box, 'left', 0) * width))
+                    ymin = max(0, math.floor(getattr(box, 'top', 0) * height))
+                    xmax = min(width, math.ceil(getattr(box, 'right', 1) * width))
+                    ymax = min(height, math.ceil(getattr(box, 'bottom', 1) * height))
 
                     cropped = img_rgb[ymin:ymax, xmin:xmax]
 
                     # Save cropped image
-                    save_path = page_dir / f"{chunk.type}_{chunk_id}.png"
+                    save_path = page_dir / f"{chunk_type}_{chunk_id}.png"
                     Image.fromarray(cropped).save(save_path)
                     saved_paths[chunk_id].append(save_path)
 
