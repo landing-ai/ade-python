@@ -7,9 +7,9 @@ import pytest
 import pydantic
 from pydantic import Field
 
-from LandingAIAde._utils import PropertyInfo
-from LandingAIAde._compat import PYDANTIC_V1, parse_obj, model_dump, model_json
-from LandingAIAde._models import BaseModel, construct_type
+from landingai_ade._utils import PropertyInfo
+from landingai_ade._compat import PYDANTIC_V1, parse_obj, model_dump, model_json
+from landingai_ade._models import BaseModel, construct_type
 
 
 class BasicModel(BaseModel):

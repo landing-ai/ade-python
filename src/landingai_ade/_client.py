@@ -41,7 +41,7 @@ from ._response import (
     async_to_streamed_response_wrapper,
 )
 from ._streaming import Stream as Stream, AsyncStream as AsyncStream
-from ._exceptions import APIStatusError, LandingaiError
+from ._exceptions import APIStatusError, LandingAiadeError
 from ._base_client import (
     DEFAULT_MAX_RETRIES,
     SyncAPIClient,
@@ -57,8 +57,8 @@ __all__ = [
     "Transport",
     "ProxiesTypes",
     "RequestOptions",
-    "Landingai",
-    "AsyncLandingai",
+    "LandingAIADE",
+    "AsyncLandingAIADE",
     "Client",
     "AsyncClient",
 ]
@@ -69,9 +69,9 @@ ENVIRONMENTS: Dict[str, str] = {
 }
 
 
-class Landingai(SyncAPIClient):
-    with_raw_response: LandingaiWithRawResponse
-    with_streaming_response: LandingaiWithStreamedResponse
+class LandingAIADE(SyncAPIClient):
+    with_raw_response: LandingAIADEWithRawResponse
+    with_streaming_response: LandingAIADEWithStreamedResponse
 
     # client options
     apikey: str
@@ -102,28 +102,28 @@ class Landingai(SyncAPIClient):
         # part of our public interface in the future.
         _strict_response_validation: bool = False,
     ) -> None:
-        """Construct a new synchronous Landingai client instance.
+        """Construct a new synchronous LandingAIADE client instance.
 
-        This automatically infers the `apikey` argument from the `ADE_API_KEY` environment variable if it is not provided.
+        This automatically infers the `apikey` argument from the `VISION_AGENT_API_KEY` environment variable if it is not provided.
         """
         if apikey is None:
-            apikey = os.environ.get("ADE_API_KEY")
+            apikey = os.environ.get("VISION_AGENT_API_KEY")
         if apikey is None:
-            raise LandingaiError(
-                "The apikey client option must be set either by passing apikey to the client or by setting the ADE_API_KEY environment variable"
+            raise LandingAiadeError(
+                "The apikey client option must be set either by passing apikey to the client or by setting the VISION_AGENT_API_KEY environment variable"
             )
         self.apikey = apikey
 
         self._environment = environment
 
-        base_url_env = os.environ.get("LANDINGAI_BASE_URL")
+        base_url_env = os.environ.get("LANDINGAI_ADE_BASE_URL")
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
             base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
         elif is_given(environment):
             if base_url_env and base_url is not None:
                 raise ValueError(
-                    "Ambiguous URL; The `LANDINGAI_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
+                    "Ambiguous URL; The `LANDINGAI_ADE_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
                 )
 
             try:
@@ -151,8 +151,8 @@ class Landingai(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.with_raw_response = LandingaiWithRawResponse(self)
-        self.with_streaming_response = LandingaiWithStreamedResponse(self)
+        self.with_raw_response = LandingAIADEWithRawResponse(self)
+        self.with_streaming_response = LandingAIADEWithStreamedResponse(self)
 
     @property
     @override
@@ -390,9 +390,9 @@ class Landingai(SyncAPIClient):
         return APIStatusError(err_msg, response=response, body=body)
 
 
-class AsyncLandingai(AsyncAPIClient):
-    with_raw_response: AsyncLandingaiWithRawResponse
-    with_streaming_response: AsyncLandingaiWithStreamedResponse
+class AsyncLandingAIADE(AsyncAPIClient):
+    with_raw_response: AsyncLandingAIADEWithRawResponse
+    with_streaming_response: AsyncLandingAIADEWithStreamedResponse
 
     # client options
     apikey: str
@@ -423,28 +423,28 @@ class AsyncLandingai(AsyncAPIClient):
         # part of our public interface in the future.
         _strict_response_validation: bool = False,
     ) -> None:
-        """Construct a new async AsyncLandingai client instance.
+        """Construct a new async AsyncLandingAIADE client instance.
 
-        This automatically infers the `apikey` argument from the `ADE_API_KEY` environment variable if it is not provided.
+        This automatically infers the `apikey` argument from the `VISION_AGENT_API_KEY` environment variable if it is not provided.
         """
         if apikey is None:
-            apikey = os.environ.get("ADE_API_KEY")
+            apikey = os.environ.get("VISION_AGENT_API_KEY")
         if apikey is None:
-            raise LandingaiError(
-                "The apikey client option must be set either by passing apikey to the client or by setting the ADE_API_KEY environment variable"
+            raise LandingAiadeError(
+                "The apikey client option must be set either by passing apikey to the client or by setting the VISION_AGENT_API_KEY environment variable"
             )
         self.apikey = apikey
 
         self._environment = environment
 
-        base_url_env = os.environ.get("LANDINGAI_BASE_URL")
+        base_url_env = os.environ.get("LANDINGAI_ADE_BASE_URL")
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
             base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
         elif is_given(environment):
             if base_url_env and base_url is not None:
                 raise ValueError(
-                    "Ambiguous URL; The `LANDINGAI_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
+                    "Ambiguous URL; The `LANDINGAI_ADE_BASE_URL` env var and the `environment` argument are given. If you want to use the environment, you must pass base_url=None",
                 )
 
             try:
@@ -472,8 +472,8 @@ class AsyncLandingai(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.with_raw_response = AsyncLandingaiWithRawResponse(self)
-        self.with_streaming_response = AsyncLandingaiWithStreamedResponse(self)
+        self.with_raw_response = AsyncLandingAIADEWithRawResponse(self)
+        self.with_streaming_response = AsyncLandingAIADEWithStreamedResponse(self)
 
     @property
     @override
@@ -711,8 +711,8 @@ class AsyncLandingai(AsyncAPIClient):
         return APIStatusError(err_msg, response=response, body=body)
 
 
-class LandingaiWithRawResponse:
-    def __init__(self, client: Landingai) -> None:
+class LandingAIADEWithRawResponse:
+    def __init__(self, client: LandingAIADE) -> None:
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
@@ -721,8 +721,8 @@ class LandingaiWithRawResponse:
         )
 
 
-class AsyncLandingaiWithRawResponse:
-    def __init__(self, client: AsyncLandingai) -> None:
+class AsyncLandingAIADEWithRawResponse:
+    def __init__(self, client: AsyncLandingAIADE) -> None:
         self.extract = async_to_raw_response_wrapper(
             client.extract,
         )
@@ -731,8 +731,8 @@ class AsyncLandingaiWithRawResponse:
         )
 
 
-class LandingaiWithStreamedResponse:
-    def __init__(self, client: Landingai) -> None:
+class LandingAIADEWithStreamedResponse:
+    def __init__(self, client: LandingAIADE) -> None:
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
@@ -741,8 +741,8 @@ class LandingaiWithStreamedResponse:
         )
 
 
-class AsyncLandingaiWithStreamedResponse:
-    def __init__(self, client: AsyncLandingai) -> None:
+class AsyncLandingAIADEWithStreamedResponse:
+    def __init__(self, client: AsyncLandingAIADE) -> None:
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
         )
@@ -751,6 +751,6 @@ class AsyncLandingaiWithStreamedResponse:
         )
 
 
-Client = Landingai
+Client = LandingAIADE
 
-AsyncClient = AsyncLandingai
+AsyncClient = AsyncLandingAIADE
