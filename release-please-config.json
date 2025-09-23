@@ -61,6 +61,6 @@
   ],
   "release-type": "python",
   "extra-files": [
-    "src/LandingAIAde/_version.py"
+    "src/landingai_ade/_version.py"
   ]
 }
