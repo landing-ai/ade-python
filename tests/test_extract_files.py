@@ -4,8 +4,8 @@ from typing import Sequence
 
 import pytest
 
-from LandingAIAde._types import FileTypes
-from LandingAIAde._utils import extract_files
+from landingai_ade._types import FileTypes
+from landingai_ade._utils import extract_files
 
 
 def test_removes_files_from_input() -> None:

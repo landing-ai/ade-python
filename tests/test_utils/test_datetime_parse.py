@@ -8,7 +8,7 @@ from datetime import date, datetime, timezone, timedelta
 
 import pytest
 
-from LandingAIAde._utils import parse_date, parse_datetime
+from landingai_ade._utils import parse_date, parse_datetime
 
 
 def create_tz(minutes: int) -> timezone:

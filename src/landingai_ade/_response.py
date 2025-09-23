@@ -29,7 +29,7 @@ from ._utils import is_given, extract_type_arg, is_annotated_type, is_type_alias
 from ._models import BaseModel, is_basemodel
 from ._constants import RAW_RESPONSE_HEADER, OVERRIDE_CAST_TO_HEADER
 from ._streaming import Stream, AsyncStream, is_stream_class_type, extract_stream_chunk_type
-from ._exceptions import LandingaiError, APIResponseValidationError
+from ._exceptions import LandingAiadeError, APIResponseValidationError
 
 if TYPE_CHECKING:
     from ._models import FinalRequestOptions
@@ -218,7 +218,7 @@ class BaseAPIResponse(Generic[R]):
             and issubclass(origin, pydantic.BaseModel)
         ):
             raise TypeError(
-                "Pydantic models must subclass our base model type, e.g. `from LandingAIAde import BaseModel`"
+                "Pydantic models must subclass our base model type, e.g. `from landingai_ade import BaseModel`"
             )
 
         if (
@@ -285,7 +285,7 @@ class APIResponse(BaseAPIResponse[R]):
         the `to` argument, e.g.
 
         ```py
-        from LandingAIAde import BaseModel
+        from landingai_ade import BaseModel
 
 
         class MyModel(BaseModel):
@@ -387,7 +387,7 @@ class AsyncAPIResponse(BaseAPIResponse[R]):
         the `to` argument, e.g.
 
         ```py
-        from LandingAIAde import BaseModel
+        from landingai_ade import BaseModel
 
 
         class MyModel(BaseModel):
@@ -558,11 +558,11 @@ class AsyncStreamedBinaryAPIResponse(AsyncAPIResponse[bytes]):
 class MissingStreamClassError(TypeError):
     def __init__(self) -> None:
         super().__init__(
-            "The `stream` argument was set to `True` but the `stream_cls` argument was not given. See `LandingAIAde._streaming` for reference",
+            "The `stream` argument was set to `True` but the `stream_cls` argument was not given. See `landingai_ade._streaming` for reference",
         )
 
 
-class StreamAlreadyConsumed(LandingaiError):
+class StreamAlreadyConsumed(LandingAiadeError):
     """
     Attempted to read or stream content, but the content has already
     been streamed.
