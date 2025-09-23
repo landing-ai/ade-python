@@ -1,3 +1,5 @@
+<!-- @format -->
+
 # LandingAI ADE Python API library
 
 <!-- prettier-ignore -->
@@ -24,6 +26,8 @@ pip install landingai-ade
 
 The full API of this library can be found in [api.md](api.md).
 
+### Parse
+
 ```python
 import os
 from landingai_ade import LandingAIADE
@@ -44,6 +48,26 @@ While you can provide a `apikey` keyword argument,
 we recommend using [python-dotenv](https://pypi.org/project/python-dotenv/)
 to add `VISION_AGENT_API_KEY="My Apikey"` to your `.env` file
 so that your Apikey is not stored in source control.
+
+### Extract
+
+```python
+from landingai_ade import LandingAIADE
+from landingai_ade.lib import pydantic_to_json_schema
+from pydantic import BaseModel, Field
+
+# Define your schema
+class Person(BaseModel):
+    name: str = Field(description="Person's name")
+    age: int = Field(description="Person's age")
+
+# Convert to JSON schema
+schema = pydantic_to_json_schema(Person)
+
+# Use with the SDK
+client = LandingAIADE(apikey="VISION_AGENT_API_KEY")
+response = client.extract(schema=schema, markdown=content)
+```
 
 ## Async usage
 
