@@ -5,8 +5,8 @@ This module provides utility functions for converting Pydantic models to JSON sc
 that can be used with the ADE API endpoints.
 """
 
-import json
 import copy
+import json
 from typing import Any, Dict, Type
 
 from pydantic import BaseModel
@@ -27,12 +27,12 @@ def _resolve_refs(obj: Any, defs: Dict[str, Any]) -> Any:
         The schema with all $refs resolved
     """
     if isinstance(obj, dict):
-        if "$ref" in obj:
+        if "$ref" in obj and isinstance(obj["$ref"], str):
             ref_name = obj["$ref"].split("/")[-1]
             return _resolve_refs(copy.deepcopy(defs[ref_name]), defs)
-        return {k: _resolve_refs(v, defs) for k, v in obj.items()}
+        return {k: _resolve_refs(v, defs) for k, v in obj.items()}  # type: ignore[misc]
     elif isinstance(obj, list):
-        return [_resolve_refs(item, defs) for item in obj]
+        return [_resolve_refs(item, defs) for item in obj]  # type: ignore[misc]
     return obj
 
 
@@ -64,7 +64,9 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
         >>> # Now use schema_json with the SDK:
         >>> # client.extract(schema=schema_json, markdown="...")
     """
-    if not (isinstance(model, type) and issubclass(model, BaseModel)):
+    # The type annotation already ensures model is Type[BaseModel]
+    # but we'll do a runtime check for safety
+    if not hasattr(model, 'model_json_schema'):
         raise TypeError("model must be a Pydantic BaseModel subclass")
 
     schema = model.model_json_schema()
