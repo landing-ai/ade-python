@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 (2025-09-23)
+
+Full Changelog: [v0.6.1...v0.7.0](https://github.com/landing-ai/ade-python/compare/v0.6.1...v0.7.0)
+
+### Features
+
+* **api:** manual updates ([d2bd4c7](https://github.com/landing-ai/ade-python/commit/d2bd4c7ab65d9fcd9b898f6af80862dbe9285021))
+
 ## 0.6.1 (2025-09-23)
 
 Full Changelog: [v0.6.0...v0.6.1](https://github.com/landing-ai/ade-python/compare/v0.6.0...v0.6.1)
