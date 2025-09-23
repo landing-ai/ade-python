@@ -54,6 +54,7 @@ so that your Apikey is not stored in source control.
 ```python
 from landingai_ade import LandingAIADE
 from landingai_ade.lib import pydantic_to_json_schema
+from pydantic import BaseModel, Field
 
 # Define your schema
 class Person(BaseModel):
