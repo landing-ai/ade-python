@@ -1,14 +1,15 @@
 """Visualization utilities for ADE parsing results."""
 
 import math
+from typing import TYPE_CHECKING, List, Union, Literal, Optional
 from pathlib import Path
-from typing import List, Union, Optional, Literal, TYPE_CHECKING
 from collections import defaultdict
 
 if TYPE_CHECKING:
-    from PIL import Image
     import numpy as np
-    from ..types import AdeParseResponse
+    from PIL import Image
+
+    from LandingAIAde.types import ParseResponse
 
 from .config import VisualizationConfig
 
@@ -169,7 +170,7 @@ def _draw_bounding_box(
 
 def visualize_parse_response(
     document_path: Union[str, Path],
-    response: "AdeParseResponse",
+    response: "ParseResponse",
     *,
     output_dir: Optional[Union[str, Path]] = None,
     config: Optional[VisualizationConfig] = None,
@@ -280,7 +281,7 @@ def visualize_parse_response(
 
 def save_chunk_images(
     document_path: Union[str, Path],
-    response: "AdeParseResponse",
+    response: "ParseResponse",
     output_dir: Union[str, Path],
     dpi: int = 150
 ) -> dict:
