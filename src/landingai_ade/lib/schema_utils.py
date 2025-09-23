@@ -54,7 +54,7 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
 
     Example:
         >>> from pydantic import BaseModel, Field
-        >>> from ade.lib.schema_utils import pydantic_to_json_schema
+        >>> from landingai_ade.lib.schema_utils import pydantic_to_json_schema
         >>>
         >>> class Person(BaseModel):
         ...     name: str = Field(description="Person's name")
