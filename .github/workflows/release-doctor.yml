@@ -18,4 +18,4 @@ jobs:
         run: |
           bash ./bin/check-release-environment
         env:
-          PYPI_TOKEN: ${{ secrets.LANDINGAI_PYPI_TOKEN || secrets.PYPI_TOKEN }}
+          PYPI_TOKEN: ${{ secrets.LANDINGAI_ADE_PYPI_TOKEN || secrets.PYPI_TOKEN }}

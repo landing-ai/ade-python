@@ -8,15 +8,15 @@ from typing_extensions import Required, Annotated, TypedDict
 
 import pytest
 
-from LandingAIAde._types import Base64FileInput, omit, not_given
-from LandingAIAde._utils import (
+from landingai_ade._types import Base64FileInput, omit, not_given
+from landingai_ade._utils import (
     PropertyInfo,
     transform as _transform,
     parse_datetime,
     async_transform as _async_transform,
 )
-from LandingAIAde._compat import PYDANTIC_V1
-from LandingAIAde._models import BaseModel
+from landingai_ade._compat import PYDANTIC_V1
+from landingai_ade._models import BaseModel
 
 _T = TypeVar("_T")
 

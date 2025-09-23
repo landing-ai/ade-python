@@ -92,7 +92,7 @@ HttpxRequestFiles = Union[Mapping[str, HttpxFileTypes], Sequence[Tuple[str, Http
 # This unfortunately means that you will either have
 # to import this type and pass it explicitly:
 #
-# from LandingAIAde import NoneType
+# from landingai_ade import NoneType
 # client.get('/foo', cast_to=NoneType)
 #
 # or build it yourself:

@@ -8,4 +8,4 @@ echo "==> Running lints"
 rye run lint
 
 echo "==> Making sure it imports"
-rye run python -c 'import LandingAIAde'
+rye run python -c 'import landingai_ade'

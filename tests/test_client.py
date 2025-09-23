@@ -18,12 +18,12 @@ import pytest
 from respx import MockRouter
 from pydantic import ValidationError
 
-from LandingAIAde import Landingai, AsyncLandingai, APIResponseValidationError
-from LandingAIAde._types import Omit
-from LandingAIAde._utils import asyncify
-from LandingAIAde._models import BaseModel, FinalRequestOptions
-from LandingAIAde._exceptions import APIStatusError, LandingaiError, APITimeoutError, APIResponseValidationError
-from LandingAIAde._base_client import (
+from landingai_ade import LandingAIADE, AsyncLandingAIADE, APIResponseValidationError
+from landingai_ade._types import Omit
+from landingai_ade._utils import asyncify
+from landingai_ade._models import BaseModel, FinalRequestOptions
+from landingai_ade._exceptions import APIStatusError, APITimeoutError, LandingAiadeError, APIResponseValidationError
+from landingai_ade._base_client import (
     DEFAULT_TIMEOUT,
     HTTPX_DEFAULT_TIMEOUT,
     BaseClient,
@@ -50,7 +50,7 @@ def _low_retry_timeout(*_args: Any, **_kwargs: Any) -> float:
     return 0.1
 
 
-def _get_open_connections(client: Landingai | AsyncLandingai) -> int:
+def _get_open_connections(client: LandingAIADE | AsyncLandingAIADE) -> int:
     transport = client._client._transport
     assert isinstance(transport, httpx.HTTPTransport) or isinstance(transport, httpx.AsyncHTTPTransport)
 
@@ -58,8 +58,8 @@ def _get_open_connections(client: Landingai | AsyncLandingai) -> int:
     return len(pool._requests)
 
 
-class TestLandingai:
-    client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+class TestLandingAiade:
+    client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
 
     @pytest.mark.respx(base_url=base_url)
     def test_raw_response(self, respx_mock: MockRouter) -> None:
@@ -106,7 +106,7 @@ class TestLandingai:
         assert isinstance(self.client.timeout, httpx.Timeout)
 
     def test_copy_default_headers(self) -> None:
-        client = Landingai(
+        client = LandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_headers={"X-Foo": "bar"}
         )
         assert client.default_headers["X-Foo"] == "bar"
@@ -140,7 +140,7 @@ class TestLandingai:
             client.copy(set_default_headers={}, default_headers={"X-Foo": "Bar"})
 
     def test_copy_default_query(self) -> None:
-        client = Landingai(
+        client = LandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_query={"foo": "bar"}
         )
         assert _get_params(client)["foo"] == "bar"
@@ -232,10 +232,10 @@ class TestLandingai:
                         # to_raw_response_wrapper leaks through the @functools.wraps() decorator.
                         #
                         # removing the decorator fixes the leak for reasons we don't understand.
-                        "LandingAIAde/_legacy_response.py",
-                        "LandingAIAde/_response.py",
+                        "landingai_ade/_legacy_response.py",
+                        "landingai_ade/_response.py",
                         # pydantic.BaseModel.model_dump || pydantic.BaseModel.dict leak memory for some reason.
-                        "LandingAIAde/_compat.py",
+                        "landingai_ade/_compat.py",
                         # Standard library leaks we don't care about.
                         "/logging/__init__.py",
                     ]
@@ -266,7 +266,9 @@ class TestLandingai:
         assert timeout == httpx.Timeout(100.0)
 
     def test_client_timeout_option(self) -> None:
-        client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True, timeout=httpx.Timeout(0))
+        client = LandingAIADE(
+            base_url=base_url, apikey=apikey, _strict_response_validation=True, timeout=httpx.Timeout(0)
+        )
 
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         timeout = httpx.Timeout(**request.extensions["timeout"])  # type: ignore
@@ -275,7 +277,7 @@ class TestLandingai:
     def test_http_client_timeout_option(self) -> None:
         # custom timeout given to the httpx client should be used
         with httpx.Client(timeout=None) as http_client:
-            client = Landingai(
+            client = LandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, http_client=http_client
             )
 
@@ -285,7 +287,7 @@ class TestLandingai:
 
         # no timeout given to the httpx client should not use the httpx default
         with httpx.Client() as http_client:
-            client = Landingai(
+            client = LandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, http_client=http_client
             )
 
@@ -295,7 +297,7 @@ class TestLandingai:
 
         # explicitly passing the default timeout currently results in it being ignored
         with httpx.Client(timeout=HTTPX_DEFAULT_TIMEOUT) as http_client:
-            client = Landingai(
+            client = LandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, http_client=http_client
             )
 
@@ -306,7 +308,7 @@ class TestLandingai:
     async def test_invalid_http_client(self) -> None:
         with pytest.raises(TypeError, match="Invalid `http_client` arg"):
             async with httpx.AsyncClient() as http_client:
-                Landingai(
+                LandingAIADE(
                     base_url=base_url,
                     apikey=apikey,
                     _strict_response_validation=True,
@@ -314,14 +316,14 @@ class TestLandingai:
                 )
 
     def test_default_headers_option(self) -> None:
-        client = Landingai(
+        client = LandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_headers={"X-Foo": "bar"}
         )
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         assert request.headers.get("x-foo") == "bar"
         assert request.headers.get("x-stainless-lang") == "python"
 
-        client2 = Landingai(
+        client2 = LandingAIADE(
             base_url=base_url,
             apikey=apikey,
             _strict_response_validation=True,
@@ -335,17 +337,17 @@ class TestLandingai:
         assert request.headers.get("x-stainless-lang") == "my-overriding-header"
 
     def test_validate_headers(self) -> None:
-        client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         assert request.headers.get("Authorization") == f"Bearer {apikey}"
 
-        with pytest.raises(LandingaiError):
-            with update_env(**{"ADE_API_KEY": Omit()}):
-                client2 = Landingai(base_url=base_url, apikey=None, _strict_response_validation=True)
+        with pytest.raises(LandingAiadeError):
+            with update_env(**{"VISION_AGENT_API_KEY": Omit()}):
+                client2 = LandingAIADE(base_url=base_url, apikey=None, _strict_response_validation=True)
             _ = client2
 
     def test_default_query_option(self) -> None:
-        client = Landingai(
+        client = LandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_query={"query_param": "bar"}
         )
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
@@ -459,7 +461,7 @@ class TestLandingai:
         params = dict(request.url.params)
         assert params == {"foo": "2"}
 
-    def test_multipart_repeating_array(self, client: Landingai) -> None:
+    def test_multipart_repeating_array(self, client: LandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions.construct(
                 method="post",
@@ -546,7 +548,7 @@ class TestLandingai:
         assert response.foo == 2
 
     def test_base_url_setter(self) -> None:
-        client = Landingai(base_url="https://example.com/from_init", apikey=apikey, _strict_response_validation=True)
+        client = LandingAIADE(base_url="https://example.com/from_init", apikey=apikey, _strict_response_validation=True)
         assert client.base_url == "https://example.com/from_init/"
 
         client.base_url = "https://example.com/from_setter"  # type: ignore[assignment]
@@ -554,23 +556,27 @@ class TestLandingai:
         assert client.base_url == "https://example.com/from_setter/"
 
     def test_base_url_env(self) -> None:
-        with update_env(LANDINGAI_BASE_URL="http://localhost:5000/from/env"):
-            client = Landingai(apikey=apikey, _strict_response_validation=True)
+        with update_env(LANDINGAI_ADE_BASE_URL="http://localhost:5000/from/env"):
+            client = LandingAIADE(apikey=apikey, _strict_response_validation=True)
             assert client.base_url == "http://localhost:5000/from/env/"
 
         # explicit environment arg requires explicitness
-        with update_env(LANDINGAI_BASE_URL="http://localhost:5000/from/env"):
+        with update_env(LANDINGAI_ADE_BASE_URL="http://localhost:5000/from/env"):
             with pytest.raises(ValueError, match=r"you must pass base_url=None"):
-                Landingai(apikey=apikey, _strict_response_validation=True, environment="production")
+                LandingAIADE(apikey=apikey, _strict_response_validation=True, environment="production")
 
-            client = Landingai(base_url=None, apikey=apikey, _strict_response_validation=True, environment="production")
+            client = LandingAIADE(
+                base_url=None, apikey=apikey, _strict_response_validation=True, environment="production"
+            )
             assert str(client.base_url).startswith("https://api.va.landing.ai")
 
     @pytest.mark.parametrize(
         "client",
         [
-            Landingai(base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True),
-            Landingai(
+            LandingAIADE(
+                base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True
+            ),
+            LandingAIADE(
                 base_url="http://localhost:5000/custom/path/",
                 apikey=apikey,
                 _strict_response_validation=True,
@@ -579,7 +585,7 @@ class TestLandingai:
         ],
         ids=["standard", "custom http client"],
     )
-    def test_base_url_trailing_slash(self, client: Landingai) -> None:
+    def test_base_url_trailing_slash(self, client: LandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions(
                 method="post",
@@ -592,8 +598,10 @@ class TestLandingai:
     @pytest.mark.parametrize(
         "client",
         [
-            Landingai(base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True),
-            Landingai(
+            LandingAIADE(
+                base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True
+            ),
+            LandingAIADE(
                 base_url="http://localhost:5000/custom/path/",
                 apikey=apikey,
                 _strict_response_validation=True,
@@ -602,7 +610,7 @@ class TestLandingai:
         ],
         ids=["standard", "custom http client"],
     )
-    def test_base_url_no_trailing_slash(self, client: Landingai) -> None:
+    def test_base_url_no_trailing_slash(self, client: LandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions(
                 method="post",
@@ -615,8 +623,10 @@ class TestLandingai:
     @pytest.mark.parametrize(
         "client",
         [
-            Landingai(base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True),
-            Landingai(
+            LandingAIADE(
+                base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True
+            ),
+            LandingAIADE(
                 base_url="http://localhost:5000/custom/path/",
                 apikey=apikey,
                 _strict_response_validation=True,
@@ -625,7 +635,7 @@ class TestLandingai:
         ],
         ids=["standard", "custom http client"],
     )
-    def test_absolute_request_url(self, client: Landingai) -> None:
+    def test_absolute_request_url(self, client: LandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions(
                 method="post",
@@ -636,7 +646,7 @@ class TestLandingai:
         assert request.url == "https://myapi.com/foo"
 
     def test_copied_client_does_not_close_http(self) -> None:
-        client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
         assert not client.is_closed()
 
         copied = client.copy()
@@ -647,7 +657,7 @@ class TestLandingai:
         assert not client.is_closed()
 
     def test_client_context_manager(self) -> None:
-        client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
         with client as c2:
             assert c2 is client
             assert not c2.is_closed()
@@ -668,7 +678,9 @@ class TestLandingai:
 
     def test_client_max_retries_validation(self) -> None:
         with pytest.raises(TypeError, match=r"max_retries cannot be None"):
-            Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True, max_retries=cast(Any, None))
+            LandingAIADE(
+                base_url=base_url, apikey=apikey, _strict_response_validation=True, max_retries=cast(Any, None)
+            )
 
     @pytest.mark.respx(base_url=base_url)
     def test_received_text_for_expected_json(self, respx_mock: MockRouter) -> None:
@@ -677,12 +689,12 @@ class TestLandingai:
 
         respx_mock.get("/foo").mock(return_value=httpx.Response(200, text="my-custom-format"))
 
-        strict_client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        strict_client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
 
         with pytest.raises(APIResponseValidationError):
             strict_client.get("/foo", cast_to=Model)
 
-        client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=False)
+        client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=False)
 
         response = client.get("/foo", cast_to=Model)
         assert isinstance(response, str)  # type: ignore[unreachable]
@@ -710,39 +722,39 @@ class TestLandingai:
     )
     @mock.patch("time.time", mock.MagicMock(return_value=1696004797))
     def test_parse_retry_after_header(self, remaining_retries: int, retry_after: str, timeout: float) -> None:
-        client = Landingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = LandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
 
         headers = httpx.Headers({"retry-after": retry_after})
         options = FinalRequestOptions(method="get", url="/foo", max_retries=3)
         calculated = client._calculate_retry_timeout(remaining_retries, options, headers)
         assert calculated == pytest.approx(timeout, 0.5 * 0.875)  # pyright: ignore[reportUnknownMemberType]
 
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
-    def test_retrying_timeout_errors_doesnt_leak(self, respx_mock: MockRouter, client: Landingai) -> None:
-        respx_mock.post("/v1/ade/parse").mock(side_effect=httpx.TimeoutException("Test timeout error"))
+    def test_retrying_timeout_errors_doesnt_leak(self, respx_mock: MockRouter, client: LandingAIADE) -> None:
+        respx_mock.post("/v1/ade/extract").mock(side_effect=httpx.TimeoutException("Test timeout error"))
 
         with pytest.raises(APITimeoutError):
-            client.with_streaming_response.parse().__enter__()
+            client.with_streaming_response.extract(schema="schema").__enter__()
 
         assert _get_open_connections(self.client) == 0
 
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
-    def test_retrying_status_errors_doesnt_leak(self, respx_mock: MockRouter, client: Landingai) -> None:
-        respx_mock.post("/v1/ade/parse").mock(return_value=httpx.Response(500))
+    def test_retrying_status_errors_doesnt_leak(self, respx_mock: MockRouter, client: LandingAIADE) -> None:
+        respx_mock.post("/v1/ade/extract").mock(return_value=httpx.Response(500))
 
         with pytest.raises(APIStatusError):
-            client.with_streaming_response.parse().__enter__()
+            client.with_streaming_response.extract(schema="schema").__enter__()
         assert _get_open_connections(self.client) == 0
 
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.parametrize("failure_mode", ["status", "exception"])
     def test_retries_taken(
         self,
-        client: Landingai,
+        client: LandingAIADE,
         failures_before_success: int,
         failure_mode: Literal["status", "exception"],
         respx_mock: MockRouter,
@@ -760,18 +772,18 @@ class TestLandingai:
                 return httpx.Response(500)
             return httpx.Response(200)
 
-        respx_mock.post("/v1/ade/parse").mock(side_effect=retry_handler)
+        respx_mock.post("/v1/ade/extract").mock(side_effect=retry_handler)
 
-        response = client.with_raw_response.parse()
+        response = client.with_raw_response.extract(schema="schema")
 
         assert response.retries_taken == failures_before_success
         assert int(response.http_request.headers.get("x-stainless-retry-count")) == failures_before_success
 
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     def test_omit_retry_count_header(
-        self, client: Landingai, failures_before_success: int, respx_mock: MockRouter
+        self, client: LandingAIADE, failures_before_success: int, respx_mock: MockRouter
     ) -> None:
         client = client.with_options(max_retries=4)
 
@@ -784,17 +796,17 @@ class TestLandingai:
                 return httpx.Response(500)
             return httpx.Response(200)
 
-        respx_mock.post("/v1/ade/parse").mock(side_effect=retry_handler)
+        respx_mock.post("/v1/ade/extract").mock(side_effect=retry_handler)
 
-        response = client.with_raw_response.parse(extra_headers={"x-stainless-retry-count": Omit()})
+        response = client.with_raw_response.extract(schema="schema", extra_headers={"x-stainless-retry-count": Omit()})
 
         assert len(response.http_request.headers.get_list("x-stainless-retry-count")) == 0
 
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     def test_overwrite_retry_count_header(
-        self, client: Landingai, failures_before_success: int, respx_mock: MockRouter
+        self, client: LandingAIADE, failures_before_success: int, respx_mock: MockRouter
     ) -> None:
         client = client.with_options(max_retries=4)
 
@@ -807,9 +819,9 @@ class TestLandingai:
                 return httpx.Response(500)
             return httpx.Response(200)
 
-        respx_mock.post("/v1/ade/parse").mock(side_effect=retry_handler)
+        respx_mock.post("/v1/ade/extract").mock(side_effect=retry_handler)
 
-        response = client.with_raw_response.parse(extra_headers={"x-stainless-retry-count": "42"})
+        response = client.with_raw_response.extract(schema="schema", extra_headers={"x-stainless-retry-count": "42"})
 
         assert response.http_request.headers.get("x-stainless-retry-count") == "42"
 
@@ -863,8 +875,8 @@ class TestLandingai:
         assert exc_info.value.response.headers["Location"] == f"{base_url}/redirected"
 
 
-class TestAsyncLandingai:
-    client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+class TestAsyncLandingAiade:
+    client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
 
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.asyncio
@@ -913,7 +925,7 @@ class TestAsyncLandingai:
         assert isinstance(self.client.timeout, httpx.Timeout)
 
     def test_copy_default_headers(self) -> None:
-        client = AsyncLandingai(
+        client = AsyncLandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_headers={"X-Foo": "bar"}
         )
         assert client.default_headers["X-Foo"] == "bar"
@@ -947,7 +959,7 @@ class TestAsyncLandingai:
             client.copy(set_default_headers={}, default_headers={"X-Foo": "Bar"})
 
     def test_copy_default_query(self) -> None:
-        client = AsyncLandingai(
+        client = AsyncLandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_query={"foo": "bar"}
         )
         assert _get_params(client)["foo"] == "bar"
@@ -1039,10 +1051,10 @@ class TestAsyncLandingai:
                         # to_raw_response_wrapper leaks through the @functools.wraps() decorator.
                         #
                         # removing the decorator fixes the leak for reasons we don't understand.
-                        "LandingAIAde/_legacy_response.py",
-                        "LandingAIAde/_response.py",
+                        "landingai_ade/_legacy_response.py",
+                        "landingai_ade/_response.py",
                         # pydantic.BaseModel.model_dump || pydantic.BaseModel.dict leak memory for some reason.
-                        "LandingAIAde/_compat.py",
+                        "landingai_ade/_compat.py",
                         # Standard library leaks we don't care about.
                         "/logging/__init__.py",
                     ]
@@ -1073,7 +1085,7 @@ class TestAsyncLandingai:
         assert timeout == httpx.Timeout(100.0)
 
     async def test_client_timeout_option(self) -> None:
-        client = AsyncLandingai(
+        client = AsyncLandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, timeout=httpx.Timeout(0)
         )
 
@@ -1084,7 +1096,7 @@ class TestAsyncLandingai:
     async def test_http_client_timeout_option(self) -> None:
         # custom timeout given to the httpx client should be used
         async with httpx.AsyncClient(timeout=None) as http_client:
-            client = AsyncLandingai(
+            client = AsyncLandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, http_client=http_client
             )
 
@@ -1094,7 +1106,7 @@ class TestAsyncLandingai:
 
         # no timeout given to the httpx client should not use the httpx default
         async with httpx.AsyncClient() as http_client:
-            client = AsyncLandingai(
+            client = AsyncLandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, http_client=http_client
             )
 
@@ -1104,7 +1116,7 @@ class TestAsyncLandingai:
 
         # explicitly passing the default timeout currently results in it being ignored
         async with httpx.AsyncClient(timeout=HTTPX_DEFAULT_TIMEOUT) as http_client:
-            client = AsyncLandingai(
+            client = AsyncLandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, http_client=http_client
             )
 
@@ -1115,7 +1127,7 @@ class TestAsyncLandingai:
     def test_invalid_http_client(self) -> None:
         with pytest.raises(TypeError, match="Invalid `http_client` arg"):
             with httpx.Client() as http_client:
-                AsyncLandingai(
+                AsyncLandingAIADE(
                     base_url=base_url,
                     apikey=apikey,
                     _strict_response_validation=True,
@@ -1123,14 +1135,14 @@ class TestAsyncLandingai:
                 )
 
     def test_default_headers_option(self) -> None:
-        client = AsyncLandingai(
+        client = AsyncLandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_headers={"X-Foo": "bar"}
         )
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         assert request.headers.get("x-foo") == "bar"
         assert request.headers.get("x-stainless-lang") == "python"
 
-        client2 = AsyncLandingai(
+        client2 = AsyncLandingAIADE(
             base_url=base_url,
             apikey=apikey,
             _strict_response_validation=True,
@@ -1144,17 +1156,17 @@ class TestAsyncLandingai:
         assert request.headers.get("x-stainless-lang") == "my-overriding-header"
 
     def test_validate_headers(self) -> None:
-        client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
         assert request.headers.get("Authorization") == f"Bearer {apikey}"
 
-        with pytest.raises(LandingaiError):
-            with update_env(**{"ADE_API_KEY": Omit()}):
-                client2 = AsyncLandingai(base_url=base_url, apikey=None, _strict_response_validation=True)
+        with pytest.raises(LandingAiadeError):
+            with update_env(**{"VISION_AGENT_API_KEY": Omit()}):
+                client2 = AsyncLandingAIADE(base_url=base_url, apikey=None, _strict_response_validation=True)
             _ = client2
 
     def test_default_query_option(self) -> None:
-        client = AsyncLandingai(
+        client = AsyncLandingAIADE(
             base_url=base_url, apikey=apikey, _strict_response_validation=True, default_query={"query_param": "bar"}
         )
         request = client._build_request(FinalRequestOptions(method="get", url="/foo"))
@@ -1268,7 +1280,7 @@ class TestAsyncLandingai:
         params = dict(request.url.params)
         assert params == {"foo": "2"}
 
-    def test_multipart_repeating_array(self, async_client: AsyncLandingai) -> None:
+    def test_multipart_repeating_array(self, async_client: AsyncLandingAIADE) -> None:
         request = async_client._build_request(
             FinalRequestOptions.construct(
                 method="post",
@@ -1355,7 +1367,7 @@ class TestAsyncLandingai:
         assert response.foo == 2
 
     def test_base_url_setter(self) -> None:
-        client = AsyncLandingai(
+        client = AsyncLandingAIADE(
             base_url="https://example.com/from_init", apikey=apikey, _strict_response_validation=True
         )
         assert client.base_url == "https://example.com/from_init/"
@@ -1365,16 +1377,16 @@ class TestAsyncLandingai:
         assert client.base_url == "https://example.com/from_setter/"
 
     def test_base_url_env(self) -> None:
-        with update_env(LANDINGAI_BASE_URL="http://localhost:5000/from/env"):
-            client = AsyncLandingai(apikey=apikey, _strict_response_validation=True)
+        with update_env(LANDINGAI_ADE_BASE_URL="http://localhost:5000/from/env"):
+            client = AsyncLandingAIADE(apikey=apikey, _strict_response_validation=True)
             assert client.base_url == "http://localhost:5000/from/env/"
 
         # explicit environment arg requires explicitness
-        with update_env(LANDINGAI_BASE_URL="http://localhost:5000/from/env"):
+        with update_env(LANDINGAI_ADE_BASE_URL="http://localhost:5000/from/env"):
             with pytest.raises(ValueError, match=r"you must pass base_url=None"):
-                AsyncLandingai(apikey=apikey, _strict_response_validation=True, environment="production")
+                AsyncLandingAIADE(apikey=apikey, _strict_response_validation=True, environment="production")
 
-            client = AsyncLandingai(
+            client = AsyncLandingAIADE(
                 base_url=None, apikey=apikey, _strict_response_validation=True, environment="production"
             )
             assert str(client.base_url).startswith("https://api.va.landing.ai")
@@ -1382,10 +1394,10 @@ class TestAsyncLandingai:
     @pytest.mark.parametrize(
         "client",
         [
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True
             ),
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url="http://localhost:5000/custom/path/",
                 apikey=apikey,
                 _strict_response_validation=True,
@@ -1394,7 +1406,7 @@ class TestAsyncLandingai:
         ],
         ids=["standard", "custom http client"],
     )
-    def test_base_url_trailing_slash(self, client: AsyncLandingai) -> None:
+    def test_base_url_trailing_slash(self, client: AsyncLandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions(
                 method="post",
@@ -1407,10 +1419,10 @@ class TestAsyncLandingai:
     @pytest.mark.parametrize(
         "client",
         [
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True
             ),
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url="http://localhost:5000/custom/path/",
                 apikey=apikey,
                 _strict_response_validation=True,
@@ -1419,7 +1431,7 @@ class TestAsyncLandingai:
         ],
         ids=["standard", "custom http client"],
     )
-    def test_base_url_no_trailing_slash(self, client: AsyncLandingai) -> None:
+    def test_base_url_no_trailing_slash(self, client: AsyncLandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions(
                 method="post",
@@ -1432,10 +1444,10 @@ class TestAsyncLandingai:
     @pytest.mark.parametrize(
         "client",
         [
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url="http://localhost:5000/custom/path/", apikey=apikey, _strict_response_validation=True
             ),
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url="http://localhost:5000/custom/path/",
                 apikey=apikey,
                 _strict_response_validation=True,
@@ -1444,7 +1456,7 @@ class TestAsyncLandingai:
         ],
         ids=["standard", "custom http client"],
     )
-    def test_absolute_request_url(self, client: AsyncLandingai) -> None:
+    def test_absolute_request_url(self, client: AsyncLandingAIADE) -> None:
         request = client._build_request(
             FinalRequestOptions(
                 method="post",
@@ -1455,7 +1467,7 @@ class TestAsyncLandingai:
         assert request.url == "https://myapi.com/foo"
 
     async def test_copied_client_does_not_close_http(self) -> None:
-        client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
         assert not client.is_closed()
 
         copied = client.copy()
@@ -1467,7 +1479,7 @@ class TestAsyncLandingai:
         assert not client.is_closed()
 
     async def test_client_context_manager(self) -> None:
-        client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
         async with client as c2:
             assert c2 is client
             assert not c2.is_closed()
@@ -1489,7 +1501,7 @@ class TestAsyncLandingai:
 
     async def test_client_max_retries_validation(self) -> None:
         with pytest.raises(TypeError, match=r"max_retries cannot be None"):
-            AsyncLandingai(
+            AsyncLandingAIADE(
                 base_url=base_url, apikey=apikey, _strict_response_validation=True, max_retries=cast(Any, None)
             )
 
@@ -1501,12 +1513,12 @@ class TestAsyncLandingai:
 
         respx_mock.get("/foo").mock(return_value=httpx.Response(200, text="my-custom-format"))
 
-        strict_client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        strict_client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
 
         with pytest.raises(APIResponseValidationError):
             await strict_client.get("/foo", cast_to=Model)
 
-        client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=False)
+        client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=False)
 
         response = await client.get("/foo", cast_to=Model)
         assert isinstance(response, str)  # type: ignore[unreachable]
@@ -1535,44 +1547,44 @@ class TestAsyncLandingai:
     @mock.patch("time.time", mock.MagicMock(return_value=1696004797))
     @pytest.mark.asyncio
     async def test_parse_retry_after_header(self, remaining_retries: int, retry_after: str, timeout: float) -> None:
-        client = AsyncLandingai(base_url=base_url, apikey=apikey, _strict_response_validation=True)
+        client = AsyncLandingAIADE(base_url=base_url, apikey=apikey, _strict_response_validation=True)
 
         headers = httpx.Headers({"retry-after": retry_after})
         options = FinalRequestOptions(method="get", url="/foo", max_retries=3)
         calculated = client._calculate_retry_timeout(remaining_retries, options, headers)
         assert calculated == pytest.approx(timeout, 0.5 * 0.875)  # pyright: ignore[reportUnknownMemberType]
 
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     async def test_retrying_timeout_errors_doesnt_leak(
-        self, respx_mock: MockRouter, async_client: AsyncLandingai
+        self, respx_mock: MockRouter, async_client: AsyncLandingAIADE
     ) -> None:
-        respx_mock.post("/v1/ade/parse").mock(side_effect=httpx.TimeoutException("Test timeout error"))
+        respx_mock.post("/v1/ade/extract").mock(side_effect=httpx.TimeoutException("Test timeout error"))
 
         with pytest.raises(APITimeoutError):
-            await async_client.with_streaming_response.parse().__aenter__()
+            await async_client.with_streaming_response.extract(schema="schema").__aenter__()
 
         assert _get_open_connections(self.client) == 0
 
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     async def test_retrying_status_errors_doesnt_leak(
-        self, respx_mock: MockRouter, async_client: AsyncLandingai
+        self, respx_mock: MockRouter, async_client: AsyncLandingAIADE
     ) -> None:
-        respx_mock.post("/v1/ade/parse").mock(return_value=httpx.Response(500))
+        respx_mock.post("/v1/ade/extract").mock(return_value=httpx.Response(500))
 
         with pytest.raises(APIStatusError):
-            await async_client.with_streaming_response.parse().__aenter__()
+            await async_client.with_streaming_response.extract(schema="schema").__aenter__()
         assert _get_open_connections(self.client) == 0
 
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.asyncio
     @pytest.mark.parametrize("failure_mode", ["status", "exception"])
     async def test_retries_taken(
         self,
-        async_client: AsyncLandingai,
+        async_client: AsyncLandingAIADE,
         failures_before_success: int,
         failure_mode: Literal["status", "exception"],
         respx_mock: MockRouter,
@@ -1590,19 +1602,19 @@ class TestAsyncLandingai:
                 return httpx.Response(500)
             return httpx.Response(200)
 
-        respx_mock.post("/v1/ade/parse").mock(side_effect=retry_handler)
+        respx_mock.post("/v1/ade/extract").mock(side_effect=retry_handler)
 
-        response = await client.with_raw_response.parse()
+        response = await client.with_raw_response.extract(schema="schema")
 
         assert response.retries_taken == failures_before_success
         assert int(response.http_request.headers.get("x-stainless-retry-count")) == failures_before_success
 
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.asyncio
     async def test_omit_retry_count_header(
-        self, async_client: AsyncLandingai, failures_before_success: int, respx_mock: MockRouter
+        self, async_client: AsyncLandingAIADE, failures_before_success: int, respx_mock: MockRouter
     ) -> None:
         client = async_client.with_options(max_retries=4)
 
@@ -1615,18 +1627,20 @@ class TestAsyncLandingai:
                 return httpx.Response(500)
             return httpx.Response(200)
 
-        respx_mock.post("/v1/ade/parse").mock(side_effect=retry_handler)
+        respx_mock.post("/v1/ade/extract").mock(side_effect=retry_handler)
 
-        response = await client.with_raw_response.parse(extra_headers={"x-stainless-retry-count": Omit()})
+        response = await client.with_raw_response.extract(
+            schema="schema", extra_headers={"x-stainless-retry-count": Omit()}
+        )
 
         assert len(response.http_request.headers.get_list("x-stainless-retry-count")) == 0
 
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
-    @mock.patch("LandingAIAde._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @mock.patch("landingai_ade._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.asyncio
     async def test_overwrite_retry_count_header(
-        self, async_client: AsyncLandingai, failures_before_success: int, respx_mock: MockRouter
+        self, async_client: AsyncLandingAIADE, failures_before_success: int, respx_mock: MockRouter
     ) -> None:
         client = async_client.with_options(max_retries=4)
 
@@ -1639,9 +1653,11 @@ class TestAsyncLandingai:
                 return httpx.Response(500)
             return httpx.Response(200)
 
-        respx_mock.post("/v1/ade/parse").mock(side_effect=retry_handler)
+        respx_mock.post("/v1/ade/extract").mock(side_effect=retry_handler)
 
-        response = await client.with_raw_response.parse(extra_headers={"x-stainless-retry-count": "42"})
+        response = await client.with_raw_response.extract(
+            schema="schema", extra_headers={"x-stainless-retry-count": "42"}
+        )
 
         assert response.http_request.headers.get("x-stainless-retry-count") == "42"
 
