@@ -27,6 +27,9 @@ class ClientParseParams(TypedDict, total=False):
     this parameter or the document parameter must be provided.
     """
 
+    model: Optional[str]
+    """The version of the model to use for parsing."""
+
     split: Optional[Literal["page"]]
     """
     If you want to split documents into smaller sections, include the split

@@ -36,6 +36,7 @@ client = LandingAIADE(
 
 response = client.parse(
     document_url="https://va.landing.ai/pdfs/LabReport.pdf",
+    model="dpt-2-latest",
 )
 print(response.chunks)
 ```
@@ -64,6 +65,7 @@ client = AsyncLandingAIADE(
 async def main() -> None:
     response = await client.parse(
         document_url="https://va.landing.ai/pdfs/LabReport.pdf",
+        model="dpt-2-latest",
     )
     print(response.chunks)
 
@@ -99,6 +101,7 @@ async def main() -> None:
     ) as client:
         response = await client.parse(
             document_url="https://va.landing.ai/pdfs/LabReport.pdf",
+            model="dpt-2-latest",
         )
         print(response.chunks)
 
