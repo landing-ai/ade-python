@@ -52,7 +52,7 @@ from ._base_client import (
 from .types.parse_response import ParseResponse
 from .types.extract_response import ExtractResponse
 
-_LIB_VERSION = importlib.metadata.version("agentic-doc")
+_LIB_VERSION = importlib.metadata.version("landingai-ade")
 
 __all__ = [
     "ENVIRONMENTS",
