@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import importlib.metadata
 from typing import Any, Dict, Mapping, Optional, cast
 from typing_extensions import Self, Literal, override
 
@@ -50,6 +51,8 @@ from ._base_client import (
 )
 from .types.parse_response import ParseResponse
 from .types.extract_response import ExtractResponse
+
+_LIB_VERSION = importlib.metadata.version("landingai-ade")
 
 __all__ = [
     "ENVIRONMENTS",
@@ -279,13 +282,20 @@ class LandingAIADE(SyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        extra_headers = {
+            "Content-Type": "multipart/form-data",
+            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
+            **(extra_headers or {}),
+        }
         return self.post(
             "/v1/ade/extract",
             body=maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
             ),
             cast_to=ExtractResponse,
         )
@@ -346,13 +356,20 @@ class LandingAIADE(SyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        extra_headers = {
+            "Content-Type": "multipart/form-data",
+            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
+            **(extra_headers or {}),
+        }
         return self.post(
             "/v1/ade/parse",
             body=maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
             ),
             cast_to=ParseResponse,
         )
@@ -600,13 +617,20 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        extra_headers = {
+            "Content-Type": "multipart/form-data",
+            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
+            **(extra_headers or {}),
+        }
         return await self.post(
             "/v1/ade/extract",
             body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
             ),
             cast_to=ExtractResponse,
         )
@@ -667,13 +691,20 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        extra_headers = {
+            "Content-Type": "multipart/form-data",
+            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
+            **(extra_headers or {}),
+        }
         return await self.post(
             "/v1/ade/parse",
             body=await async_maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
             ),
             cast_to=ParseResponse,
         )

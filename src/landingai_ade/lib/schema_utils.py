@@ -59,14 +59,13 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
         >>> class Person(BaseModel):
         ...     name: str = Field(description="Person's name")
         ...     age: int = Field(description="Person's age")
-        ...
         >>> schema_json = pydantic_to_json_schema(Person)
         >>> # Now use schema_json with the SDK:
         >>> # client.extract(schema=schema_json, markdown="...")
     """
     # The type annotation already ensures model is Type[BaseModel]
     # but we'll do a runtime check for safety
-    if not hasattr(model, 'model_json_schema'):
+    if not hasattr(model, "model_json_schema"):
         raise TypeError("model must be a Pydantic BaseModel subclass")
 
     schema = model.model_json_schema()
