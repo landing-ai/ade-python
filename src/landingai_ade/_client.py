@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import os
+import importlib.metadata
 from typing import Any, Dict, Mapping, Optional, cast
 from typing_extensions import Self, Literal, override
 
 import httpx
-import importlib.metadata
 
 from . import _exceptions
 from ._qs import Querystring
@@ -123,9 +123,7 @@ class LandingAIADE(SyncAPIClient):
         base_url_env = os.environ.get("LANDINGAI_ADE_BASE_URL")
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
-            base_url = cast(
-                "str | httpx.URL", base_url
-            )  # pyright: ignore[reportUnnecessaryCast]
+            base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
         elif is_given(environment):
             if base_url_env and base_url is not None:
                 raise ValueError(
@@ -199,14 +197,10 @@ class LandingAIADE(SyncAPIClient):
         Create a new client instance re-using the same options given to the current client with optional overriding.
         """
         if default_headers is not None and set_default_headers is not None:
-            raise ValueError(
-                "The `default_headers` and `set_default_headers` arguments are mutually exclusive"
-            )
+            raise ValueError("The `default_headers` and `set_default_headers` arguments are mutually exclusive")
 
         if default_query is not None and set_default_query is not None:
-            raise ValueError(
-                "The `default_query` and `set_default_query` arguments are mutually exclusive"
-            )
+            raise ValueError("The `default_query` and `set_default_query` arguments are mutually exclusive")
 
         headers = self._custom_headers
         if default_headers is not None:
@@ -384,14 +378,10 @@ class LandingAIADE(SyncAPIClient):
             return _exceptions.BadRequestError(err_msg, response=response, body=body)
 
         if response.status_code == 401:
-            return _exceptions.AuthenticationError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.AuthenticationError(err_msg, response=response, body=body)
 
         if response.status_code == 403:
-            return _exceptions.PermissionDeniedError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.PermissionDeniedError(err_msg, response=response, body=body)
 
         if response.status_code == 404:
             return _exceptions.NotFoundError(err_msg, response=response, body=body)
@@ -400,17 +390,13 @@ class LandingAIADE(SyncAPIClient):
             return _exceptions.ConflictError(err_msg, response=response, body=body)
 
         if response.status_code == 422:
-            return _exceptions.UnprocessableEntityError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.UnprocessableEntityError(err_msg, response=response, body=body)
 
         if response.status_code == 429:
             return _exceptions.RateLimitError(err_msg, response=response, body=body)
 
         if response.status_code >= 500:
-            return _exceptions.InternalServerError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.InternalServerError(err_msg, response=response, body=body)
         return APIStatusError(err_msg, response=response, body=body)
 
 
@@ -464,9 +450,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         base_url_env = os.environ.get("LANDINGAI_ADE_BASE_URL")
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
-            base_url = cast(
-                "str | httpx.URL", base_url
-            )  # pyright: ignore[reportUnnecessaryCast]
+            base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
         elif is_given(environment):
             if base_url_env and base_url is not None:
                 raise ValueError(
@@ -540,14 +524,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
         Create a new client instance re-using the same options given to the current client with optional overriding.
         """
         if default_headers is not None and set_default_headers is not None:
-            raise ValueError(
-                "The `default_headers` and `set_default_headers` arguments are mutually exclusive"
-            )
+            raise ValueError("The `default_headers` and `set_default_headers` arguments are mutually exclusive")
 
         if default_query is not None and set_default_query is not None:
-            raise ValueError(
-                "The `default_query` and `set_default_query` arguments are mutually exclusive"
-            )
+            raise ValueError("The `default_query` and `set_default_query` arguments are mutually exclusive")
 
         headers = self._custom_headers
         if default_headers is not None:
@@ -636,9 +616,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         }
         return await self.post(
             "/v1/ade/extract",
-            body=await async_maybe_transform(
-                body, client_extract_params.ClientExtractParams
-            ),
+            body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
             options=make_request_options(
                 extra_headers=extra_headers,
@@ -708,9 +686,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/parse",
-            body=await async_maybe_transform(
-                body, client_parse_params.ClientParseParams
-            ),
+            body=await async_maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
             options=make_request_options(
                 extra_headers=extra_headers,
@@ -733,14 +709,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             return _exceptions.BadRequestError(err_msg, response=response, body=body)
 
         if response.status_code == 401:
-            return _exceptions.AuthenticationError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.AuthenticationError(err_msg, response=response, body=body)
 
         if response.status_code == 403:
-            return _exceptions.PermissionDeniedError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.PermissionDeniedError(err_msg, response=response, body=body)
 
         if response.status_code == 404:
             return _exceptions.NotFoundError(err_msg, response=response, body=body)
@@ -749,17 +721,13 @@ class AsyncLandingAIADE(AsyncAPIClient):
             return _exceptions.ConflictError(err_msg, response=response, body=body)
 
         if response.status_code == 422:
-            return _exceptions.UnprocessableEntityError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.UnprocessableEntityError(err_msg, response=response, body=body)
 
         if response.status_code == 429:
             return _exceptions.RateLimitError(err_msg, response=response, body=body)
 
         if response.status_code >= 500:
-            return _exceptions.InternalServerError(
-                err_msg, response=response, body=body
-            )
+            return _exceptions.InternalServerError(err_msg, response=response, body=body)
         return APIStatusError(err_msg, response=response, body=body)
 
 
