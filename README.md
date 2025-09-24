@@ -34,7 +34,7 @@ from landingai_ade import LandingAIADE
 
 client = LandingAIADE(
     apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
-    # or 'production'; defaults to "production".
+    # defaults to "production".
     environment="eu",
 )
 
@@ -87,7 +87,7 @@ from landingai_ade import AsyncLandingAIADE
 
 client = AsyncLandingAIADE(
     apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
-    # or 'production' | 'staging'; defaults to "production".
+    # defaults to "production".
     environment="eu",
 )
 
