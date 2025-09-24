@@ -39,6 +39,7 @@ client = LandingAIADE(
 )
 
 response = client.parse(
+    # support document or document_url
     document_url="https://va.landing.ai/pdfs/LabReport.pdf",
 )
 print(response.chunks)
@@ -67,7 +68,11 @@ schema = pydantic_to_json_schema(Person)
 
 # Use with the SDK
 client = LandingAIADE(apikey="VISION_AGENT_API_KEY")
-response = client.extract(schema=schema, markdown=Path('path/to/file.md'))
+response = client.extract(
+    schema=schema,
+    # support markdown or markdown_url
+    markdown=Path('path/to/file.md')
+)
 ```
 
 ## Async usage
