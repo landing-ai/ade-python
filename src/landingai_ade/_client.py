@@ -66,6 +66,7 @@ __all__ = [
 ENVIRONMENTS: Dict[str, str] = {
     "production": "https://api.va.landing.ai",
     "eu": "https://va.eu-west-1.landing.ai",
+    "staging": "https://api.va.staging.landing.ai",
 }
 
 
@@ -76,13 +77,13 @@ class LandingAIADE(SyncAPIClient):
     # client options
     apikey: str
 
-    _environment: Literal["production", "eu"] | NotGiven
+    _environment: Literal["production", "eu", "staging"] | NotGiven
 
     def __init__(
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | NotGiven = not_given,
+        environment: Literal["production", "eu", "staging"] | NotGiven = not_given,
         base_url: str | httpx.URL | None | NotGiven = not_given,
         timeout: float | Timeout | None | NotGiven = not_given,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -178,7 +179,7 @@ class LandingAIADE(SyncAPIClient):
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | None = None,
+        environment: Literal["production", "eu", "staging"] | None = None,
         base_url: str | httpx.URL | None = None,
         timeout: float | Timeout | None | NotGiven = not_given,
         http_client: httpx.Client | None = None,
@@ -397,13 +398,13 @@ class AsyncLandingAIADE(AsyncAPIClient):
     # client options
     apikey: str
 
-    _environment: Literal["production", "eu"] | NotGiven
+    _environment: Literal["production", "eu", "staging"] | NotGiven
 
     def __init__(
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | NotGiven = not_given,
+        environment: Literal["production", "eu", "staging"] | NotGiven = not_given,
         base_url: str | httpx.URL | None | NotGiven = not_given,
         timeout: float | Timeout | None | NotGiven = not_given,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -499,7 +500,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | None = None,
+        environment: Literal["production", "eu", "staging"] | None = None,
         base_url: str | httpx.URL | None = None,
         timeout: float | Timeout | None | NotGiven = not_given,
         http_client: httpx.AsyncClient | None = None,
