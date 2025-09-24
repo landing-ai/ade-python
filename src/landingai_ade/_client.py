@@ -51,6 +51,9 @@ from ._base_client import (
 from .types.parse_response import ParseResponse
 from .types.extract_response import ExtractResponse
 
+import importlib.metadata
+_LIB_VERSION = importlib.metadata.version("agentic-doc")
+
 __all__ = [
     "ENVIRONMENTS",
     "Timeout",
@@ -599,7 +602,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        extra_headers = {"Content-Type": "multipart/form-data", "runtime_tag": f"ade-python-v{_LIB_VERSION}", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/extract",
             body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
