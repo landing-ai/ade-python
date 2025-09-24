@@ -14,9 +14,11 @@ class Metadata(BaseModel):
 
     filename: str
 
+    job_id: str
+
     org_id: Optional[str] = None
 
-    version: str
+    version: Optional[str] = None
 
 
 class ExtractResponse(BaseModel):

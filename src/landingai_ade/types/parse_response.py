@@ -42,11 +42,13 @@ class Metadata(BaseModel):
 
     filename: str
 
+    job_id: str
+
     org_id: Optional[str] = None
 
     page_count: int
 
-    version: str
+    version: Optional[str] = None
 
 
 class Split(BaseModel):

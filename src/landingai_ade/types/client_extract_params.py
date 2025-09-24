@@ -24,3 +24,6 @@ class ClientExtractParams(TypedDict, total=False):
 
     markdown_url: Optional[str]
     """The URL to the Markdown file to extract data from."""
+
+    model: Optional[str]
+    """The version of the model to use for extraction."""

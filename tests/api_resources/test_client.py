@@ -32,6 +32,7 @@ class TestClient:
             schema="schema",
             markdown=b"raw file contents",
             markdown_url="markdown_url",
+            model="model",
         )
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
@@ -73,6 +74,7 @@ class TestClient:
         client_ = client.parse(
             document=b"raw file contents",
             document_url="document_url",
+            model="model",
             split="page",
         )
         assert_matches_type(ParseResponse, client_, path=["response"])
@@ -120,6 +122,7 @@ class TestAsyncClient:
             schema="schema",
             markdown=b"raw file contents",
             markdown_url="markdown_url",
+            model="model",
         )
         assert_matches_type(ExtractResponse, client, path=["response"])
 
@@ -161,6 +164,7 @@ class TestAsyncClient:
         client = await async_client.parse(
             document=b"raw file contents",
             document_url="document_url",
+            model="model",
             split="page",
         )
         assert_matches_type(ParseResponse, client, path=["response"])
