@@ -34,7 +34,7 @@ from landingai_ade import LandingAIADE
 
 client = LandingAIADE(
     apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
-    # or 'production' | 'staging'; defaults to "production".
+    # or 'production'; defaults to "production".
     environment="eu",
 )
 
@@ -55,6 +55,7 @@ so that your Apikey is not stored in source control.
 from landingai_ade import LandingAIADE
 from landingai_ade.lib import pydantic_to_json_schema
 from pydantic import BaseModel, Field
+from pathlib import Path
 
 # Define your schema
 class Person(BaseModel):
@@ -66,7 +67,7 @@ schema = pydantic_to_json_schema(Person)
 
 # Use with the SDK
 client = LandingAIADE(apikey="VISION_AGENT_API_KEY")
-response = client.extract(schema=schema, markdown=content)
+response = client.extract(schema=schema, markdown=Path('path/to/file.md'))
 ```
 
 ## Async usage
