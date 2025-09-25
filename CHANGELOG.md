@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 (2025-09-25)
+
+Full Changelog: [v0.10.0...v0.11.0](https://github.com/landing-ai/ade-python/compare/v0.10.0...v0.11.0)
+
+### Features
+
+* **api:** change support email ([4654caf](https://github.com/landing-ai/ade-python/commit/4654caf732791296e26380ecb04b8ccae5b67551))
+
 ## 0.10.0 (2025-09-24)
 
 Full Changelog: [v0.9.0...v0.10.0](https://github.com/landing-ai/ade-python/compare/v0.9.0...v0.10.0)
