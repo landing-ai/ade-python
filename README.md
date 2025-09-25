@@ -66,9 +66,8 @@ class Person(BaseModel):
 
 # Convert to JSON schema
 schema = pydantic_to_json_schema(Person)
-
 # Use with the SDK
-client = LandingAIADE(apikey="VISION_AGENT_API_KEY")
+client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
 response = client.extract(
     schema=schema,
     # support markdown or markdown_url
