@@ -5,7 +5,7 @@ description = "The official Python library for the landingai-ade API"
 dynamic = ["readme"]
 license = "Apache-2.0"
 authors = [
-{ name = "LandingAI ADE", email = "" },
+{ name = "LandingAI ADE", email = "support@landing.ai" },
 ]
 dependencies = [
     "httpx>=0.23.0, <1",
