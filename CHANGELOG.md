@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0 (2025-09-25)
+
+Full Changelog: [v0.12.0...v0.13.0](https://github.com/landing-ai/ade-python/compare/v0.12.0...v0.13.0)
+
+### Features
+
+* **api:** update README examples to support doccument_url as local path ([f31d6ca](https://github.com/landing-ai/ade-python/commit/f31d6cabfea19aa8f152e8030a0d7d256733f7a2))
+
 ## 0.12.0 (2025-09-25)
 
 Full Changelog: [v0.11.1...v0.12.0](https://github.com/landing-ai/ade-python/compare/v0.11.1...v0.12.0)
