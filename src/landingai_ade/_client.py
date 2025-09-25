@@ -275,7 +275,7 @@ class LandingAIADE(SyncAPIClient):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         # Convert local file paths to file parameters
-        markdown, markdown_url = convert_url_to_file_if_local(markdown_url, markdown)
+        markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
         body = deepcopy_minimal(
             {
@@ -356,7 +356,7 @@ class LandingAIADE(SyncAPIClient):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         # Convert local file paths to file parameters
-        document, document_url = convert_url_to_file_if_local(document_url, document)
+        document, document_url = convert_url_to_file_if_local(document, document_url)
 
         body = deepcopy_minimal(
             {
@@ -624,7 +624,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         # Convert local file paths to file parameters
-        markdown, markdown_url = convert_url_to_file_if_local(markdown_url, markdown)
+        markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
         body = deepcopy_minimal(
             {
@@ -705,7 +705,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         # Convert local file paths to file parameters
-        document, document_url = convert_url_to_file_if_local(document_url, document)
+        document, document_url = convert_url_to_file_if_local(document, document_url)
 
         body = deepcopy_minimal(
             {
