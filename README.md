@@ -39,7 +39,7 @@ client = LandingAIADE(
 )
 
 response = client.parse(
-    # support document or document_url
+    # support document as File or document_url as local path/remote url
     document_url="path/to/file",
     model="dpt-2-latest",
 )
@@ -70,7 +70,7 @@ schema = pydantic_to_json_schema(Person)
 client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
 response = client.extract(
     schema=schema,
-    # support markdown or markdown_url
+    # support markdown as File or markdown_url as local path/remote url
     markdown=Path('path/to/file.md')
 )
 ```
