@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 (2025-09-25)
+
+Full Changelog: [v0.11.1...v0.12.0](https://github.com/landing-ai/ade-python/compare/v0.11.1...v0.12.0)
+
+### Features
+
+* document_url support local path ([#22](https://github.com/landing-ai/ade-python/issues/22)) ([5da57a5](https://github.com/landing-ai/ade-python/commit/5da57a55c0f674888a48af8d3d80b6fb5b55160c))
+
 ## 0.11.1 (2025-09-25)
 
 Full Changelog: [v0.11.0...v0.11.1](https://github.com/landing-ai/ade-python/compare/v0.11.0...v0.11.1)
