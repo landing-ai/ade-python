@@ -49,6 +49,7 @@ from ._base_client import (
     AsyncAPIClient,
     make_request_options,
 )
+from .lib.url_utils import convert_url_to_file_if_local
 from .types.parse_response import ParseResponse
 from .types.extract_response import ExtractResponse
 
@@ -273,6 +274,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Convert local file paths to file parameters
+        markdown, markdown_url = convert_url_to_file_if_local(markdown_url, markdown)
+
         body = deepcopy_minimal(
             {
                 "schema": schema,
@@ -351,6 +355,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Convert local file paths to file parameters
+        document, document_url = convert_url_to_file_if_local(document_url, document)
+
         body = deepcopy_minimal(
             {
                 "document": document,
@@ -616,6 +623,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Convert local file paths to file parameters
+        markdown, markdown_url = convert_url_to_file_if_local(markdown_url, markdown)
+
         body = deepcopy_minimal(
             {
                 "schema": schema,
@@ -694,6 +704,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Convert local file paths to file parameters
+        document, document_url = convert_url_to_file_if_local(document_url, document)
+
         body = deepcopy_minimal(
             {
                 "document": document,
