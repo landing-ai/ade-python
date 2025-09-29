@@ -32,7 +32,7 @@ class TestClient:
             schema="schema",
             markdown=b"raw file contents",
             markdown_url="markdown_url",
-            model="extract-20250630",
+            model="model",
         )
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
@@ -122,7 +122,7 @@ class TestAsyncClient:
             schema="schema",
             markdown=b"raw file contents",
             markdown_url="markdown_url",
-            model="extract-20250630",
+            model="model",
         )
         assert_matches_type(ExtractResponse, client, path=["response"])
 
