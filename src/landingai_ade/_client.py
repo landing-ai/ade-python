@@ -291,6 +291,7 @@ class LandingAIADE(SyncAPIClient):
         # multipart/form-data; boundary=---abc--
         extra_headers = {
             "Content-Type": "multipart/form-data",
+            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
         return self.post(
@@ -637,6 +638,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # multipart/form-data; boundary=---abc--
         extra_headers = {
             "Content-Type": "multipart/form-data",
+            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
         return await self.post(
