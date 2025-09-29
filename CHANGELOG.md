@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.0 (2025-09-29)
+
+Full Changelog: [v0.14.1...v0.15.0](https://github.com/landing-ai/ade-python/compare/v0.14.1...v0.15.0)
+
+### Features
+
+* **api:** default models for extract ([7250c3f](https://github.com/landing-ai/ade-python/commit/7250c3f0978e5eb2d65f0535e80a5c7351d1f9f0))
+
 ## 0.14.1 (2025-09-29)
 
 Full Changelog: [v0.14.0...v0.14.1](https://github.com/landing-ai/ade-python/compare/v0.14.0...v0.14.1)
