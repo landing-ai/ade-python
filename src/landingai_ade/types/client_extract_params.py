@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing_extensions import Required, TypedDict
 
 from .._types import FileTypes
 
@@ -25,5 +25,8 @@ class ClientExtractParams(TypedDict, total=False):
     markdown_url: Optional[str]
     """The URL to the Markdown file to extract data from."""
 
-    model: Optional[Literal["extract-20250630", "extract-20250930"]]
-    """The version of the model to use for extraction."""
+    model: Optional[str]
+    """The version of the model to use for extraction.
+
+    Use `extract-latest` to use the latest version.
+    """

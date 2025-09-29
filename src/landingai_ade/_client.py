@@ -233,7 +233,7 @@ class LandingAIADE(SyncAPIClient):
         schema: str,
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
-        model: Optional[Literal["extract-20250630", "extract-20250930"]] | Omit = omit,
+        model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -260,7 +260,8 @@ class LandingAIADE(SyncAPIClient):
 
           markdown_url: The URL to the Markdown file to extract data from.
 
-          model: The version of the model to use for extraction.
+          model: The version of the model to use for extraction. Use `extract-latest` to use the
+              latest version.
 
           extra_headers: Send extra headers
 
@@ -560,7 +561,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         schema: str,
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
-        model: Optional[Literal["extract-20250630", "extract-20250930"]] | Omit = omit,
+        model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -587,7 +588,8 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           markdown_url: The URL to the Markdown file to extract data from.
 
-          model: The version of the model to use for extraction.
+          model: The version of the model to use for extraction. Use `extract-latest` to use the
+              latest version.
 
           extra_headers: Send extra headers
 
