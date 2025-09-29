@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0 (2025-09-29)
+
+Full Changelog: [v0.13.1...v0.14.0](https://github.com/landing-ai/ade-python/compare/v0.13.1...v0.14.0)
+
+### Features
+
+* **api:** add extract endpoint enums ([ac88f43](https://github.com/landing-ai/ade-python/commit/ac88f431bdec9a734ed340ad00c1f9f14a1c1f49))
+
 ## 0.13.1 (2025-09-25)
 
 Full Changelog: [v0.13.0...v0.13.1](https://github.com/landing-ai/ade-python/compare/v0.13.0...v0.13.1)
