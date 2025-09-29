@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.1 (2025-09-29)
+
+Full Changelog: [v0.14.0...v0.14.1](https://github.com/landing-ai/ade-python/compare/v0.14.0...v0.14.1)
+
+### Bug Fixes
+
+* add back runtime tag ([e886225](https://github.com/landing-ai/ade-python/commit/e8862252d96782b0c9dddc42042bf432b670fbd1))
+
 ## 0.14.0 (2025-09-29)
 
 Full Changelog: [v0.13.1...v0.14.0](https://github.com/landing-ai/ade-python/compare/v0.13.1...v0.14.0)
