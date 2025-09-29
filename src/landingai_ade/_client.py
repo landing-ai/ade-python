@@ -233,7 +233,7 @@ class LandingAIADE(SyncAPIClient):
         schema: str,
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
-        model: Optional[str] | Omit = omit,
+        model: Optional[Literal["extract-20250630", "extract-20250930"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -256,7 +256,7 @@ class LandingAIADE(SyncAPIClient):
               are extracted from the Markdown. The schema must be a valid JSON object and will
               be validated before processing the document.
 
-          markdown: The Markdown file to extract data from.
+          markdown: The Markdown file or Markdown content to extract data from.
 
           markdown_url: The URL to the Markdown file to extract data from.
 
@@ -317,15 +317,13 @@ class LandingAIADE(SyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
 
         Args:
-          document: A file to be parsed. The file can be a PDF (50 pages max) or an image (50MB).
-              See the list of supported file types here
-              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
-              document_url parameter must be provided.
+          document: A file to be parsed. The file can be a PDF or an image. See the list of
+              supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
+              this parameter or the `document_url` parameter must be provided.
 
-          document_url: The URL to the file to be parsed. The file can be a PDF (50 pages max) or an
-              image (50MB). See the list of supported file types here
-              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
-              document parameter must be provided.
+          document_url: The URL to the file to be parsed. The file can be a PDF or an image. See the
+              list of supported file types here: https://docs.landing.ai/ade/ade-file-types.
+              Either this parameter or the `document` parameter must be provided.
 
           model: The version of the model to use for parsing.
 
@@ -562,7 +560,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         schema: str,
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
-        model: Optional[str] | Omit = omit,
+        model: Optional[Literal["extract-20250630", "extract-20250930"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -585,7 +583,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
               are extracted from the Markdown. The schema must be a valid JSON object and will
               be validated before processing the document.
 
-          markdown: The Markdown file to extract data from.
+          markdown: The Markdown file or Markdown content to extract data from.
 
           markdown_url: The URL to the Markdown file to extract data from.
 
@@ -646,15 +644,13 @@ class AsyncLandingAIADE(AsyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
 
         Args:
-          document: A file to be parsed. The file can be a PDF (50 pages max) or an image (50MB).
-              See the list of supported file types here
-              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
-              document_url parameter must be provided.
+          document: A file to be parsed. The file can be a PDF or an image. See the list of
+              supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
+              this parameter or the `document_url` parameter must be provided.
 
-          document_url: The URL to the file to be parsed. The file can be a PDF (50 pages max) or an
-              image (50MB). See the list of supported file types here
-              (https://docs.landing.ai/ade/ade-file-types). Either this parameter or the
-              document parameter must be provided.
+          document_url: The URL to the file to be parsed. The file can be a PDF or an image. See the
+              list of supported file types here: https://docs.landing.ai/ade/ade-file-types.
+              Either this parameter or the `document` parameter must be provided.
 
           model: The version of the model to use for parsing.
 

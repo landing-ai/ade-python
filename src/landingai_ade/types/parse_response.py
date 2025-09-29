@@ -1,12 +1,22 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import List, Optional
+from typing import Dict, List, Optional
+from typing_extensions import Literal
 
 from pydantic import Field as FieldInfo
 
 from .._models import BaseModel
 
-__all__ = ["ParseResponse", "Chunk", "ChunkGrounding", "ChunkGroundingBox", "Metadata", "Split"]
+__all__ = [
+    "ParseResponse",
+    "Chunk",
+    "ChunkGrounding",
+    "ChunkGroundingBox",
+    "Metadata",
+    "Split",
+    "Grounding",
+    "GroundingBox",
+]
 
 
 class ChunkGroundingBox(BaseModel):
@@ -28,11 +38,11 @@ class ChunkGrounding(BaseModel):
 class Chunk(BaseModel):
     id: str
 
+    grounding: ChunkGrounding
+
     markdown: str
 
     type: str
-
-    grounding: Optional[ChunkGrounding] = None
 
 
 class Metadata(BaseModel):
@@ -63,6 +73,41 @@ class Split(BaseModel):
     pages: List[int]
 
 
+class GroundingBox(BaseModel):
+    bottom: float
+
+    left: float
+
+    right: float
+
+    top: float
+
+
+class Grounding(BaseModel):
+    box: GroundingBox
+
+    page: int
+
+    type: Literal[
+        "chunkLogo",
+        "chunkCard",
+        "chunkAttestation",
+        "chunkScanCode",
+        "chunkForm",
+        "chunkTable",
+        "chunkFigure",
+        "chunkText",
+        "chunkMarginalia",
+        "chunkTitle",
+        "chunkPageHeader",
+        "chunkPageFooter",
+        "chunkPageNumber",
+        "chunkKeyValue",
+        "table",
+        "tableCell",
+    ]
+
+
 class ParseResponse(BaseModel):
     chunks: List[Chunk]
 
@@ -71,3 +116,5 @@ class ParseResponse(BaseModel):
     metadata: Metadata
 
     splits: List[Split]
+
+    grounding: Optional[Dict[str, Grounding]] = None
