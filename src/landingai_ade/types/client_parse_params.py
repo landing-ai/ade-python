@@ -14,17 +14,17 @@ class ClientParseParams(TypedDict, total=False):
     document: Optional[FileTypes]
     """A file to be parsed.
 
-    The file can be a PDF (50 pages max) or an image (50MB). See the list of
-    supported file types here (https://docs.landing.ai/ade/ade-file-types). Either
-    this parameter or the document_url parameter must be provided.
+    The file can be a PDF or an image. See the list of supported file types here:
+    https://docs.landing.ai/ade/ade-file-types. Either this parameter or the
+    `document_url` parameter must be provided.
     """
 
     document_url: Optional[str]
     """The URL to the file to be parsed.
 
-    The file can be a PDF (50 pages max) or an image (50MB). See the list of
-    supported file types here (https://docs.landing.ai/ade/ade-file-types). Either
-    this parameter or the document parameter must be provided.
+    The file can be a PDF or an image. See the list of supported file types here:
+    https://docs.landing.ai/ade/ade-file-types. Either this parameter or the
+    `document` parameter must be provided.
     """
 
     model: Optional[str]
