@@ -199,7 +199,7 @@ client.with_options(max_retries=5).parse()
 
 ### Timeouts
 
-By default requests time out after 1 minute. You can configure this with a `timeout` option,
+By default requests time out after 8 minutes. You can configure this with a `timeout` option,
 which accepts a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration) object:
 
 ```python
@@ -207,7 +207,7 @@ from landingai_ade import LandingAIADE
 
 # Configure the default for all requests:
 client = LandingAIADE(
-    # 20 seconds (default is 1 minute)
+    # 20 seconds (default is 8 minutes)
     timeout=20.0,
 )
 
