@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.1 (2025-09-30)
+
+Full Changelog: [v0.15.0...v0.15.1](https://github.com/landing-ai/ade-python/compare/v0.15.0...v0.15.1)
+
+### Bug Fixes
+
+* **api:** increase default timeout ([206b5d7](https://github.com/landing-ai/ade-python/commit/206b5d7567eb9f08aedbfdf1752af5cc9d1ac5c0))
+
 ## 0.15.0 (2025-09-29)
 
 Full Changelog: [v0.14.1...v0.15.0](https://github.com/landing-ai/ade-python/compare/v0.14.1...v0.15.0)
