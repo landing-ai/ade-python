@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.0 (2025-10-02)
+
+Full Changelog: [v0.15.1...v0.16.0](https://github.com/landing-ai/ade-python/compare/v0.15.1...v0.16.0)
+
+### Features
+
+* **api:** markdown commnet chaagne ([76d7de5](https://github.com/landing-ai/ade-python/commit/76d7de531313b3c268d1a5b8a32d23bc5b8682b3))
+
 ## 0.15.1 (2025-09-30)
 
 Full Changelog: [v0.15.0...v0.15.1](https://github.com/landing-ai/ade-python/compare/v0.15.0...v0.15.1)
