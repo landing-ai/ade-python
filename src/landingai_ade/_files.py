@@ -66,6 +66,9 @@ def _transform_file(file: FileTypes) -> HttpxFileTypes:
             path = pathlib.Path(file)
             return (path.name, path.read_bytes())
 
+        if isinstance(file, str):
+            return file.encode('utf-8')
+
         return file
 
     if is_tuple_t(file):
@@ -77,6 +80,8 @@ def _transform_file(file: FileTypes) -> HttpxFileTypes:
 def read_file_content(file: FileContent) -> HttpxFileContent:
     if isinstance(file, os.PathLike):
         return pathlib.Path(file).read_bytes()
+    if isinstance(file, str):
+        return file.encode('utf-8')
     return file
 
 
@@ -108,6 +113,9 @@ async def _async_transform_file(file: FileTypes) -> HttpxFileTypes:
             path = anyio.Path(file)
             return (path.name, await path.read_bytes())
 
+        if isinstance(file, str):
+            return file.encode('utf-8')
+
         return file
 
     if is_tuple_t(file):
@@ -119,5 +127,8 @@ async def _async_transform_file(file: FileTypes) -> HttpxFileTypes:
 async def async_read_file_content(file: FileContent) -> HttpxFileContent:
     if isinstance(file, os.PathLike):
         return await anyio.Path(file).read_bytes()
+
+    if isinstance(file, str):
+        return file.encode('utf-8')
 
     return file
