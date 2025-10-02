@@ -256,7 +256,7 @@ class LandingAIADE(SyncAPIClient):
               are extracted from the Markdown. The schema must be a valid JSON object and will
               be validated before processing the document.
 
-          markdown: The Markdown as string or Markdown content in bytes to extract data from.
+          markdown: The Markdown file or Markdown content to extract data from.
 
           markdown_url: The URL to the Markdown file to extract data from.
 
@@ -584,7 +584,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
               are extracted from the Markdown. The schema must be a valid JSON object and will
               be validated before processing the document.
 
-          markdown: The Markdown as string or Markdown content in bytes to extract data from.
+          markdown: The Markdown file or Markdown content to extract data from.
 
           markdown_url: The URL to the Markdown file to extract data from.
 
