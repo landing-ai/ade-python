@@ -20,7 +20,7 @@ class ClientExtractParams(TypedDict, total=False):
     """
 
     markdown: Optional[FileTypes]
-    """The Markdown as string or Markdown content in bytes to extract data from."""
+    """The Markdown file or Markdown content to extract data from."""
 
     markdown_url: Optional[str]
     """The URL to the Markdown file to extract data from."""
