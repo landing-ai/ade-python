@@ -75,6 +75,39 @@ response = client.extract(
 )
 ```
 
+### Parse Jobs
+
+For processing large documents or batches of documents asynchronously:
+
+```python
+import os
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE(
+    apikey=os.environ.get("VISION_AGENT_API_KEY"),
+)
+
+# Create an async parse job
+job = client.parse_jobs.create(
+    document_url="path/to/large_file.pdf",
+    model="dpt-2-latest",
+)
+print(f"Job created with ID: {job.job_id}")
+
+# Get job status
+job_status = client.parse_jobs.get(job.job_id)
+print(f"Status: {job_status.status}")
+
+# List all jobs (with optional filtering)
+response = client.parse_jobs.list(
+    status="completed",
+    page=0,
+    page_size=10,
+)
+for job in response.jobs:
+    print(f"Job {job.job_id}: {job.status}")
+```
+
 ## Async usage
 
 Simply import `AsyncLandingAIADE` instead of `LandingAIADE` and use `await` with each API call:
