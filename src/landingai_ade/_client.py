@@ -41,6 +41,7 @@ from ._response import (
     async_to_raw_response_wrapper,
     async_to_streamed_response_wrapper,
 )
+from .resources import parse_jobs
 from ._streaming import Stream as Stream, AsyncStream as AsyncStream
 from ._exceptions import APIStatusError, LandingAiadeError
 from ._base_client import (
@@ -74,6 +75,7 @@ ENVIRONMENTS: Dict[str, str] = {
 
 
 class LandingAIADE(SyncAPIClient):
+    parse_jobs: parse_jobs.ParseJobsResource
     with_raw_response: LandingAIADEWithRawResponse
     with_streaming_response: LandingAIADEWithStreamedResponse
 
@@ -155,6 +157,7 @@ class LandingAIADE(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
+        self.parse_jobs = parse_jobs.ParseJobsResource(self)
         self.with_raw_response = LandingAIADEWithRawResponse(self)
         self.with_streaming_response = LandingAIADEWithStreamedResponse(self)
 
@@ -422,6 +425,7 @@ class LandingAIADE(SyncAPIClient):
 
 
 class AsyncLandingAIADE(AsyncAPIClient):
+    parse_jobs: parse_jobs.AsyncParseJobsResource
     with_raw_response: AsyncLandingAIADEWithRawResponse
     with_streaming_response: AsyncLandingAIADEWithStreamedResponse
 
@@ -503,6 +507,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
+        self.parse_jobs = parse_jobs.AsyncParseJobsResource(self)
         self.with_raw_response = AsyncLandingAIADEWithRawResponse(self)
         self.with_streaming_response = AsyncLandingAIADEWithStreamedResponse(self)
 
@@ -771,6 +776,8 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
 class LandingAIADEWithRawResponse:
     def __init__(self, client: LandingAIADE) -> None:
+        self.parse_jobs = parse_jobs.ParseJobsResourceWithRawResponse(client.parse_jobs)
+
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
@@ -781,6 +788,8 @@ class LandingAIADEWithRawResponse:
 
 class AsyncLandingAIADEWithRawResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
+        self.parse_jobs = parse_jobs.AsyncParseJobsResourceWithRawResponse(client.parse_jobs)
+
         self.extract = async_to_raw_response_wrapper(
             client.extract,
         )
@@ -791,6 +800,8 @@ class AsyncLandingAIADEWithRawResponse:
 
 class LandingAIADEWithStreamedResponse:
     def __init__(self, client: LandingAIADE) -> None:
+        self.parse_jobs = parse_jobs.ParseJobsResourceWithStreamingResponse(client.parse_jobs)
+
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
@@ -801,6 +812,8 @@ class LandingAIADEWithStreamedResponse:
 
 class AsyncLandingAIADEWithStreamedResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
+        self.parse_jobs = parse_jobs.AsyncParseJobsResourceWithStreamingResponse(client.parse_jobs)
+
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
         )

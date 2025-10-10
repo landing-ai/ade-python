@@ -1,4 +1,4 @@
-configured_endpoints: 2
-openapi_spec_url: https://storage.googleapis.com/stainless-sdk-openapi-specs/landingai%2Fade-e12bfbad2338073891016dee51efcca01e2339f0502cd1bcef085bb1dad182c6.yml
-openapi_spec_hash: 8c479ef363b165ee959a3ee9c7e3aeed
-config_hash: 0bc3c0a77bcf7ab5dbdfd5ec623243f3
+configured_endpoints: 5
+openapi_spec_url: https://storage.googleapis.com/stainless-sdk-openapi-specs/landingai%2Fade-c9ca072a75f1906b8257521b9084ed1b3eefd1e918591cd4761e83dfec417208.yml
+openapi_spec_hash: cc1dd64870fc012e98cdd16738404187
+config_hash: e3d1621d1daf18fbba056783cf00916e
