@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import importlib.metadata
 from typing import Any, Dict, Mapping, Optional, cast
 from typing_extensions import Self, Literal, override
 
@@ -41,7 +40,6 @@ from ._response import (
     async_to_raw_response_wrapper,
     async_to_streamed_response_wrapper,
 )
-from .resources import parse_jobs
 from ._streaming import Stream as Stream, AsyncStream as AsyncStream
 from ._exceptions import APIStatusError, LandingAiadeError
 from ._base_client import (
@@ -50,11 +48,8 @@ from ._base_client import (
     AsyncAPIClient,
     make_request_options,
 )
-from .lib.url_utils import convert_url_to_file_if_local
 from .types.parse_response import ParseResponse
 from .types.extract_response import ExtractResponse
-
-_LIB_VERSION = importlib.metadata.version("landingai-ade")
 
 __all__ = [
     "ENVIRONMENTS",
@@ -75,7 +70,6 @@ ENVIRONMENTS: Dict[str, str] = {
 
 
 class LandingAIADE(SyncAPIClient):
-    parse_jobs: parse_jobs.ParseJobsResource
     with_raw_response: LandingAIADEWithRawResponse
     with_streaming_response: LandingAIADEWithStreamedResponse
 
@@ -157,7 +151,6 @@ class LandingAIADE(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.parse_jobs = parse_jobs.ParseJobsResource(self)
         self.with_raw_response = LandingAIADEWithRawResponse(self)
         self.with_streaming_response = LandingAIADEWithStreamedResponse(self)
 
@@ -278,9 +271,6 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        # Convert local file paths to file parameters
-        markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
-
         body = deepcopy_minimal(
             {
                 "schema": schema,
@@ -293,20 +283,13 @@ class LandingAIADE(SyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {
-            "Content-Type": "multipart/form-data",
-            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
-            **(extra_headers or {}),
-        }
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return self.post(
             "/v1/ade/extract",
             body=maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers,
-                extra_query=extra_query,
-                extra_body=extra_body,
-                timeout=timeout,
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ExtractResponse,
         )
@@ -357,9 +340,6 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        # Convert local file paths to file parameters
-        document, document_url = convert_url_to_file_if_local(document, document_url)
-
         body = deepcopy_minimal(
             {
                 "document": document,
@@ -372,20 +352,13 @@ class LandingAIADE(SyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {
-            "Content-Type": "multipart/form-data",
-            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
-            **(extra_headers or {}),
-        }
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return self.post(
             "/v1/ade/parse",
             body=maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers,
-                extra_query=extra_query,
-                extra_body=extra_body,
-                timeout=timeout,
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ParseResponse,
         )
@@ -425,7 +398,6 @@ class LandingAIADE(SyncAPIClient):
 
 
 class AsyncLandingAIADE(AsyncAPIClient):
-    parse_jobs: parse_jobs.AsyncParseJobsResource
     with_raw_response: AsyncLandingAIADEWithRawResponse
     with_streaming_response: AsyncLandingAIADEWithStreamedResponse
 
@@ -507,7 +479,6 @@ class AsyncLandingAIADE(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.parse_jobs = parse_jobs.AsyncParseJobsResource(self)
         self.with_raw_response = AsyncLandingAIADEWithRawResponse(self)
         self.with_streaming_response = AsyncLandingAIADEWithStreamedResponse(self)
 
@@ -628,9 +599,6 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        # Convert local file paths to file parameters
-        markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
-
         body = deepcopy_minimal(
             {
                 "schema": schema,
@@ -643,20 +611,13 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {
-            "Content-Type": "multipart/form-data",
-            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
-            **(extra_headers or {}),
-        }
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/extract",
             body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers,
-                extra_query=extra_query,
-                extra_body=extra_body,
-                timeout=timeout,
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ExtractResponse,
         )
@@ -707,9 +668,6 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        # Convert local file paths to file parameters
-        document, document_url = convert_url_to_file_if_local(document, document_url)
-
         body = deepcopy_minimal(
             {
                 "document": document,
@@ -722,20 +680,13 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # It should be noted that the actual Content-Type header that will be
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
-        extra_headers = {
-            "Content-Type": "multipart/form-data",
-            "runtime_tag": f"ade-python-v{_LIB_VERSION}",
-            **(extra_headers or {}),
-        }
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/parse",
             body=await async_maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
             options=make_request_options(
-                extra_headers=extra_headers,
-                extra_query=extra_query,
-                extra_body=extra_body,
-                timeout=timeout,
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ParseResponse,
         )
@@ -776,8 +727,6 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
 class LandingAIADEWithRawResponse:
     def __init__(self, client: LandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.ParseJobsResourceWithRawResponse(client.parse_jobs)
-
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
@@ -788,8 +737,6 @@ class LandingAIADEWithRawResponse:
 
 class AsyncLandingAIADEWithRawResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.AsyncParseJobsResourceWithRawResponse(client.parse_jobs)
-
         self.extract = async_to_raw_response_wrapper(
             client.extract,
         )
@@ -800,8 +747,6 @@ class AsyncLandingAIADEWithRawResponse:
 
 class LandingAIADEWithStreamedResponse:
     def __init__(self, client: LandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.ParseJobsResourceWithStreamingResponse(client.parse_jobs)
-
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
@@ -812,8 +757,6 @@ class LandingAIADEWithStreamedResponse:
 
 class AsyncLandingAIADEWithStreamedResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.AsyncParseJobsResourceWithStreamingResponse(client.parse_jobs)
-
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
         )

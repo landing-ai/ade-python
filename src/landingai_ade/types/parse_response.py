@@ -6,14 +6,31 @@ from typing_extensions import Literal
 from pydantic import Field as FieldInfo
 
 from .._models import BaseModel
-from .shared.parse_metadata import ParseMetadata
-from .shared.parse_grounding_box import ParseGroundingBox
 
-__all__ = ["ParseResponse", "Chunk", "ChunkGrounding", "Split", "Grounding"]
+__all__ = [
+    "ParseResponse",
+    "Chunk",
+    "ChunkGrounding",
+    "ChunkGroundingBox",
+    "Metadata",
+    "Split",
+    "Grounding",
+    "GroundingBox",
+]
+
+
+class ChunkGroundingBox(BaseModel):
+    bottom: float
+
+    left: float
+
+    right: float
+
+    top: float
 
 
 class ChunkGrounding(BaseModel):
-    box: ParseGroundingBox
+    box: ChunkGroundingBox
 
     page: int
 
@@ -28,6 +45,22 @@ class Chunk(BaseModel):
     type: str
 
 
+class Metadata(BaseModel):
+    credit_usage: float
+
+    duration_ms: int
+
+    filename: str
+
+    job_id: str
+
+    org_id: Optional[str] = None
+
+    page_count: int
+
+    version: Optional[str] = None
+
+
 class Split(BaseModel):
     chunks: List[str]
 
@@ -40,8 +73,18 @@ class Split(BaseModel):
     pages: List[int]
 
 
+class GroundingBox(BaseModel):
+    bottom: float
+
+    left: float
+
+    right: float
+
+    top: float
+
+
 class Grounding(BaseModel):
-    box: ParseGroundingBox
+    box: GroundingBox
 
     page: int
 
@@ -70,7 +113,7 @@ class ParseResponse(BaseModel):
 
     markdown: str
 
-    metadata: ParseMetadata
+    metadata: Metadata
 
     splits: List[Split]
 
