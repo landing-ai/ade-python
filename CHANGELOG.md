@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.2 (2025-10-11)
+
+Full Changelog: [v0.18.1...v0.18.2](https://github.com/landing-ai/ade-python/compare/v0.18.1...v0.18.2)
+
+### Chores
+
+* **internal:** detect missing future annotations with ruff ([033a0e0](https://github.com/landing-ai/ade-python/commit/033a0e003ecb9f6e9455385ac53d89499deea0de))
+
 ## 0.18.1 (2025-10-10)
 
 Full Changelog: [v0.18.0...v0.18.1](https://github.com/landing-ai/ade-python/compare/v0.18.0...v0.18.1)
