@@ -51,33 +51,9 @@ we recommend using [python-dotenv](https://pypi.org/project/python-dotenv/)
 to add `VISION_AGENT_API_KEY="My Apikey"` to your `.env` file
 so that your Apikey is not stored in source control.
 
-### Extract
-
-```python
-from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
-from pydantic import BaseModel, Field
-from pathlib import Path
-
-# Define your schema
-class Person(BaseModel):
-    name: str = Field(description="Person's name")
-    age: int = Field(description="Person's age")
-
-# Convert to JSON schema
-schema = pydantic_to_json_schema(Person)
-# Use with the SDK
-client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
-response = client.extract(
-    schema=schema,
-    # support markdown as File or markdown_url as local path/remote url
-    markdown=Path('path/to/file.md')
-)
-```
-
 ### Parse Jobs
 
-For processing large documents or batches of documents asynchronously:
+For processing large documents asynchronously:
 
 ```python
 import os
@@ -106,6 +82,30 @@ response = client.parse_jobs.list(
 )
 for job in response.jobs:
     print(f"Job {job.job_id}: {job.status}")
+```
+
+### Extract
+
+```python
+from landingai_ade import LandingAIADE
+from landingai_ade.lib import pydantic_to_json_schema
+from pydantic import BaseModel, Field
+from pathlib import Path
+
+# Define your schema
+class Person(BaseModel):
+    name: str = Field(description="Person's name")
+    age: int = Field(description="Person's age")
+
+# Convert to JSON schema
+schema = pydantic_to_json_schema(Person)
+# Use with the SDK
+client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
+response = client.extract(
+    schema=schema,
+    # support markdown as File or markdown_url as local path/remote url
+    markdown=Path('path/to/file.md')
+)
 ```
 
 ## Async usage
