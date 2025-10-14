@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.3 (2025-10-14)
+
+Full Changelog: [v0.18.2...v0.18.3](https://github.com/landing-ai/ade-python/compare/v0.18.2...v0.18.3)
+
 ## 0.18.2 (2025-10-11)
 
 Full Changelog: [v0.18.1...v0.18.2](https://github.com/landing-ai/ade-python/compare/v0.18.1...v0.18.2)
