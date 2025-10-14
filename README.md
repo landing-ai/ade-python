@@ -30,6 +30,7 @@ The full API of this library can be found in [api.md](api.md).
 
 ```python
 import os
+from pathlib import Path
 from landingai_ade import LandingAIADE
 
 client = LandingAIADE(
@@ -39,8 +40,8 @@ client = LandingAIADE(
 )
 
 response = client.parse(
-    # support document as File or document_url as local path/remote url
-    document_url="path/to/file",
+    # use document= for local files, document_url= for remote URLs
+    document=Path("path/to/file"),
     model="dpt-2-latest",
 )
 print(response.chunks)
@@ -57,6 +58,7 @@ For processing large documents asynchronously:
 
 ```python
 import os
+from pathlib import Path
 from landingai_ade import LandingAIADE
 
 client = LandingAIADE(
@@ -65,7 +67,7 @@ client = LandingAIADE(
 
 # Create an async parse job
 job = client.parse_jobs.create(
-    document_url="path/to/large_file.pdf",
+    document=Path("path/to/large_file.pdf"),
     model="dpt-2-latest",
 )
 print(f"Job created with ID: {job.job_id}")
@@ -87,10 +89,11 @@ for job in response.jobs:
 ### Extract
 
 ```python
+import os
+from pathlib import Path
 from landingai_ade import LandingAIADE
 from landingai_ade.lib import pydantic_to_json_schema
 from pydantic import BaseModel, Field
-from pathlib import Path
 
 # Define your schema
 class Person(BaseModel):
@@ -103,7 +106,7 @@ schema = pydantic_to_json_schema(Person)
 client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
 response = client.extract(
     schema=schema,
-    # support markdown as File or markdown_url as local path/remote url
+    # use markdown= for local files, markdown_url= for remote URLs
     markdown=Path('path/to/file.md')
 )
 ```
@@ -115,6 +118,7 @@ Simply import `AsyncLandingAIADE` instead of `LandingAIADE` and use `await` with
 ```python
 import os
 import asyncio
+from pathlib import Path
 from landingai_ade import AsyncLandingAIADE
 
 client = AsyncLandingAIADE(
@@ -126,7 +130,7 @@ client = AsyncLandingAIADE(
 
 async def main() -> None:
     response = await client.parse(
-        document_url="path/to/file",
+        document=Path("path/to/file"),
         model="dpt-2-latest",
     )
     print(response.chunks)
@@ -152,6 +156,7 @@ Then you can enable it by instantiating the client with `http_client=DefaultAioH
 
 ```python
 import asyncio
+from pathlib import Path
 from landingai_ade import DefaultAioHttpClient
 from landingai_ade import AsyncLandingAIADE
 
@@ -162,7 +167,7 @@ async def main() -> None:
         http_client=DefaultAioHttpClient(),
     ) as client:
         response = await client.parse(
-            document_url="path/to/file",
+            document=Path("path/to/file"),
             model="dpt-2-latest",
         )
         print(response.chunks)
