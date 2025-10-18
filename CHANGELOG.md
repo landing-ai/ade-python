@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.4 (2025-10-18)
+
+Full Changelog: [v0.18.3...v0.18.4](https://github.com/landing-ai/ade-python/compare/v0.18.3...v0.18.4)
+
+### Chores
+
+* bump `httpx-aiohttp` version to 0.1.9 ([d442ad4](https://github.com/landing-ai/ade-python/commit/d442ad41bf47c0dab3319190992627751d7cac4a))
+
 ## 0.18.3 (2025-10-14)
 
 Full Changelog: [v0.18.2...v0.18.3](https://github.com/landing-ai/ade-python/compare/v0.18.2...v0.18.3)
