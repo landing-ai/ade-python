@@ -56,7 +56,7 @@ httpx==0.28.1
     # via httpx-aiohttp
     # via landingai-ade
     # via respx
-httpx-aiohttp==0.1.8
+httpx-aiohttp==0.1.9
     # via landingai-ade
 idna==3.4
     # via anyio
