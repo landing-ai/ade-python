@@ -103,9 +103,12 @@ class ParseJobGetResponse(BaseModel):
     org_id: Optional[str] = None
 
     output_url: Optional[str] = None
-    """
-    The URL to the parsed content, if the job is complete and the result is larger
-    than 1MB or the `output_save_url` parameter was used.
+    """The URL to the parsed content.
+
+    This field contains a URL when the job is complete and either you specified the
+    `output_save_url` parameter or the result is larger than 1MB. When the result
+    exceeds 1MB, the URL is a presigned S3 URL that expires after 1 hour. Each time
+    you GET the job, a new presigned URL is generated.
     """
 
     version: Optional[str] = None
