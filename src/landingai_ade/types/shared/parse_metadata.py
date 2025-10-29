@@ -1,6 +1,6 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
+from typing import List, Optional
 
 from ..._models import BaseModel
 
@@ -21,3 +21,5 @@ class ParseMetadata(BaseModel):
     page_count: int
 
     version: Optional[str] = None
+
+    failed_pages: Optional[List[int]] = None
