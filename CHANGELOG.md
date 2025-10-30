@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.1 (2025-10-30)
+
+Full Changelog: [v0.20.0...v0.20.1](https://github.com/landing-ai/ade-python/compare/v0.20.0...v0.20.1)
+
+### Bug Fixes
+
+* **client:** close streams without requiring full consumption ([64a689d](https://github.com/landing-ai/ade-python/commit/64a689dcb471376472acca2f9550830b6295599d))
+
 ## 0.20.0 (2025-10-29)
 
 Full Changelog: [v0.19.0...v0.20.0](https://github.com/landing-ai/ade-python/compare/v0.19.0...v0.20.0)
