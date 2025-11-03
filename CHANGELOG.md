@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.2 (2025-10-31)
+
+Full Changelog: [v0.20.1...v0.20.2](https://github.com/landing-ai/ade-python/compare/v0.20.1...v0.20.2)
+
+### Chores
+
+* **internal/tests:** avoid race condition with implicit client cleanup ([038158c](https://github.com/landing-ai/ade-python/commit/038158c184b41e77366ff23729ebfb6c86d2db6f))
+
 ## 0.20.1 (2025-10-30)
 
 Full Changelog: [v0.20.0...v0.20.1](https://github.com/landing-ai/ade-python/compare/v0.20.0...v0.20.1)
