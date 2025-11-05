@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.3 (2025-11-04)
+
+Full Changelog: [v0.20.2...v0.20.3](https://github.com/landing-ai/ade-python/compare/v0.20.2...v0.20.3)
+
+### Chores
+
+* **internal:** grammar fix (it's -&gt; its) ([ab47003](https://github.com/landing-ai/ade-python/commit/ab47003b077de96f11355d29e5ff99b4f0c5f40e))
+
 ## 0.20.2 (2025-10-31)
 
 Full Changelog: [v0.20.1...v0.20.2](https://github.com/landing-ai/ade-python/compare/v0.20.1...v0.20.2)
