@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Dict, List, Optional
-from typing_extensions import Literal
+from typing import Dict, List, Union, Optional
+from typing_extensions import Literal, TypeAlias
 
 from pydantic import Field as FieldInfo
 
@@ -9,26 +9,39 @@ from .._models import BaseModel
 from .shared.parse_metadata import ParseMetadata
 from .shared.parse_grounding_box import ParseGroundingBox
 
-__all__ = ["ParseJobGetResponse", "Data", "DataChunk", "DataChunkGrounding", "DataSplit", "DataGrounding"]
+__all__ = [
+    "ParseJobGetResponse",
+    "Data",
+    "DataParseResponse",
+    "DataParseResponseChunk",
+    "DataParseResponseChunkGrounding",
+    "DataParseResponseSplit",
+    "DataParseResponseGrounding",
+    "DataSpreadsheetParseResponse",
+    "DataSpreadsheetParseResponseChunk",
+    "DataSpreadsheetParseResponseChunkGrounding",
+    "DataSpreadsheetParseResponseMetadata",
+    "DataSpreadsheetParseResponseSplit",
+]
 
 
-class DataChunkGrounding(BaseModel):
+class DataParseResponseChunkGrounding(BaseModel):
     box: ParseGroundingBox
 
     page: int
 
 
-class DataChunk(BaseModel):
+class DataParseResponseChunk(BaseModel):
     id: str
 
-    grounding: DataChunkGrounding
+    grounding: DataParseResponseChunkGrounding
 
     markdown: str
 
     type: str
 
 
-class DataSplit(BaseModel):
+class DataParseResponseSplit(BaseModel):
     chunks: List[str]
 
     class_: str = FieldInfo(alias="class")
@@ -40,7 +53,7 @@ class DataSplit(BaseModel):
     pages: List[int]
 
 
-class DataGrounding(BaseModel):
+class DataParseResponseGrounding(BaseModel):
     box: ParseGroundingBox
 
     page: int
@@ -65,16 +78,121 @@ class DataGrounding(BaseModel):
     ]
 
 
-class Data(BaseModel):
-    chunks: List[DataChunk]
+class DataParseResponse(BaseModel):
+    chunks: List[DataParseResponseChunk]
 
     markdown: str
 
     metadata: ParseMetadata
 
-    splits: List[DataSplit]
+    splits: List[DataParseResponseSplit]
 
-    grounding: Optional[Dict[str, DataGrounding]] = None
+    grounding: Optional[Dict[str, DataParseResponseGrounding]] = None
+
+
+class DataSpreadsheetParseResponseChunkGrounding(BaseModel):
+    box: ParseGroundingBox
+
+    page: int
+
+
+class DataSpreadsheetParseResponseChunk(BaseModel):
+    id: str
+    """
+    Chunk ID - format: '{sheet_name}-{cell_range}' for tables,
+    '{sheet_name}-image-{index}-{anchor_cell}-chunk-{i}-{type}' for parsed image
+    chunks
+    """
+
+    markdown: str
+    """
+    Chunk content as HTML table with anchor tag (for tables) or parsed markdown
+    content (for chunks from images)
+    """
+
+    type: str
+    """
+    Chunk type: 'table' for spreadsheet tables, or types from /parse (text, table,
+    figure, form, etc.) for chunks derived from embedded images
+    """
+
+    grounding: Optional[DataSpreadsheetParseResponseChunkGrounding] = None
+    """
+    Visual grounding coordinates from /parse API (only for chunks derived from
+    embedded images)
+    """
+
+
+class DataSpreadsheetParseResponseMetadata(BaseModel):
+    duration_ms: int
+    """Processing duration in milliseconds"""
+
+    filename: str
+    """Original filename"""
+
+    sheet_count: int
+    """Number of sheets processed"""
+
+    total_cells: int
+    """Total non-empty cells across all sheets"""
+
+    total_chunks: int
+    """Total chunks (tables + images) extracted"""
+
+    total_rows: int
+    """Total rows across all sheets"""
+
+    credit_usage: Optional[float] = None
+    """Credits charged"""
+
+    job_id: Optional[str] = None
+    """Inference history job ID"""
+
+    org_id: Optional[str] = None
+    """Organization ID"""
+
+    total_images: Optional[int] = None
+    """Total images extracted"""
+
+    version: Optional[str] = None
+    """Model version for parsing images"""
+
+
+class DataSpreadsheetParseResponseSplit(BaseModel):
+    chunks: List[str]
+    """Chunk IDs in this split"""
+
+    class_: str = FieldInfo(alias="class")
+    """
+    Split class: 'page' for per-sheet splits, 'full' for single split with all
+    content
+    """
+
+    identifier: str
+    """Split identifier: sheet name for 'page' splits, 'full' for full split"""
+
+    markdown: str
+    """Combined markdown for this split"""
+
+    sheets: List[int]
+    """Sheet indices: single element for 'page' splits, all indices for 'full' split"""
+
+
+class DataSpreadsheetParseResponse(BaseModel):
+    chunks: List[DataSpreadsheetParseResponseChunk]
+    """List of table chunks (HTML)"""
+
+    markdown: str
+    """Full document as HTML with anchor tags and tables"""
+
+    metadata: DataSpreadsheetParseResponseMetadata
+    """Metadata for spreadsheet parsing result."""
+
+    splits: List[DataSpreadsheetParseResponseSplit]
+    """Sheet-based splits"""
+
+
+Data: TypeAlias = Union[DataParseResponse, DataSpreadsheetParseResponse, None]
 
 
 class ParseJobGetResponse(BaseModel):
@@ -92,8 +210,9 @@ class ParseJobGetResponse(BaseModel):
 
     data: Optional[Data] = None
     """
-    The parsed output, if the job is complete and the `output_save_url` parameter
-    was not used.
+    The parsed output (ParseResponse for documents, SpreadsheetParseResponse for
+    spreadsheets), if the job is complete and the `output_save_url` parameter was
+    not used.
     """
 
     failure_reason: Optional[str] = None
