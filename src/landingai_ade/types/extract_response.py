@@ -20,6 +20,13 @@ class Metadata(BaseModel):
 
     version: Optional[str] = None
 
+    schema_violation_error: Optional[str] = None
+    """
+    A detailed error message shows why the extracted data does not fully conform to
+    the input schema. Null means the extraction result is consistent with the input
+    schema.
+    """
+
 
 class ExtractResponse(BaseModel):
     extraction: object
