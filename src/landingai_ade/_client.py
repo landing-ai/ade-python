@@ -312,9 +312,10 @@ class LandingAIADE(SyncAPIClient):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> ParseResponse:
         """
-        Parse a document.
+        Parse a document or spreadsheet.
 
-        This endpoint parses documents and structured Markdown, chunks, and metadata.
+        This endpoint parses documents (PDF, images) and spreadsheets (XLSX, CSV) into
+        structured Markdown, chunks, and metadata.
 
         For EU users, use this endpoint:
 
@@ -642,9 +643,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> ParseResponse:
         """
-        Parse a document.
+        Parse a document or spreadsheet.
 
-        This endpoint parses documents and structured Markdown, chunks, and metadata.
+        This endpoint parses documents (PDF, images) and spreadsheets (XLSX, CSV) into
+        structured Markdown, chunks, and metadata.
 
         For EU users, use this endpoint:
 
