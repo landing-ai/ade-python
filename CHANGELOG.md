@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.21.1 (2025-11-11)
+
+Full Changelog: [v0.21.0...v0.21.1](https://github.com/landing-ai/ade-python/compare/v0.21.0...v0.21.1)
+
+### Bug Fixes
+
+* compat with Python 3.14 ([9f26044](https://github.com/landing-ai/ade-python/commit/9f26044e9cef0625129b0440b85dcc281e4f5c3d))
+
+
+### Chores
+
+* **package:** drop Python 3.8 support ([5bfc187](https://github.com/landing-ai/ade-python/commit/5bfc187b8bc9ad0808dcdc7f1747b08880ec2ee8))
+
 ## 0.21.0 (2025-11-10)
 
 Full Changelog: [v0.20.3...v0.21.0](https://github.com/landing-ai/ade-python/compare/v0.20.3...v0.21.0)
