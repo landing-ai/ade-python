@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.21.2 (2025-11-12)
+
+Full Changelog: [v0.21.1...v0.21.2](https://github.com/landing-ai/ade-python/compare/v0.21.1...v0.21.2)
+
+### Bug Fixes
+
+* **compat:** update signatures of `model_dump` and `model_dump_json` for Pydantic v1 ([5387db5](https://github.com/landing-ai/ade-python/commit/5387db5fc5f93493ddb424bce3f38b64b6096605))
+
 ## 0.21.1 (2025-11-11)
 
 Full Changelog: [v0.21.0...v0.21.1](https://github.com/landing-ai/ade-python/compare/v0.21.0...v0.21.1)
