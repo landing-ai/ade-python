@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 (2025-11-22)
+
+Full Changelog: [v0.21.2...v1.0.0](https://github.com/landing-ai/ade-python/compare/v0.21.2...v1.0.0)
+
+### Chores
+
+* add Python 3.14 classifier and testing ([962ba72](https://github.com/landing-ai/ade-python/commit/962ba7216876b06b2df1b385e9330233d57e0875))
+
 ## 0.21.2 (2025-11-12)
 
 Full Changelog: [v0.21.1...v0.21.2](https://github.com/landing-ai/ade-python/compare/v0.21.1...v0.21.2)
