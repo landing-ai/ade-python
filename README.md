@@ -1,15 +1,36 @@
 <!-- @format -->
 
-# LandingAI ADE Python API library
+<!-- @format -->
 
-<!-- prettier-ignore -->
-[![PyPI version](https://img.shields.io/pypi/v/landingai-ade.svg?label=pypi%20(stable))](https://pypi.org/project/landingai-ade/)
+<div align="center">
 
-The LandingAI ADE Python library provides convenient access to the LandingAI ADE REST API from any Python 3.9+
-application. The library includes type definitions for all request params and response fields,
-and offers both synchronous and asynchronous clients powered by [httpx](https://github.com/encode/httpx).
+<img src="logo.png" alt="LandingAI" width="420" />
 
-It is generated with [Stainless](https://www.stainless.com/).
+**Agentic Document Extraction Python Library**
+
+[![PyPI version](https://img.shields.io/pypi/v/landingai-ade.svg?label=pypi%20\(stable\))](https://pypi.org/project/landingai-ade/)
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+[![License](https://img.shields.io/pypi/l/landingai-ade)](https://pypi.org/project/landingai-ade/)
+
+
+**[Playground](https://va.landing.ai) · [Discord](https://discord.com/invite/RVcW3j9RgR) · [Blog](https://landing.ai/blog) · [Docs](https://docs.landing.ai/ade/ade-overview)**
+
+</div>
+
+
+A Python library for interacting with the **LandingAI Agentic Document Extraction REST API**, designed for flexibility, reliability, clarity, and performance. Built for Python 3.9+ and generated with [Stainless](https://www.stainless.com/).
+
+
+## ✨ Features
+
+* ✅ Fully-typed SDK with Pydantic response models
+* ⚡️ Sync & Async clients
+* 📄 Large document processing via async jobs
+* 🔁 Built-in retries with exponential backoff
+* 🔐 Secure API key handling
+* 📦 Seamless file uploads
+* 🧩 Schema-based data extraction
+* 🔌 Pluggable HTTP backends (`httpx` or `aiohttp`)
 
 ## Documentation
 
@@ -107,7 +128,7 @@ client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
 response = client.extract(
     schema=schema,
     # use markdown= for local files, markdown_url= for remote URLs
-    markdown=Path('path/to/file.md')
+    markdown=Path("path/to/file.md")
 )
 ```
 
