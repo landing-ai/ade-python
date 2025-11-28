@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1 (2025-11-28)
+
+Full Changelog: [v1.0.0...v1.0.1](https://github.com/landing-ai/ade-python/compare/v1.0.0...v1.0.1)
+
+### Bug Fixes
+
+* ensure streams are always closed ([c903098](https://github.com/landing-ai/ade-python/commit/c90309862771f208c24df5bb7a570769821d1a7a))
+
+
+### Chores
+
+* **deps:** mypy 1.18.1 has a regression, pin to 1.17 ([a768a1c](https://github.com/landing-ai/ade-python/commit/a768a1c1cf8953a48c25712e293f49bee98494dc))
+
 ## 1.0.0 (2025-11-22)
 
 Full Changelog: [v0.21.2...v1.0.0](https://github.com/landing-ai/ade-python/compare/v0.21.2...v1.0.0)
