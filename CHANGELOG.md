@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1 (2025-12-02)
+
+Full Changelog: [v1.1.0...v1.1.1](https://github.com/landing-ai/ade-python/compare/v1.1.0...v1.1.1)
+
+### Bug Fixes
+
+* need enumeration for brackets. ([#58](https://github.com/landing-ai/ade-python/issues/58)) ([8fee225](https://github.com/landing-ai/ade-python/commit/8fee2254ca571908751bba0562456d7e843df606))
+
 ## 1.1.0 (2025-12-02)
 
 Full Changelog: [v1.0.0...v1.1.0](https://github.com/landing-ai/ade-python/compare/v1.0.0...v1.1.0)
