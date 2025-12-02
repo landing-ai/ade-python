@@ -104,7 +104,7 @@ class Querystring:
                 raise NotImplementedError("The array indices format is not supported yet")
             elif array_format == "brackets":
                 items = []
-                for index, item in enumerate(value): 
+                for index, item in enumerate(value):
                     items.extend(self._stringify_item(f"{key}[{index}]", item, opts))
                 return items
             else:
