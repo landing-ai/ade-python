@@ -104,8 +104,12 @@ class Querystring:
                 raise NotImplementedError("The array indices format is not supported yet")
             elif array_format == "brackets":
                 items = []
-                for index, item in enumerate(value):
-                    items.extend(self._stringify_item(f"{key}[{index}]", item, opts))
+                index = 0
+                for item in value:
+                    result = self._stringify_item(f"{key}[{index}]", item, opts)
+                    if result:  # Only increment index if item was actually serialized
+                        items.extend(result)
+                        index += 1
                 return items
             else:
                 raise NotImplementedError(
