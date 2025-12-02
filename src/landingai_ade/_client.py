@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import os
 import importlib.metadata
-from typing import Any, Dict, Mapping, Optional, cast
+from typing import Any, Dict, Mapping, Iterable, Optional, cast
 from typing_extensions import Self, Literal, override
 
 import httpx
 
 from . import _exceptions
 from ._qs import Querystring
-from .types import client_parse_params, client_extract_params
+from .types import client_parse_params, client_split_params, client_extract_params
 from ._types import (
     Body,
     Omit,
@@ -52,6 +52,7 @@ from ._base_client import (
 )
 from .lib.url_utils import convert_url_to_file_if_local
 from .types.parse_response import ParseResponse
+from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
 
 _LIB_VERSION = importlib.metadata.version("landingai-ade")
@@ -389,6 +390,71 @@ class LandingAIADE(SyncAPIClient):
                 timeout=timeout,
             ),
             cast_to=ParseResponse,
+        )
+
+    def split(
+        self,
+        *,
+        options: Iterable[client_split_params.Option],
+        markdown: Optional[FileTypes] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> SplitResponse:
+        """
+        Split classification for documents.
+
+        This endpoint classifies document sections based on markdown content and split
+        options.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/split`.
+
+        Args:
+          options: List of split classification options/configuration. Can be provided as JSON
+              string in form data.
+
+          markdown: The Markdown file or Markdown content to split.
+
+          markdown_url: The URL to the Markdown file to split.
+
+          model: Model version to use for split classification. Defaults to the latest version.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "options": options,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+                "model": model,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/split",
+            body=maybe_transform(body, client_split_params.ClientSplitParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=SplitResponse,
         )
 
     @override
@@ -742,6 +808,71 @@ class AsyncLandingAIADE(AsyncAPIClient):
             cast_to=ParseResponse,
         )
 
+    async def split(
+        self,
+        *,
+        options: Iterable[client_split_params.Option],
+        markdown: Optional[FileTypes] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> SplitResponse:
+        """
+        Split classification for documents.
+
+        This endpoint classifies document sections based on markdown content and split
+        options.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/split`.
+
+        Args:
+          options: List of split classification options/configuration. Can be provided as JSON
+              string in form data.
+
+          markdown: The Markdown file or Markdown content to split.
+
+          markdown_url: The URL to the Markdown file to split.
+
+          model: Model version to use for split classification. Defaults to the latest version.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "options": options,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+                "model": model,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/split",
+            body=await async_maybe_transform(body, client_split_params.ClientSplitParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=SplitResponse,
+        )
+
     @override
     def _make_status_error(
         self,
@@ -786,6 +917,9 @@ class LandingAIADEWithRawResponse:
         self.parse = to_raw_response_wrapper(
             client.parse,
         )
+        self.split = to_raw_response_wrapper(
+            client.split,
+        )
 
 
 class AsyncLandingAIADEWithRawResponse:
@@ -797,6 +931,9 @@ class AsyncLandingAIADEWithRawResponse:
         )
         self.parse = async_to_raw_response_wrapper(
             client.parse,
+        )
+        self.split = async_to_raw_response_wrapper(
+            client.split,
         )
 
 
@@ -810,6 +947,9 @@ class LandingAIADEWithStreamedResponse:
         self.parse = to_streamed_response_wrapper(
             client.parse,
         )
+        self.split = to_streamed_response_wrapper(
+            client.split,
+        )
 
 
 class AsyncLandingAIADEWithStreamedResponse:
@@ -821,6 +961,9 @@ class AsyncLandingAIADEWithStreamedResponse:
         )
         self.parse = async_to_streamed_response_wrapper(
             client.parse,
+        )
+        self.split = async_to_streamed_response_wrapper(
+            client.split,
         )
 
 

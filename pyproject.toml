@@ -1,6 +1,6 @@
 [project]
 name = "landingai-ade"
-version = "1.0.0"
+version = "1.1.0"
 description = "The official Python library for the landingai-ade API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -46,7 +46,7 @@ managed = true
 # version pins are in requirements-dev.lock
 dev-dependencies = [
     "pyright==1.1.399",
-    "mypy",
+    "mypy==1.17",
     "respx",
     "pytest",
     "pytest-asyncio",
