@@ -486,11 +486,11 @@ class TestLandingAiade:
 
         assert request.read().split(b"\r\n") == [
             b"--6b7ba517decee4a450543ea6ae821c82",
-            b'Content-Disposition: form-data; name="array[]"',
+            b'Content-Disposition: form-data; name="array[0]"',
             b"",
             b"foo",
             b"--6b7ba517decee4a450543ea6ae821c82",
-            b'Content-Disposition: form-data; name="array[]"',
+            b'Content-Disposition: form-data; name="array[1]"',
             b"",
             b"bar",
             b"--6b7ba517decee4a450543ea6ae821c82",
@@ -1327,11 +1327,11 @@ class TestAsyncLandingAiade:
 
         assert request.read().split(b"\r\n") == [
             b"--6b7ba517decee4a450543ea6ae821c82",
-            b'Content-Disposition: form-data; name="array[]"',
+            b'Content-Disposition: form-data; name="array[0]"',
             b"",
             b"foo",
             b"--6b7ba517decee4a450543ea6ae821c82",
-            b'Content-Disposition: form-data; name="array[]"',
+            b'Content-Disposition: form-data; name="array[1]"',
             b"",
             b"bar",
             b"--6b7ba517decee4a450543ea6ae821c82",

@@ -68,9 +68,9 @@ def test_array_brackets(method: str) -> None:
     else:
         serialise = partial(stringify, array_format="brackets")
 
-    assert unquote(serialise({"in": ["foo", "bar"]})) == "in[]=foo&in[]=bar"
-    assert unquote(serialise({"a": {"b": [True, False]}})) == "a[b][]=true&a[b][]=false"
-    assert unquote(serialise({"a": {"b": [True, False, None, True]}})) == "a[b][]=true&a[b][]=false&a[b][]=true"
+    assert unquote(serialise({"in": ["foo", "bar"]})) == "in[0]=foo&in[1]=bar"
+    assert unquote(serialise({"a": {"b": [True, False]}})) == "a[b][0]=true&a[b][1]=false"
+    assert unquote(serialise({"a": {"b": [True, False, None, True]}})) == "a[b][0]=true&a[b][1]=false&a[b][2]=true"
 
 
 def test_unknown_array_format() -> None:
