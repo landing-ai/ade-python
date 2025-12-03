@@ -89,6 +89,7 @@ pip install landingai-ade[aiohttp]
 Then you can enable it by instantiating the client with `http_client=DefaultAioHttpClient()`:
 
 ```python
+import os
 import asyncio
 from landingai_ade import DefaultAioHttpClient
 from landingai_ade import AsyncLandingAIADE
@@ -96,7 +97,7 @@ from landingai_ade import AsyncLandingAIADE
 
 async def main() -> None:
     async with AsyncLandingAIADE(
-        apikey="My Apikey",
+        apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
         http_client=DefaultAioHttpClient(),
     ) as client:
         response = await client.parse(
