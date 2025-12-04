@@ -8,11 +8,11 @@ from typing_extensions import Required, Annotated, TypedDict
 from .._types import FileTypes
 from .._utils import PropertyInfo
 
-__all__ = ["ClientSplitParams", "Option"]
+__all__ = ["ClientSplitParams", "SplitClass"]
 
 
 class ClientSplitParams(TypedDict, total=False):
-    options: Required[Iterable[Option]]
+    split_class: Required[Iterable[SplitClass]]
     """List of split classification options/configuration.
 
     Can be provided as JSON string in form data.
@@ -28,7 +28,7 @@ class ClientSplitParams(TypedDict, total=False):
     """Model version to use for split classification. Defaults to the latest version."""
 
 
-class Option(TypedDict, total=False):
+class SplitClass(TypedDict, total=False):
     name: Required[str]
     """Name of the split classification type"""
 
