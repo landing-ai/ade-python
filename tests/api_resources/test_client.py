@@ -109,7 +109,7 @@ class TestClient:
     @parametrize
     def test_method_split(self, client: LandingAIADE) -> None:
         client_ = client.split(
-            options=[{"name": "name"}],
+            split_class=[{"name": "name"}],
         )
         assert_matches_type(SplitResponse, client_, path=["response"])
 
@@ -117,7 +117,7 @@ class TestClient:
     @parametrize
     def test_method_split_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.split(
-            options=[
+            split_class=[
                 {
                     "name": "name",
                     "description": "description",
@@ -134,7 +134,7 @@ class TestClient:
     @parametrize
     def test_raw_response_split(self, client: LandingAIADE) -> None:
         response = client.with_raw_response.split(
-            options=[{"name": "name"}],
+            split_class=[{"name": "name"}],
         )
 
         assert response.is_closed is True
@@ -146,7 +146,7 @@ class TestClient:
     @parametrize
     def test_streaming_response_split(self, client: LandingAIADE) -> None:
         with client.with_streaming_response.split(
-            options=[{"name": "name"}],
+            split_class=[{"name": "name"}],
         ) as response:
             assert not response.is_closed
             assert response.http_request.headers.get("X-Stainless-Lang") == "python"
@@ -250,7 +250,7 @@ class TestAsyncClient:
     @parametrize
     async def test_method_split(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.split(
-            options=[{"name": "name"}],
+            split_class=[{"name": "name"}],
         )
         assert_matches_type(SplitResponse, client, path=["response"])
 
@@ -258,7 +258,7 @@ class TestAsyncClient:
     @parametrize
     async def test_method_split_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.split(
-            options=[
+            split_class=[
                 {
                     "name": "name",
                     "description": "description",
@@ -275,7 +275,7 @@ class TestAsyncClient:
     @parametrize
     async def test_raw_response_split(self, async_client: AsyncLandingAIADE) -> None:
         response = await async_client.with_raw_response.split(
-            options=[{"name": "name"}],
+            split_class=[{"name": "name"}],
         )
 
         assert response.is_closed is True
@@ -287,7 +287,7 @@ class TestAsyncClient:
     @parametrize
     async def test_streaming_response_split(self, async_client: AsyncLandingAIADE) -> None:
         async with async_client.with_streaming_response.split(
-            options=[{"name": "name"}],
+            split_class=[{"name": "name"}],
         ) as response:
             assert not response.is_closed
             assert response.http_request.headers.get("X-Stainless-Lang") == "python"
