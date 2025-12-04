@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 (2025-12-04)
+
+Full Changelog: [v1.1.1...v1.2.0](https://github.com/landing-ai/ade-python/compare/v1.1.1...v1.2.0)
+
+### Features
+
+* **api:** api update ([97ea48f](https://github.com/landing-ai/ade-python/commit/97ea48f456d9de814628eb8acbfa66fba843d615))
+
+
+### Chores
+
+* **docs:** use environment variables for authentication in code snippets ([d61620d](https://github.com/landing-ai/ade-python/commit/d61620daa0d544c8bfc12c9c8a663df1ed6ada42))
+* update lockfile ([cf313c5](https://github.com/landing-ai/ade-python/commit/cf313c5c54a9a87ee841552411837cff8f4f3fde))
+
 ## 1.1.1 (2025-12-02)
 
 Full Changelog: [v1.1.0...v1.1.1](https://github.com/landing-ai/ade-python/compare/v1.1.0...v1.1.1)
