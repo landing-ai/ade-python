@@ -1,20 +1,22 @@
 [project]
 name = "landingai-ade"
-version = "1.1.1"
+version = "1.2.0"
 description = "The official Python library for the landingai-ade API"
 dynamic = ["readme"]
 license = "Apache-2.0"
 authors = [
 { name = "LandingAI ADE", email = "support@landing.ai" },
 ]
+
 dependencies = [
-    "httpx>=0.23.0, <1",
-    "pydantic>=1.9.0, <3",
-    "typing-extensions>=4.10, <5",
-    "anyio>=3.5.0, <5",
-    "distro>=1.7.0, <2",
-    "sniffio",
+  "httpx>=0.23.0, <1",
+  "pydantic>=1.9.0, <3",
+  "typing-extensions>=4.10, <5",
+  "anyio>=3.5.0, <5",
+  "distro>=1.7.0, <2",
+  "sniffio",
 ]
+
 requires-python = ">= 3.9"
 classifiers = [
   "Typing :: Typed",

@@ -395,7 +395,7 @@ class LandingAIADE(SyncAPIClient):
     def split(
         self,
         *,
-        options: Iterable[client_split_params.Option],
+        split_class: Iterable[client_split_params.SplitClass],
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -417,7 +417,7 @@ class LandingAIADE(SyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/split`.
 
         Args:
-          options: List of split classification options/configuration. Can be provided as JSON
+          split_class: List of split classification options/configuration. Can be provided as JSON
               string in form data.
 
           markdown: The Markdown file or Markdown content to split.
@@ -436,7 +436,7 @@ class LandingAIADE(SyncAPIClient):
         """
         body = deepcopy_minimal(
             {
-                "options": options,
+                "split_class": split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
@@ -811,7 +811,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
     async def split(
         self,
         *,
-        options: Iterable[client_split_params.Option],
+        split_class: Iterable[client_split_params.SplitClass],
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -833,7 +833,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/split`.
 
         Args:
-          options: List of split classification options/configuration. Can be provided as JSON
+          split_class: List of split classification options/configuration. Can be provided as JSON
               string in form data.
 
           markdown: The Markdown file or Markdown content to split.
@@ -852,7 +852,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         """
         body = deepcopy_minimal(
             {
-                "options": options,
+                "split_class": split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
