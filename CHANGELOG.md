@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.1 (2025-12-09)
+
+Full Changelog: [v1.2.0...v1.2.1](https://github.com/landing-ai/ade-python/compare/v1.2.0...v1.2.1)
+
+### Bug Fixes
+
+* **types:** allow pyright to infer TypedDict types within SequenceNotStr ([1070843](https://github.com/landing-ai/ade-python/commit/1070843e5b7ed4271c963c5508c580798d89c764))
+
+
+### Chores
+
+* add missing docstrings ([2d5349b](https://github.com/landing-ai/ade-python/commit/2d5349be60c9b41c7ef18fef9a2533930918a99c))
+
 ## 1.2.0 (2025-12-04)
 
 Full Changelog: [v1.1.1...v1.2.0](https://github.com/landing-ai/ade-python/compare/v1.1.1...v1.2.0)

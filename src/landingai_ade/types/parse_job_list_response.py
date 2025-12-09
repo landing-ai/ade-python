@@ -8,6 +8,8 @@ __all__ = ["ParseJobListResponse", "Job"]
 
 
 class Job(BaseModel):
+    """Summary of a job for listing."""
+
     job_id: str
 
     progress: float
@@ -24,6 +26,8 @@ class Job(BaseModel):
 
 
 class ParseJobListResponse(BaseModel):
+    """Response for listing jobs."""
+
     jobs: List[Job]
 
     has_more: Optional[bool] = None

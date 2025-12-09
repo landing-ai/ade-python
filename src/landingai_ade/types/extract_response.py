@@ -8,6 +8,8 @@ __all__ = ["ExtractResponse", "Metadata"]
 
 
 class Metadata(BaseModel):
+    """The metadata for the extraction process."""
+
     credit_usage: float
 
     duration_ms: int
