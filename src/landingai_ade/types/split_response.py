@@ -8,6 +8,8 @@ __all__ = ["SplitResponse", "Metadata", "Split"]
 
 
 class Metadata(BaseModel):
+    """Metadata for split classification response."""
+
     credit_usage: float
 
     duration_ms: int
@@ -27,6 +29,8 @@ class Metadata(BaseModel):
 
 
 class Split(BaseModel):
+    """Split data for split classification endpoint."""
+
     classification: str
 
     identifier: Optional[str] = None
@@ -37,6 +41,8 @@ class Split(BaseModel):
 
 
 class SplitResponse(BaseModel):
+    """Response model for split classification endpoint."""
+
     metadata: Metadata
     """Metadata for split classification response."""
 
