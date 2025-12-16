@@ -22,6 +22,12 @@ class Metadata(BaseModel):
 
     version: Optional[str] = None
 
+    fallback_model_version: Optional[str] = None
+    """
+    The extract model that was actually used to extract the data when the initial
+    extraction attempt failed with the requested version.
+    """
+
     schema_violation_error: Optional[str] = None
     """
     A detailed error message shows why the extracted data does not fully conform to
