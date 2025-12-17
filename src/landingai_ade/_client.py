@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Iterable, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Union, Mapping, Iterable, Optional, cast
 from typing_extensions import Self, Literal, override
 
 import httpx
@@ -245,7 +245,7 @@ class LandingAIADE(SyncAPIClient):
         self,
         *,
         schema: str,
-        markdown: Optional[FileTypes] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -382,7 +382,7 @@ class LandingAIADE(SyncAPIClient):
         self,
         *,
         split_class: Iterable[client_split_params.SplitClass],
-        markdown: Optional[FileTypes] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -647,7 +647,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         self,
         *,
         schema: str,
-        markdown: Optional[FileTypes] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -784,7 +784,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         self,
         *,
         split_class: Iterable[client_split_params.SplitClass],
-        markdown: Optional[FileTypes] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
