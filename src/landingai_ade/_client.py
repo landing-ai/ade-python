@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import importlib.metadata
 from typing import Any, Dict, Mapping, Iterable, Optional, cast
+from pathlib import Path
 from typing_extensions import Self, Literal, override
 
 import httpx
@@ -242,6 +243,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -299,7 +301,7 @@ class LandingAIADE(SyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return self.post(
+        result = self.post(
             "/v1/ade/extract",
             body=maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
@@ -311,6 +313,9 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=ExtractResponse,
         )
+        if save_to:
+            Path(save_to).write_text(result.to_json())
+        return result
 
     def parse(
         self,
@@ -319,6 +324,7 @@ class LandingAIADE(SyncAPIClient):
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -379,7 +385,7 @@ class LandingAIADE(SyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return self.post(
+        result = self.post(
             "/v1/ade/parse",
             body=maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
@@ -391,6 +397,9 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=ParseResponse,
         )
+        if save_to:
+            Path(save_to).write_text(result.to_json())
+        return result
 
     def split(
         self,
@@ -399,6 +408,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -447,7 +457,7 @@ class LandingAIADE(SyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return self.post(
+        result = self.post(
             "/v1/ade/split",
             body=maybe_transform(body, client_split_params.ClientSplitParams),
             files=files,
@@ -456,6 +466,9 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=SplitResponse,
         )
+        if save_to:
+            Path(save_to).write_text(result.to_json())
+        return result
 
     @override
     def _make_status_error(
