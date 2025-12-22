@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import importlib.metadata
-from typing import Any, Dict, Mapping, Iterable, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Iterable, Optional, cast
 from typing_extensions import Self, Literal, override
 
 import httpx
@@ -34,6 +34,7 @@ from ._utils import (
     get_async_library,
     async_maybe_transform,
 )
+from ._compat import cached_property
 from ._version import __version__
 from ._response import (
     to_raw_response_wrapper,
@@ -41,7 +42,6 @@ from ._response import (
     async_to_raw_response_wrapper,
     async_to_streamed_response_wrapper,
 )
-from .resources import parse_jobs
 from ._streaming import Stream as Stream, AsyncStream as AsyncStream
 from ._exceptions import APIStatusError, LandingAiadeError
 from ._base_client import (
@@ -76,10 +76,6 @@ ENVIRONMENTS: Dict[str, str] = {
 
 
 class LandingAIADE(SyncAPIClient):
-    parse_jobs: parse_jobs.ParseJobsResource
-    with_raw_response: LandingAIADEWithRawResponse
-    with_streaming_response: LandingAIADEWithStreamedResponse
-
     # client options
     apikey: str
 
@@ -158,9 +154,19 @@ class LandingAIADE(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.parse_jobs = parse_jobs.ParseJobsResource(self)
-        self.with_raw_response = LandingAIADEWithRawResponse(self)
-        self.with_streaming_response = LandingAIADEWithStreamedResponse(self)
+    @cached_property
+    def parse_jobs(self) -> ParseJobsResource:
+        from .resources.parse_jobs import ParseJobsResource
+
+        return ParseJobsResource(self)
+
+    @cached_property
+    def with_raw_response(self) -> LandingAIADEWithRawResponse:
+        return LandingAIADEWithRawResponse(self)
+
+    @cached_property
+    def with_streaming_response(self) -> LandingAIADEWithStreamedResponse:
+        return LandingAIADEWithStreamedResponse(self)
 
     @property
     @override
@@ -492,10 +498,6 @@ class LandingAIADE(SyncAPIClient):
 
 
 class AsyncLandingAIADE(AsyncAPIClient):
-    parse_jobs: parse_jobs.AsyncParseJobsResource
-    with_raw_response: AsyncLandingAIADEWithRawResponse
-    with_streaming_response: AsyncLandingAIADEWithStreamedResponse
-
     # client options
     apikey: str
 
@@ -574,9 +576,19 @@ class AsyncLandingAIADE(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.parse_jobs = parse_jobs.AsyncParseJobsResource(self)
-        self.with_raw_response = AsyncLandingAIADEWithRawResponse(self)
-        self.with_streaming_response = AsyncLandingAIADEWithStreamedResponse(self)
+    @cached_property
+    def parse_jobs(self) -> AsyncParseJobsResource:
+        from .resources.parse_jobs import AsyncParseJobsResource
+
+        return AsyncParseJobsResource(self)
+
+    @cached_property
+    def with_raw_response(self) -> AsyncLandingAIADEWithRawResponse:
+        return AsyncLandingAIADEWithRawResponse(self)
+
+    @cached_property
+    def with_streaming_response(self) -> AsyncLandingAIADEWithStreamedResponse:
+        return AsyncLandingAIADEWithStreamedResponse(self)
 
     @property
     @override
@@ -908,8 +920,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
 
 class LandingAIADEWithRawResponse:
+    _client: LandingAIADE
+
     def __init__(self, client: LandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.ParseJobsResourceWithRawResponse(client.parse_jobs)
+        self._client = client
 
         self.extract = to_raw_response_wrapper(
             client.extract,
@@ -921,10 +935,18 @@ class LandingAIADEWithRawResponse:
             client.split,
         )
 
+    @cached_property
+    def parse_jobs(self) -> parse_jobs.ParseJobsResourceWithRawResponse:
+        from .resources.parse_jobs import ParseJobsResourceWithRawResponse
+
+        return ParseJobsResourceWithRawResponse(self._client.parse_jobs)
+
 
 class AsyncLandingAIADEWithRawResponse:
+    _client: AsyncLandingAIADE
+
     def __init__(self, client: AsyncLandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.AsyncParseJobsResourceWithRawResponse(client.parse_jobs)
+        self._client = client
 
         self.extract = async_to_raw_response_wrapper(
             client.extract,
@@ -936,10 +958,18 @@ class AsyncLandingAIADEWithRawResponse:
             client.split,
         )
 
+    @cached_property
+    def parse_jobs(self) -> parse_jobs.AsyncParseJobsResourceWithRawResponse:
+        from .resources.parse_jobs import AsyncParseJobsResourceWithRawResponse
+
+        return AsyncParseJobsResourceWithRawResponse(self._client.parse_jobs)
+
 
 class LandingAIADEWithStreamedResponse:
+    _client: LandingAIADE
+
     def __init__(self, client: LandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.ParseJobsResourceWithStreamingResponse(client.parse_jobs)
+        self._client = client
 
         self.extract = to_streamed_response_wrapper(
             client.extract,
@@ -951,10 +981,18 @@ class LandingAIADEWithStreamedResponse:
             client.split,
         )
 
+    @cached_property
+    def parse_jobs(self) -> parse_jobs.ParseJobsResourceWithStreamingResponse:
+        from .resources.parse_jobs import ParseJobsResourceWithStreamingResponse
+
+        return ParseJobsResourceWithStreamingResponse(self._client.parse_jobs)
+
 
 class AsyncLandingAIADEWithStreamedResponse:
+    _client: AsyncLandingAIADE
+
     def __init__(self, client: AsyncLandingAIADE) -> None:
-        self.parse_jobs = parse_jobs.AsyncParseJobsResourceWithStreamingResponse(client.parse_jobs)
+        self._client = client
 
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
@@ -965,6 +1003,12 @@ class AsyncLandingAIADEWithStreamedResponse:
         self.split = async_to_streamed_response_wrapper(
             client.split,
         )
+
+    @cached_property
+    def parse_jobs(self) -> parse_jobs.AsyncParseJobsResourceWithStreamingResponse:
+        from .resources.parse_jobs import AsyncParseJobsResourceWithStreamingResponse
+
+        return AsyncParseJobsResourceWithStreamingResponse(self._client.parse_jobs)
 
 
 Client = LandingAIADE
