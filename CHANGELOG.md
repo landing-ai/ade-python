@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 (2025-12-22)
+
+Full Changelog: [v1.3.0...v1.3.1](https://github.com/landing-ai/ade-python/compare/v1.3.0...v1.3.1)
+
+### Chores
+
+* speedup initial import ([0b024ed](https://github.com/landing-ai/ade-python/commit/0b024ed6f2ff7fd27cb08ab1e1afeee3b3f842bf))
+
 ## 1.3.0 (2025-12-16)
 
 Full Changelog: [v1.2.0...v1.3.0](https://github.com/landing-ai/ade-python/compare/v1.2.0...v1.3.0)
