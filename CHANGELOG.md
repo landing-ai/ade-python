@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.0 (2025-12-16)
+
+Full Changelog: [v1.2.0...v1.3.0](https://github.com/landing-ai/ade-python/compare/v1.2.0...v1.3.0)
+
+### Features
+
+* **api:** api update ([d6c47a8](https://github.com/landing-ai/ade-python/commit/d6c47a82dbbe6df916b9f872f99c8407b27d32cc))
+
+
+### Bug Fixes
+
+* **types:** allow pyright to infer TypedDict types within SequenceNotStr ([1070843](https://github.com/landing-ai/ade-python/commit/1070843e5b7ed4271c963c5508c580798d89c764))
+
+
+### Chores
+
+* add missing docstrings ([2d5349b](https://github.com/landing-ai/ade-python/commit/2d5349be60c9b41c7ef18fef9a2533930918a99c))
+* **internal:** add missing files argument to base client ([aa24426](https://github.com/landing-ai/ade-python/commit/aa24426584864e08eb7a8980b3ae30e3771d7976))
+
 ## 1.2.0 (2025-12-04)
 
 Full Changelog: [v1.1.1...v1.2.0](https://github.com/landing-ai/ade-python/compare/v1.1.1...v1.2.0)

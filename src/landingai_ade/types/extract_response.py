@@ -8,6 +8,8 @@ __all__ = ["ExtractResponse", "Metadata"]
 
 
 class Metadata(BaseModel):
+    """The metadata for the extraction process."""
+
     credit_usage: float
 
     duration_ms: int
@@ -19,6 +21,12 @@ class Metadata(BaseModel):
     org_id: Optional[str] = None
 
     version: Optional[str] = None
+
+    fallback_model_version: Optional[str] = None
+    """
+    The extract model that was actually used to extract the data when the initial
+    extraction attempt failed with the requested version.
+    """
 
     schema_violation_error: Optional[str] = None
     """

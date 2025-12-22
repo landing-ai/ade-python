@@ -29,6 +29,8 @@ class ClientSplitParams(TypedDict, total=False):
 
 
 class SplitClass(TypedDict, total=False):
+    """Model for split classification option."""
+
     name: Required[str]
     """Name of the split classification type"""
 

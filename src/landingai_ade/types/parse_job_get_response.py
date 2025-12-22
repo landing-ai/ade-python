@@ -91,12 +91,23 @@ class DataParseResponse(BaseModel):
 
 
 class DataSpreadsheetParseResponseChunkGrounding(BaseModel):
+    """
+    Visual grounding coordinates from /parse API (only for chunks derived from embedded images)
+    """
+
     box: ParseGroundingBox
 
     page: int
 
 
 class DataSpreadsheetParseResponseChunk(BaseModel):
+    """Chunk from spreadsheet parsing.
+
+    Can represent:
+    - Table chunks from spreadsheet cells
+    - Parsed content chunks from embedded images (text, table, figure, etc.)
+    """
+
     id: str
     """
     Chunk ID - format: '{sheet_name}-{cell_range}' for tables,
@@ -124,6 +135,8 @@ class DataSpreadsheetParseResponseChunk(BaseModel):
 
 
 class DataSpreadsheetParseResponseMetadata(BaseModel):
+    """Metadata for spreadsheet parsing result."""
+
     duration_ms: int
     """Processing duration in milliseconds"""
 
@@ -159,6 +172,12 @@ class DataSpreadsheetParseResponseMetadata(BaseModel):
 
 
 class DataSpreadsheetParseResponseSplit(BaseModel):
+    """Sheet-based split from spreadsheet parsing.
+
+    Similar to ParseSplit but grouped by sheet instead of page.
+    Supports both 'page' (per-sheet) and 'full' (all sheets) split types.
+    """
+
     chunks: List[str]
     """Chunk IDs in this split"""
 
@@ -179,6 +198,11 @@ class DataSpreadsheetParseResponseSplit(BaseModel):
 
 
 class DataSpreadsheetParseResponse(BaseModel):
+    """Response from /ade/parse-spreadsheet endpoint.
+
+    Similar structure to ParseResponse but without grounding.
+    """
+
     chunks: List[DataSpreadsheetParseResponseChunk]
     """List of table chunks (HTML)"""
 
@@ -196,6 +220,8 @@ Data: TypeAlias = Union[DataParseResponse, DataSpreadsheetParseResponse, None]
 
 
 class ParseJobGetResponse(BaseModel):
+    """Unified response for job status endpoint."""
+
     job_id: str
 
     progress: float
