@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 import importlib.metadata
-from typing import Any, Dict, Mapping, Iterable, Optional, cast
+from typing import Any, Dict, Union, Mapping, Iterable, Optional, cast
 from pathlib import Path
+from urllib.parse import urlparse
 from typing_extensions import Self, Literal, override
 
 import httpx
@@ -74,6 +75,22 @@ ENVIRONMENTS: Dict[str, str] = {
     "production": "https://api.va.landing.ai",
     "eu": "https://api.va.eu-west-1.landing.ai",
 }
+
+
+def _get_input_filename(
+    file_input: Union[FileTypes, Omit, None], url_input: Union[str, Omit, None]
+) -> str:
+    """Extract base filename (without extension) from file or URL input."""
+    if file_input is not None and not isinstance(file_input, Omit):
+        if isinstance(file_input, (Path, str)):
+            return Path(file_input).stem
+        elif isinstance(file_input, tuple) and len(file_input) > 0:
+            # Tuple format: (filename, content, mime_type)
+            return Path(str(file_input[0])).stem
+    if url_input is not None and not isinstance(url_input, Omit):
+        path = urlparse(url_input).path
+        return Path(path).stem if path else "url_input"
+    return "output"
 
 
 class LandingAIADE(SyncAPIClient):
@@ -273,6 +290,10 @@ class LandingAIADE(SyncAPIClient):
           model: The version of the model to use for extraction. Use `extract-latest` to use the
               latest version.
 
+          save_to: Optional output folder path. If provided, the response will be saved as
+              JSON to this folder with the filename format: {input_file}_extract_output.json.
+              The folder will be created if it doesn't exist.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -281,6 +302,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         # Convert local file paths to file parameters
         markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
@@ -314,7 +338,11 @@ class LandingAIADE(SyncAPIClient):
             cast_to=ExtractResponse,
         )
         if save_to:
-            Path(save_to).write_text(result.to_json())
+            folder = Path(save_to)
+            folder.mkdir(parents=True, exist_ok=True)
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            output_path = folder / f"{filename}_extract_output.json"
+            output_path.write_text(result.to_json())
         return result
 
     def parse(
@@ -357,6 +385,10 @@ class LandingAIADE(SyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
+          save_to: Optional output folder path. If provided, the response will be saved as
+              JSON to this folder with the filename format: {input_file}_parse_output.json.
+              The folder will be created if it doesn't exist.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -365,6 +397,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_document = document
+        original_document_url = document_url
         # Convert local file paths to file parameters
         document, document_url = convert_url_to_file_if_local(document, document_url)
 
@@ -398,7 +433,11 @@ class LandingAIADE(SyncAPIClient):
             cast_to=ParseResponse,
         )
         if save_to:
-            Path(save_to).write_text(result.to_json())
+            folder = Path(save_to)
+            folder.mkdir(parents=True, exist_ok=True)
+            filename = _get_input_filename(original_document, original_document_url)
+            output_path = folder / f"{filename}_parse_output.json"
+            output_path.write_text(result.to_json())
         return result
 
     def split(
@@ -436,6 +475,10 @@ class LandingAIADE(SyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
+          save_to: Optional output folder path. If provided, the response will be saved as
+              JSON to this folder with the filename format: {input_file}_split_output.json.
+              The folder will be created if it doesn't exist.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -444,6 +487,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         body = deepcopy_minimal(
             {
                 "split_class": split_class,
@@ -467,7 +513,11 @@ class LandingAIADE(SyncAPIClient):
             cast_to=SplitResponse,
         )
         if save_to:
-            Path(save_to).write_text(result.to_json())
+            folder = Path(save_to)
+            folder.mkdir(parents=True, exist_ok=True)
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            output_path = folder / f"{filename}_split_output.json"
+            output_path.write_text(result.to_json())
         return result
 
     @override
