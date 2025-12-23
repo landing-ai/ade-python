@@ -87,10 +87,35 @@ def _get_input_filename(
         elif isinstance(file_input, tuple) and len(file_input) > 0:
             # Tuple format: (filename, content, mime_type)
             return Path(str(file_input[0])).stem
+        elif isinstance(file_input, (bytes, bytearray, memoryview)):
+            # Raw bytes input does not carry a filename
+            pass
+        elif hasattr(file_input, "name"):
+            # IO objects may have a name attribute
+            name = getattr(file_input, "name", None)
+            if name and isinstance(name, str):
+                return Path(name).stem
     if url_input is not None and not isinstance(url_input, Omit):
         path = urlparse(url_input).path
-        return Path(path).stem if path else "url_input"
+        stem = Path(path).stem if path else ""
+        return stem if stem else "url_input"
     return "output"
+
+
+def _save_response(
+    save_to: Union[str, Path],
+    filename: str,
+    method_name: str,
+    result: Any,
+) -> None:
+    """Save API response to a JSON file in the specified folder."""
+    try:
+        folder = Path(save_to)
+        folder.mkdir(parents=True, exist_ok=True)
+        output_path = folder / f"{filename}_{method_name}_output.json"
+        output_path.write_text(result.to_json())
+    except OSError as exc:
+        raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
 
 
 class LandingAIADE(SyncAPIClient):
@@ -338,11 +363,8 @@ class LandingAIADE(SyncAPIClient):
             cast_to=ExtractResponse,
         )
         if save_to:
-            folder = Path(save_to)
-            folder.mkdir(parents=True, exist_ok=True)
             filename = _get_input_filename(original_markdown, original_markdown_url)
-            output_path = folder / f"{filename}_extract_output.json"
-            output_path.write_text(result.to_json())
+            _save_response(save_to, filename, "extract", result)
         return result
 
     def parse(
@@ -433,11 +455,8 @@ class LandingAIADE(SyncAPIClient):
             cast_to=ParseResponse,
         )
         if save_to:
-            folder = Path(save_to)
-            folder.mkdir(parents=True, exist_ok=True)
             filename = _get_input_filename(original_document, original_document_url)
-            output_path = folder / f"{filename}_parse_output.json"
-            output_path.write_text(result.to_json())
+            _save_response(save_to, filename, "parse", result)
         return result
 
     def split(
@@ -513,11 +532,8 @@ class LandingAIADE(SyncAPIClient):
             cast_to=SplitResponse,
         )
         if save_to:
-            folder = Path(save_to)
-            folder.mkdir(parents=True, exist_ok=True)
             filename = _get_input_filename(original_markdown, original_markdown_url)
-            output_path = folder / f"{filename}_split_output.json"
-            output_path.write_text(result.to_json())
+            _save_response(save_to, filename, "split", result)
         return result
 
     @override
