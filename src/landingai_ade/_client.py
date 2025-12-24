@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import importlib.metadata
-from typing import Any, Dict, Mapping, Iterable, Optional, cast
+from typing import Any, Dict, Union, Mapping, Iterable, Optional, cast
+from pathlib import Path
+from urllib.parse import urlparse
 from typing_extensions import Self, Literal, override
 
 import httpx
@@ -73,6 +75,47 @@ ENVIRONMENTS: Dict[str, str] = {
     "production": "https://api.va.landing.ai",
     "eu": "https://api.va.eu-west-1.landing.ai",
 }
+
+
+def _get_input_filename(
+    file_input: Union[FileTypes, Omit, None], url_input: Union[str, Omit, None]
+) -> str:
+    """Extract base filename (without extension) from file or URL input."""
+    if file_input is not None and not isinstance(file_input, Omit):
+        if isinstance(file_input, (Path, str)):
+            return Path(file_input).stem
+        elif isinstance(file_input, tuple) and len(file_input) > 0:
+            # Tuple format: (filename, content, mime_type)
+            return Path(str(file_input[0])).stem
+        elif isinstance(file_input, (bytes, bytearray, memoryview)):
+            # Raw bytes input does not carry a filename
+            pass
+        elif hasattr(file_input, "name"):
+            # IO objects may have a name attribute
+            name = getattr(file_input, "name", None)
+            if name and isinstance(name, str):
+                return Path(name).stem
+    if url_input is not None and not isinstance(url_input, Omit):
+        path = urlparse(url_input).path
+        stem = Path(path).stem if path else ""
+        return stem if stem else "url_input"
+    return "output"
+
+
+def _save_response(
+    save_to: Union[str, Path],
+    filename: str,
+    method_name: str,
+    result: Any,
+) -> None:
+    """Save API response to a JSON file in the specified folder."""
+    try:
+        folder = Path(save_to)
+        folder.mkdir(parents=True, exist_ok=True)
+        output_path = folder / f"{filename}_{method_name}_output.json"
+        output_path.write_text(result.to_json())
+    except OSError as exc:
+        raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
 
 
 class LandingAIADE(SyncAPIClient):
@@ -242,6 +285,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -271,6 +315,10 @@ class LandingAIADE(SyncAPIClient):
           model: The version of the model to use for extraction. Use `extract-latest` to use the
               latest version.
 
+          save_to: Optional output folder path. If provided, the response will be saved as
+              JSON to this folder with the filename format: {input_file}_extract_output.json.
+              The folder will be created if it doesn't exist.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -279,6 +327,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         # Convert local file paths to file parameters
         markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
@@ -299,7 +350,7 @@ class LandingAIADE(SyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return self.post(
+        result = self.post(
             "/v1/ade/extract",
             body=maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
@@ -311,6 +362,10 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=ExtractResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "extract", result)
+        return result
 
     def parse(
         self,
@@ -319,6 +374,7 @@ class LandingAIADE(SyncAPIClient):
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -351,6 +407,10 @@ class LandingAIADE(SyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
+          save_to: Optional output folder path. If provided, the response will be saved as
+              JSON to this folder with the filename format: {input_file}_parse_output.json.
+              The folder will be created if it doesn't exist.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -359,6 +419,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_document = document
+        original_document_url = document_url
         # Convert local file paths to file parameters
         document, document_url = convert_url_to_file_if_local(document, document_url)
 
@@ -379,7 +442,7 @@ class LandingAIADE(SyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return self.post(
+        result = self.post(
             "/v1/ade/parse",
             body=maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
@@ -391,6 +454,10 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=ParseResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_document, original_document_url)
+            _save_response(save_to, filename, "parse", result)
+        return result
 
     def split(
         self,
@@ -399,6 +466,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Optional[FileTypes] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -426,6 +494,10 @@ class LandingAIADE(SyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
+          save_to: Optional output folder path. If provided, the response will be saved as
+              JSON to this folder with the filename format: {input_file}_split_output.json.
+              The folder will be created if it doesn't exist.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -434,6 +506,9 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         body = deepcopy_minimal(
             {
                 "split_class": split_class,
@@ -447,7 +522,7 @@ class LandingAIADE(SyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return self.post(
+        result = self.post(
             "/v1/ade/split",
             body=maybe_transform(body, client_split_params.ClientSplitParams),
             files=files,
@@ -456,6 +531,10 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=SplitResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "split", result)
+        return result
 
     @override
     def _make_status_error(
