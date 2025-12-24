@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.4.0 (2025-12-24)
+
+Full Changelog: [v1.3.0...v1.4.0](https://github.com/landing-ai/ade-python/compare/v1.3.0...v1.4.0)
+
+### Features
+
+* **files:** add support for string alternative to file upload type ([57ae8fb](https://github.com/landing-ai/ade-python/commit/57ae8fb081febb893ee7801836ccd3a725185559))
+
+
+### Bug Fixes
+
+* use async_to_httpx_files in patch method ([977143a](https://github.com/landing-ai/ade-python/commit/977143a0435f66a04314b92eab54a2145f1776ad))
+
+
+### Chores
+
+* **internal:** add `--fix` argument to lint script ([caa1bc4](https://github.com/landing-ai/ade-python/commit/caa1bc4030bc88621f898815f3c24060bbc32bf2))
+* speedup initial import ([8e2a9f1](https://github.com/landing-ai/ade-python/commit/8e2a9f1b75dc7fca85fab1fb4968ccdd4da204ac))
+* speedup initial import ([0b024ed](https://github.com/landing-ai/ade-python/commit/0b024ed6f2ff7fd27cb08ab1e1afeee3b3f842bf))
+
 ## 1.3.0 (2025-12-16)
 
 Full Changelog: [v1.2.0...v1.3.0](https://github.com/landing-ai/ade-python/compare/v1.2.0...v1.3.0)
