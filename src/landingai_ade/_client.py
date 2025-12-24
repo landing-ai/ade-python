@@ -55,6 +55,9 @@ from .types.parse_response import ParseResponse
 from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
 
+if TYPE_CHECKING:
+    from .resources import parse_jobs
+    from .resources.parse_jobs import ParseJobsResource, AsyncParseJobsResource
 _LIB_VERSION = importlib.metadata.version("landingai-ade")
 
 __all__ = [
