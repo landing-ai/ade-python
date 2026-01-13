@@ -1,7 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Dict, List, Optional
-from typing_extensions import Literal
+from typing import Dict, List, Union, Optional
+from typing_extensions import Literal, TypeAlias
 
 from pydantic import Field as FieldInfo
 
@@ -9,7 +9,16 @@ from .._models import BaseModel
 from .shared.parse_metadata import ParseMetadata
 from .shared.parse_grounding_box import ParseGroundingBox
 
-__all__ = ["ParseResponse", "Chunk", "ChunkGrounding", "Split", "Grounding"]
+__all__ = [
+    "ParseResponse",
+    "Chunk",
+    "ChunkGrounding",
+    "Split",
+    "Grounding",
+    "GroundingParseResponseGrounding",
+    "GroundingParseResponseTableCellGrounding",
+    "GroundingParseResponseTableCellGroundingPosition",
+]
 
 
 class ChunkGrounding(BaseModel):
@@ -40,7 +49,7 @@ class Split(BaseModel):
     pages: List[int]
 
 
-class Grounding(BaseModel):
+class GroundingParseResponseGrounding(BaseModel):
     box: ParseGroundingBox
 
     page: int
@@ -63,6 +72,48 @@ class Grounding(BaseModel):
         "table",
         "tableCell",
     ]
+
+
+class GroundingParseResponseTableCellGroundingPosition(BaseModel):
+    chunk_id: str
+
+    col: int
+
+    colspan: int
+
+    row: int
+
+    rowspan: int
+
+
+class GroundingParseResponseTableCellGrounding(BaseModel):
+    box: ParseGroundingBox
+
+    page: int
+
+    type: Literal[
+        "chunkLogo",
+        "chunkCard",
+        "chunkAttestation",
+        "chunkScanCode",
+        "chunkForm",
+        "chunkTable",
+        "chunkFigure",
+        "chunkText",
+        "chunkMarginalia",
+        "chunkTitle",
+        "chunkPageHeader",
+        "chunkPageFooter",
+        "chunkPageNumber",
+        "chunkKeyValue",
+        "table",
+        "tableCell",
+    ]
+
+    position: Optional[GroundingParseResponseTableCellGroundingPosition] = None
+
+
+Grounding: TypeAlias = Union[GroundingParseResponseGrounding, GroundingParseResponseTableCellGrounding]
 
 
 class ParseResponse(BaseModel):

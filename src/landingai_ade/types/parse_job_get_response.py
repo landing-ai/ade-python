@@ -17,6 +17,9 @@ __all__ = [
     "DataParseResponseChunkGrounding",
     "DataParseResponseSplit",
     "DataParseResponseGrounding",
+    "DataParseResponseGroundingParseResponseGrounding",
+    "DataParseResponseGroundingParseResponseTableCellGrounding",
+    "DataParseResponseGroundingParseResponseTableCellGroundingPosition",
     "DataSpreadsheetParseResponse",
     "DataSpreadsheetParseResponseChunk",
     "DataSpreadsheetParseResponseChunkGrounding",
@@ -53,7 +56,7 @@ class DataParseResponseSplit(BaseModel):
     pages: List[int]
 
 
-class DataParseResponseGrounding(BaseModel):
+class DataParseResponseGroundingParseResponseGrounding(BaseModel):
     box: ParseGroundingBox
 
     page: int
@@ -76,6 +79,50 @@ class DataParseResponseGrounding(BaseModel):
         "table",
         "tableCell",
     ]
+
+
+class DataParseResponseGroundingParseResponseTableCellGroundingPosition(BaseModel):
+    chunk_id: str
+
+    col: int
+
+    colspan: int
+
+    row: int
+
+    rowspan: int
+
+
+class DataParseResponseGroundingParseResponseTableCellGrounding(BaseModel):
+    box: ParseGroundingBox
+
+    page: int
+
+    type: Literal[
+        "chunkLogo",
+        "chunkCard",
+        "chunkAttestation",
+        "chunkScanCode",
+        "chunkForm",
+        "chunkTable",
+        "chunkFigure",
+        "chunkText",
+        "chunkMarginalia",
+        "chunkTitle",
+        "chunkPageHeader",
+        "chunkPageFooter",
+        "chunkPageNumber",
+        "chunkKeyValue",
+        "table",
+        "tableCell",
+    ]
+
+    position: Optional[DataParseResponseGroundingParseResponseTableCellGroundingPosition] = None
+
+
+DataParseResponseGrounding: TypeAlias = Union[
+    DataParseResponseGroundingParseResponseGrounding, DataParseResponseGroundingParseResponseTableCellGrounding
+]
 
 
 class DataParseResponse(BaseModel):
