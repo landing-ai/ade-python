@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import importlib.metadata
-from typing import Any, Dict, Union, Mapping, Iterable, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Union, Mapping, Iterable, Optional, cast
 from pathlib import Path
 from urllib.parse import urlparse
 from typing_extensions import Self, Literal, override
