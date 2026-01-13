@@ -31,6 +31,7 @@ A Python library for interacting with the **LandingAI Agentic Document Extractio
 * 📦 Seamless file uploads
 * 🧩 Schema-based data extraction
 * 🔌 Pluggable HTTP backends (`httpx` or `aiohttp`)
+* 💾 Optional `save_to` parameter to save responses to a folder with auto-generated filenames
 
 ## MCP Server
 
@@ -73,6 +74,7 @@ response = client.parse(
     # use document= for local files, document_url= for remote URLs
     document=Path("path/to/file"),
     model="dpt-2-latest",
+    save_to="./output_folder",  # optional: saves as {input_file}_parse_output.json
 )
 print(response.chunks)
 ```
@@ -137,7 +139,8 @@ client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
 response = client.extract(
     schema=schema,
     # use markdown= for local files, markdown_url= for remote URLs
-    markdown=Path("path/to/file.md")
+    markdown=Path("path/to/file.md"),
+    save_to="./output_folder",  # optional: saves as {input_file}_extract_output.json
 )
 ```
 
