@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0 (2026-01-17)
+
+Full Changelog: [v1.4.0...v1.5.0](https://github.com/landing-ai/ade-python/compare/v1.4.0...v1.5.0)
+
+### Features
+
+* **client:** add support for binary request streaming ([7bd4605](https://github.com/landing-ai/ade-python/commit/7bd4605340eddaac7807c536b95af4ddf6333db5))
+
+
+### Chores
+
+* **internal:** update `actions/checkout` version ([bac75cd](https://github.com/landing-ai/ade-python/commit/bac75cdf14f7c1021d0a02e8af0325d855ceb60b))
+
 ## 1.4.0 (2026-01-06)
 
 Full Changelog: [v1.3.0...v1.4.0](https://github.com/landing-ai/ade-python/compare/v1.3.0...v1.4.0)
