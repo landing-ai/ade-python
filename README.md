@@ -86,7 +86,7 @@ so that your Apikey is not stored in source control.
 
 ### Split
 
-For utilizing the split functionality.
+Split parsed documents into separate sections based on classification rules and identifiers.
 
 ```
 import json
