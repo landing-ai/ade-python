@@ -86,7 +86,7 @@ so that your Apikey is not stored in source control.
 
 ### Split
 
-For utilzing the split functionality.
+For utilizing the split functionality.
 
 ```
 import json
