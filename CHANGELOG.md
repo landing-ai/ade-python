@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.0 (2026-01-30)
+
+Full Changelog: [v1.4.0...v1.5.0](https://github.com/landing-ai/ade-python/compare/v1.4.0...v1.5.0)
+
+### Features
+
+* **client:** add custom JSON encoder for extended type support ([9c0fab4](https://github.com/landing-ai/ade-python/commit/9c0fab444b99992ac2b1da8f9af79466dd826f86))
+* **client:** add support for binary request streaming ([79d0b6e](https://github.com/landing-ai/ade-python/commit/79d0b6e3756d98b0c42ec80e7582f13665b29a1a))
+
+
+### Bug Fixes
+
+* **docs:** fix mcp installation instructions for remote servers ([c164f34](https://github.com/landing-ai/ade-python/commit/c164f34af715d20af369ffcca298af055bdbf3c1))
+
+
+### Chores
+
+* **ci:** upgrade `actions/github-script` ([e6bf3e3](https://github.com/landing-ai/ade-python/commit/e6bf3e39fe120ae0e139990c5fc54dc2c1733d22))
+* **internal:** update `actions/checkout` version ([b0cd317](https://github.com/landing-ai/ade-python/commit/b0cd317d0be1a2048d5dcb9586f771e4c7f026c9))
+
 ## 1.4.0 (2026-01-06)
 
 Full Changelog: [v1.3.0...v1.4.0](https://github.com/landing-ai/ade-python/compare/v1.3.0...v1.4.0)
