@@ -30,7 +30,7 @@ class ClientParseParams(TypedDict, total=False):
     model: Optional[str]
     """The version of the model to use for parsing."""
 
-    split: Optional[Literal["page"]]
+    split: Optional[Literal["page", "section"]]
     """
     If you want to split documents into smaller sections, include the split
     parameter. Set the parameter to page to split documents at the page level. The

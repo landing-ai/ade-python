@@ -382,7 +382,7 @@ class LandingAIADE(SyncAPIClient):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        split: Optional[Literal["page"]] | Omit = omit,
+        split: Optional[Literal["page", "section"]] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -828,7 +828,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        split: Optional[Literal["page"]] | Omit = omit,
+        split: Optional[Literal["page", "section"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
