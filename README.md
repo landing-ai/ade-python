@@ -86,47 +86,42 @@ so that your Apikey is not stored in source control.
 
 ### Split
 
-Split parsed documents into separate sections based on classification rules and identifiers.
+from pathlib import Path
+from landingai_ade import LandingAIADE
 
-```
-import json
-import requests
-from io import BytesIO
+client = LandingAIADE()
 
-VA_API_KEY = 'YOUR_VA_API_KEY' # Replace with your API key
-headers = {"Authorization": f"Basic {VA_API_KEY}"}
-
-pdf_path = f'YOUR_PATH/TO/YOUR_PDF.pdf'
-
-# Parse the document first
-with open(pdf_path, "rb") as f:
-    parse_response = requests.post(
-        url="https://api.va.landing.ai/v1/ade/parse",
-        headers=headers,
-        files=[("document", f)],
-        # The selected model defaults to its latest available version.
-        # To specify an older version (e.g., 'model-name-date'), modify the model string.
-        # Details on all supported model versions: [https://docs.landing.ai/ade/ade-parse-models#model-versions-and-snapshots]
-        data={"model": "dpt-2"}
-    )
-
-# Split the document using the split rules
-split_class = [
-  {
-    "name": "Explanation of Benefits (EOB)",
-    "description": "A statement from a health insurance company detailing medical services received, amounts billed, and payments made.",
-    "identifier": "Claim #"
-  }
-]
-markdown_content = parse_response.json()["markdown"]
-split_response = requests.post(
-    url="https://api.va.landing.ai/v1/ade/split",
-    headers=headers,
-    files=[("markdown", BytesIO(markdown_content.encode('utf-8')))],
-    data={"split_class": json.dumps(split_class)},
+# Parse the document
+parse_response = client.parse(
+    document=Path("/path/to/document.pdf"),
+    model="dpt-2-latest"
 )
 
-print(split_response.json())
+# Define Split Rules
+split_class = [
+    {
+        "name": "Bank Statement",
+        "description": "Document from a bank that summarizes all account activity over a period of time."
+    },
+    {
+        "name": "Pay Stub",
+        "description": "Document that details an employee's earnings, deductions, and net pay for a specific pay period.",
+        "identifier": "Pay Stub Date"
+    }
+]
+
+# Split using the Markdown string from parse response
+split_response = client.split(
+    split_class=split_class,
+    markdown=parse_response.markdown,  # Pass Markdown string directly
+    model="split-latest"
+)
+
+# Access the splits
+for split in split_response.splits:
+    print(f"Classification: {split.classification}")
+    print(f"Identifier: {split.identifier}")
+    print(f"Pages: {split.pages}")
 ```
 
 ### Parse Jobs
