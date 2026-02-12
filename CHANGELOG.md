@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0 (2026-02-12)
+
+Full Changelog: [v1.5.0...v1.6.0](https://github.com/landing-ai/ade-python/compare/v1.5.0...v1.6.0)
+
+### Features
+
+* **api:** api update ([e685bd4](https://github.com/landing-ai/ade-python/commit/e685bd45ad5ac5b3fdda654b28223318b499787b))
+
+
+### Chores
+
+* **internal:** bump dependencies ([348b891](https://github.com/landing-ai/ade-python/commit/348b891a5bdde5f519827c6bd51c3446e7cde1ba))
+* **internal:** fix lint error on Python 3.14 ([5db50d5](https://github.com/landing-ai/ade-python/commit/5db50d5d680bad8e916172cb4103bb971f7e8c07))
+
 ## 1.5.0 (2026-01-30)
 
 Full Changelog: [v1.4.0...v1.5.0](https://github.com/landing-ai/ade-python/compare/v1.4.0...v1.5.0)
