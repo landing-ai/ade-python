@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Dict, Union, Mapping, Iterable, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Mapping, Iterable, Optional, cast
 from typing_extensions import Self, Literal, override
 
 import httpx
@@ -245,7 +245,7 @@ class LandingAIADE(SyncAPIClient):
         self,
         *,
         schema: str,
-        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -270,7 +270,7 @@ class LandingAIADE(SyncAPIClient):
               are extracted from the Markdown. The schema must be a valid JSON object and will
               be validated before processing the document.
 
-          markdown: The Markdown file or Markdown content to extract data from.
+          markdown: Markdown content to extract data from.
 
           markdown_url: The URL to the Markdown file to extract data from.
 
@@ -294,10 +294,11 @@ class LandingAIADE(SyncAPIClient):
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
-        # It should be noted that the actual Content-Type header that will be
-        # sent to the server will contain a `boundary` parameter, e.g.
-        # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        if files:
+            # It should be noted that the actual Content-Type header that will be
+            # sent to the server will contain a `boundary` parameter, e.g.
+            # multipart/form-data; boundary=---abc--
+            extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return self.post(
             "/v1/ade/extract",
             body=maybe_transform(body, client_extract_params.ClientExtractParams),
@@ -382,7 +383,7 @@ class LandingAIADE(SyncAPIClient):
         self,
         *,
         split_class: Iterable[client_split_params.SplitClass],
-        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -406,7 +407,7 @@ class LandingAIADE(SyncAPIClient):
           split_class: List of split classification options/configuration. Can be provided as JSON
               string in form data.
 
-          markdown: The Markdown file or Markdown content to split.
+          markdown: Markdown content to split.
 
           markdown_url: The URL to the Markdown file to split.
 
@@ -429,10 +430,11 @@ class LandingAIADE(SyncAPIClient):
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
-        # It should be noted that the actual Content-Type header that will be
-        # sent to the server will contain a `boundary` parameter, e.g.
-        # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        if files:
+            # It should be noted that the actual Content-Type header that will be
+            # sent to the server will contain a `boundary` parameter, e.g.
+            # multipart/form-data; boundary=---abc--
+            extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return self.post(
             "/v1/ade/split",
             body=maybe_transform(body, client_split_params.ClientSplitParams),
@@ -647,7 +649,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         self,
         *,
         schema: str,
-        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -672,7 +674,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
               are extracted from the Markdown. The schema must be a valid JSON object and will
               be validated before processing the document.
 
-          markdown: The Markdown file or Markdown content to extract data from.
+          markdown: Markdown content to extract data from.
 
           markdown_url: The URL to the Markdown file to extract data from.
 
@@ -696,10 +698,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
-        # It should be noted that the actual Content-Type header that will be
-        # sent to the server will contain a `boundary` parameter, e.g.
-        # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        if files:
+            # It should be noted that the actual Content-Type header that will be
+            # sent to the server will contain a `boundary` parameter, e.g.
+            # multipart/form-data; boundary=---abc--
+            extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/extract",
             body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
@@ -784,7 +787,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         self,
         *,
         split_class: Iterable[client_split_params.SplitClass],
-        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -808,7 +811,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
           split_class: List of split classification options/configuration. Can be provided as JSON
               string in form data.
 
-          markdown: The Markdown file or Markdown content to split.
+          markdown: Markdown content to split.
 
           markdown_url: The URL to the Markdown file to split.
 
@@ -831,10 +834,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
-        # It should be noted that the actual Content-Type header that will be
-        # sent to the server will contain a `boundary` parameter, e.g.
-        # multipart/form-data; boundary=---abc--
-        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        if files:
+            # It should be noted that the actual Content-Type header that will be
+            # sent to the server will contain a `boundary` parameter, e.g.
+            # multipart/form-data; boundary=---abc--
+            extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/split",
             body=await async_maybe_transform(body, client_split_params.ClientSplitParams),

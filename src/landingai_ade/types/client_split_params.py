@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Union, Iterable, Optional
+from typing import Iterable, Optional
 from typing_extensions import Required, Annotated, TypedDict
 
-from .._types import FileTypes
 from .._utils import PropertyInfo
 
 __all__ = ["ClientSplitParams", "SplitClass"]
@@ -18,8 +17,8 @@ class ClientSplitParams(TypedDict, total=False):
     Can be provided as JSON string in form data.
     """
 
-    markdown: Union[FileTypes, str, None]
-    """The Markdown file or Markdown content to split."""
+    markdown: Optional[str]
+    """Markdown content to split."""
 
     markdown_url: Annotated[Optional[str], PropertyInfo(alias="markdownUrl")]
     """The URL to the Markdown file to split."""
