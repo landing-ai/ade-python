@@ -16,6 +16,7 @@ __all__ = [
     "Split",
     "Grounding",
     "GroundingParseResponseGrounding",
+    "GroundingParseResponseGroundingLowConfidenceSpan",
     "GroundingParseResponseTableCellGrounding",
     "GroundingParseResponseTableCellGroundingPosition",
 ]
@@ -49,6 +50,14 @@ class Split(BaseModel):
     pages: List[int]
 
 
+class GroundingParseResponseGroundingLowConfidenceSpan(BaseModel):
+    confidence: float
+
+    span: List[object]
+
+    text: str
+
+
 class GroundingParseResponseGrounding(BaseModel):
     box: ParseGroundingBox
 
@@ -72,6 +81,10 @@ class GroundingParseResponseGrounding(BaseModel):
         "table",
         "tableCell",
     ]
+
+    confidence: Optional[float] = None
+
+    low_confidence_spans: Optional[List[GroundingParseResponseGroundingLowConfidenceSpan]] = None
 
 
 class GroundingParseResponseTableCellGroundingPosition(BaseModel):
@@ -109,6 +122,8 @@ class GroundingParseResponseTableCellGrounding(BaseModel):
         "table",
         "tableCell",
     ]
+
+    confidence: Optional[float] = None
 
     position: Optional[GroundingParseResponseTableCellGroundingPosition] = None
 

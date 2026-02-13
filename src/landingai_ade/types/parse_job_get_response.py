@@ -18,6 +18,7 @@ __all__ = [
     "DataParseResponseSplit",
     "DataParseResponseGrounding",
     "DataParseResponseGroundingParseResponseGrounding",
+    "DataParseResponseGroundingParseResponseGroundingLowConfidenceSpan",
     "DataParseResponseGroundingParseResponseTableCellGrounding",
     "DataParseResponseGroundingParseResponseTableCellGroundingPosition",
     "DataSpreadsheetParseResponse",
@@ -56,6 +57,14 @@ class DataParseResponseSplit(BaseModel):
     pages: List[int]
 
 
+class DataParseResponseGroundingParseResponseGroundingLowConfidenceSpan(BaseModel):
+    confidence: float
+
+    span: List[object]
+
+    text: str
+
+
 class DataParseResponseGroundingParseResponseGrounding(BaseModel):
     box: ParseGroundingBox
 
@@ -79,6 +88,10 @@ class DataParseResponseGroundingParseResponseGrounding(BaseModel):
         "table",
         "tableCell",
     ]
+
+    confidence: Optional[float] = None
+
+    low_confidence_spans: Optional[List[DataParseResponseGroundingParseResponseGroundingLowConfidenceSpan]] = None
 
 
 class DataParseResponseGroundingParseResponseTableCellGroundingPosition(BaseModel):
@@ -116,6 +129,8 @@ class DataParseResponseGroundingParseResponseTableCellGrounding(BaseModel):
         "table",
         "tableCell",
     ]
+
+    confidence: Optional[float] = None
 
     position: Optional[DataParseResponseGroundingParseResponseTableCellGroundingPosition] = None
 
@@ -182,7 +197,7 @@ class DataSpreadsheetParseResponseChunk(BaseModel):
 
 
 class DataSpreadsheetParseResponseMetadata(BaseModel):
-    """Metadata for spreadsheet parsing result."""
+    """Parsing metadata"""
 
     duration_ms: int
     """Processing duration in milliseconds"""
@@ -257,7 +272,7 @@ class DataSpreadsheetParseResponse(BaseModel):
     """Full document as HTML with anchor tags and tables"""
 
     metadata: DataSpreadsheetParseResponseMetadata
-    """Metadata for spreadsheet parsing result."""
+    """Parsing metadata"""
 
     splits: List[DataSpreadsheetParseResponseSplit]
     """Sheet-based splits"""

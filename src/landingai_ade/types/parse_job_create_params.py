@@ -37,7 +37,7 @@ class ParseJobCreateParams(TypedDict, total=False):
     the API response.
     """
 
-    split: Optional[Literal["page", "section"]]
+    split: Optional[Literal["page"]]
     """
     If you want to split documents into smaller sections, include the split
     parameter. Set the parameter to page to split documents at the page level. The
