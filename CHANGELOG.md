@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.7.0 (2026-02-13)
+
+Full Changelog: [v1.6.0...v1.7.0](https://github.com/landing-ai/ade-python/compare/v1.6.0...v1.7.0)
+
+### Features
+
+* **api:** improve multipart openapispec ([2c7cadf](https://github.com/landing-ai/ade-python/commit/2c7cadfa52019266d1ebf4569bc0efc3f8a0c93c))
+* **api:** manual updates ([7d3f8a3](https://github.com/landing-ai/ade-python/commit/7d3f8a3bbc4e9cf84d3e30559652d5cdf5004c4f))
+
+
+### Chores
+
+* format all `api.md` files ([bb7dcc2](https://github.com/landing-ai/ade-python/commit/bb7dcc2b53dc8e3a1cbb22fb0f93a4a08811700d))
+
 ## 1.6.0 (2026-02-13)
 
 Full Changelog: [v1.5.0...v1.6.0](https://github.com/landing-ai/ade-python/compare/v1.5.0...v1.6.0)
