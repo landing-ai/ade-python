@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.1 (2026-02-13)
+
+Full Changelog: [v1.6.0...v1.6.1](https://github.com/landing-ai/ade-python/compare/v1.6.0...v1.6.1)
+
+### Chores
+
+* format all `api.md` files ([bb7dcc2](https://github.com/landing-ai/ade-python/commit/bb7dcc2b53dc8e3a1cbb22fb0f93a4a08811700d))
+
 ## 1.6.0 (2026-02-13)
 
 Full Changelog: [v1.5.0...v1.6.0](https://github.com/landing-ai/ade-python/compare/v1.5.0...v1.6.0)
