@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Union, Optional
 from typing_extensions import Required, TypedDict
+
+from .._types import FileTypes
 
 __all__ = ["ClientExtractParams"]
 
@@ -17,8 +19,8 @@ class ClientExtractParams(TypedDict, total=False):
     the document.
     """
 
-    markdown: Optional[str]
-    """Markdown content to extract data from."""
+    markdown: Union[FileTypes, str, None]
+    """The Markdown file or Markdown content to extract data from."""
 
     markdown_url: Optional[str]
     """The URL to the Markdown file to extract data from."""

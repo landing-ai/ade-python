@@ -34,7 +34,7 @@ class TestClient:
     def test_method_extract_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.extract(
             schema="schema",
-            markdown="markdown",
+            markdown=b"raw file contents",
             markdown_url="markdown_url",
             model="model",
         )
@@ -124,7 +124,7 @@ class TestClient:
                     "identifier": "identifier",
                 }
             ],
-            markdown="markdown",
+            markdown=b"raw file contents",
             markdown_url="markdownUrl",
             model="model",
         )
@@ -175,7 +175,7 @@ class TestAsyncClient:
     async def test_method_extract_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.extract(
             schema="schema",
-            markdown="markdown",
+            markdown=b"raw file contents",
             markdown_url="markdown_url",
             model="model",
         )
@@ -265,7 +265,7 @@ class TestAsyncClient:
                     "identifier": "identifier",
                 }
             ],
-            markdown="markdown",
+            markdown=b"raw file contents",
             markdown_url="markdownUrl",
             model="model",
         )
