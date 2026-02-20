@@ -21,7 +21,7 @@ base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 class TestClient:
     parametrize = pytest.mark.parametrize("client", [False, True], indirect=True, ids=["loose", "strict"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_method_extract(self, client: LandingAIADE) -> None:
         client_ = client.extract(
@@ -29,7 +29,7 @@ class TestClient:
         )
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_method_extract_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.extract(
@@ -40,7 +40,7 @@ class TestClient:
         )
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_raw_response_extract(self, client: LandingAIADE) -> None:
         response = client.with_raw_response.extract(
@@ -52,7 +52,7 @@ class TestClient:
         client_ = response.parse()
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_streaming_response_extract(self, client: LandingAIADE) -> None:
         with client.with_streaming_response.extract(
@@ -66,13 +66,13 @@ class TestClient:
 
         assert cast(Any, response.is_closed) is True
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_method_parse(self, client: LandingAIADE) -> None:
         client_ = client.parse()
         assert_matches_type(ParseResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_method_parse_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.parse(
@@ -83,7 +83,7 @@ class TestClient:
         )
         assert_matches_type(ParseResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_raw_response_parse(self, client: LandingAIADE) -> None:
         response = client.with_raw_response.parse()
@@ -93,7 +93,7 @@ class TestClient:
         client_ = response.parse()
         assert_matches_type(ParseResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_streaming_response_parse(self, client: LandingAIADE) -> None:
         with client.with_streaming_response.parse() as response:
@@ -105,7 +105,7 @@ class TestClient:
 
         assert cast(Any, response.is_closed) is True
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_method_split(self, client: LandingAIADE) -> None:
         client_ = client.split(
@@ -113,7 +113,7 @@ class TestClient:
         )
         assert_matches_type(SplitResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_method_split_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.split(
@@ -130,7 +130,7 @@ class TestClient:
         )
         assert_matches_type(SplitResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_raw_response_split(self, client: LandingAIADE) -> None:
         response = client.with_raw_response.split(
@@ -142,7 +142,7 @@ class TestClient:
         client_ = response.parse()
         assert_matches_type(SplitResponse, client_, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     def test_streaming_response_split(self, client: LandingAIADE) -> None:
         with client.with_streaming_response.split(
@@ -162,7 +162,7 @@ class TestAsyncClient:
         "async_client", [False, True, {"http_client": "aiohttp"}], indirect=True, ids=["loose", "strict", "aiohttp"]
     )
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_method_extract(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.extract(
@@ -170,7 +170,7 @@ class TestAsyncClient:
         )
         assert_matches_type(ExtractResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_method_extract_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.extract(
@@ -181,7 +181,7 @@ class TestAsyncClient:
         )
         assert_matches_type(ExtractResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_raw_response_extract(self, async_client: AsyncLandingAIADE) -> None:
         response = await async_client.with_raw_response.extract(
@@ -193,7 +193,7 @@ class TestAsyncClient:
         client = await response.parse()
         assert_matches_type(ExtractResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_streaming_response_extract(self, async_client: AsyncLandingAIADE) -> None:
         async with async_client.with_streaming_response.extract(
@@ -207,13 +207,13 @@ class TestAsyncClient:
 
         assert cast(Any, response.is_closed) is True
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_method_parse(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.parse()
         assert_matches_type(ParseResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_method_parse_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.parse(
@@ -224,7 +224,7 @@ class TestAsyncClient:
         )
         assert_matches_type(ParseResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_raw_response_parse(self, async_client: AsyncLandingAIADE) -> None:
         response = await async_client.with_raw_response.parse()
@@ -234,7 +234,7 @@ class TestAsyncClient:
         client = await response.parse()
         assert_matches_type(ParseResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_streaming_response_parse(self, async_client: AsyncLandingAIADE) -> None:
         async with async_client.with_streaming_response.parse() as response:
@@ -246,7 +246,7 @@ class TestAsyncClient:
 
         assert cast(Any, response.is_closed) is True
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_method_split(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.split(
@@ -254,7 +254,7 @@ class TestAsyncClient:
         )
         assert_matches_type(SplitResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_method_split_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.split(
@@ -271,7 +271,7 @@ class TestAsyncClient:
         )
         assert_matches_type(SplitResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_raw_response_split(self, async_client: AsyncLandingAIADE) -> None:
         response = await async_client.with_raw_response.split(
@@ -283,7 +283,7 @@ class TestAsyncClient:
         client = await response.parse()
         assert_matches_type(SplitResponse, client, path=["response"])
 
-    @pytest.mark.skip(reason="Prism tests are disabled")
+    @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
     async def test_streaming_response_split(self, async_client: AsyncLandingAIADE) -> None:
         async with async_client.with_streaming_response.split(
