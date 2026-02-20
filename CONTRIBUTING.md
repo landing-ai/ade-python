@@ -85,13 +85,6 @@ $ pip install ./path-to-wheel-file.whl
 
 ## Running tests
 
-Most tests require you to [set up a mock server](https://github.com/stoplightio/prism) against the OpenAPI spec to run the tests.
-
-```sh
-# you will need npm installed
-$ npx prism mock path/to/your/openapi.yml
-```
-
 ```sh
 $ ./scripts/test
 ```
