@@ -86,6 +86,7 @@ so that your Apikey is not stored in source control.
 
 ### Split
 
+```python
 from pathlib import Path
 from landingai_ade import LandingAIADE
 
@@ -96,8 +97,11 @@ parse_response = client.parse(
     document=Path("/path/to/document.pdf"),
     model="dpt-2-latest"
 )
+```
 
 # Define Split Rules
+
+```python
 split_class = [
     {
         "name": "Bank Statement",
@@ -109,8 +113,11 @@ split_class = [
         "identifier": "Pay Stub Date"
     }
 ]
+```
 
 # Split using the Markdown string from parse response
+
+```python
 split_response = client.split(
     split_class=split_class,
     markdown=parse_response.markdown,  # Pass Markdown string directly
