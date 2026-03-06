@@ -113,7 +113,7 @@ split_class = [
 
 # Split using the Markdown string from parse response
 split_response = client.split(
-    split_class=split_class,
+    split_class=json.dumps(split_class),
     markdown=parse_response.markdown,  # Pass Markdown string directly
     model="split-latest"
 )
