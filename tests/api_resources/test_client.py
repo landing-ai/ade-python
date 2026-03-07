@@ -34,7 +34,7 @@ class TestClient:
     def test_method_extract_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.extract(
             schema="schema",
-            markdown=b"raw file contents",
+            markdown=b"Example data",
             markdown_url="markdown_url",
             model="model",
         )
@@ -76,7 +76,7 @@ class TestClient:
     @parametrize
     def test_method_parse_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.parse(
-            document=b"raw file contents",
+            document=b"Example data",
             document_url="document_url",
             model="model",
             split="page",
@@ -124,7 +124,7 @@ class TestClient:
                     "identifier": "identifier",
                 }
             ],
-            markdown=b"raw file contents",
+            markdown=b"Example data",
             markdown_url="markdownUrl",
             model="model",
         )
@@ -175,7 +175,7 @@ class TestAsyncClient:
     async def test_method_extract_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.extract(
             schema="schema",
-            markdown=b"raw file contents",
+            markdown=b"Example data",
             markdown_url="markdown_url",
             model="model",
         )
@@ -217,7 +217,7 @@ class TestAsyncClient:
     @parametrize
     async def test_method_parse_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.parse(
-            document=b"raw file contents",
+            document=b"Example data",
             document_url="document_url",
             model="model",
             split="page",
@@ -265,7 +265,7 @@ class TestAsyncClient:
                     "identifier": "identifier",
                 }
             ],
-            markdown=b"raw file contents",
+            markdown=b"Example data",
             markdown_url="markdownUrl",
             model="model",
         )
