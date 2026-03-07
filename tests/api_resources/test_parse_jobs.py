@@ -31,7 +31,7 @@ class TestParseJobs:
     @parametrize
     def test_method_create_with_all_params(self, client: LandingAIADE) -> None:
         parse_job = client.parse_jobs.create(
-            document=b"raw file contents",
+            document=b"Example data",
             document_url="document_url",
             model="model",
             output_save_url="output_save_url",
@@ -157,7 +157,7 @@ class TestAsyncParseJobs:
     @parametrize
     async def test_method_create_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         parse_job = await async_client.parse_jobs.create(
-            document=b"raw file contents",
+            document=b"Example data",
             document_url="document_url",
             model="model",
             output_save_url="output_save_url",
