@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.7.0 (2026-03-11)
+
+Full Changelog: [v1.6.0...v1.7.0](https://github.com/landing-ai/ade-python/compare/v1.6.0...v1.7.0)
+
+### Features
+
+* **api:** improve multipart openapispec ([723607d](https://github.com/landing-ai/ade-python/commit/723607d7f51a010d14e8b0731966979d371cb47d))
+* **api:** manual updates ([02260ff](https://github.com/landing-ai/ade-python/commit/02260ffaa8850d1fb2e07d24aa331fbb7f01c09b))
+
+
+### Chores
+
+* **ci:** skip uploading artifacts on stainless-internal branches ([e8dee5c](https://github.com/landing-ai/ade-python/commit/e8dee5cfec5d6a28ad31c1b21f2e7ac362bc141b))
+* format all `api.md` files ([4a5078a](https://github.com/landing-ai/ade-python/commit/4a5078a768cb4935e4d2569289f54cb842042f23))
+* **internal:** add request options to SSE classes ([b6f1448](https://github.com/landing-ai/ade-python/commit/b6f14489d7ca204ecf3edcf80b2a303bc23a7e3f))
+* **internal:** make `test_proxy_environment_variables` more resilient ([1c0ef15](https://github.com/landing-ai/ade-python/commit/1c0ef1525ad49e5dc95d371f764aee091492e48b))
+* **internal:** make `test_proxy_environment_variables` more resilient to env ([352408c](https://github.com/landing-ai/ade-python/commit/352408c59e03a5c6f3c62eea061b42b48caad654))
+* **internal:** remove mock server code ([69eb4f3](https://github.com/landing-ai/ade-python/commit/69eb4f30b5b918a58d51dfff5bd7a434d209dc60))
+* update mock server docs ([e85a0f3](https://github.com/landing-ai/ade-python/commit/e85a0f3ba32ae60730ab9bf4c2bff18d4f68233a))
+* update placeholder string ([fcf3eac](https://github.com/landing-ai/ade-python/commit/fcf3eac538e1a91aa40815d50dfc415ce9966382))
+
 ## 1.6.0 (2026-02-13)
 
 Full Changelog: [v1.5.0...v1.6.0](https://github.com/landing-ai/ade-python/compare/v1.5.0...v1.6.0)
