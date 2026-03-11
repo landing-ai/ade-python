@@ -80,6 +80,7 @@ class TestClient:
             document_url="document_url",
             model="model",
             split="page",
+            password="password",
         )
         assert_matches_type(ParseResponse, client_, path=["response"])
 
@@ -221,6 +222,7 @@ class TestAsyncClient:
             document_url="document_url",
             model="model",
             split="page",
+            password="password",
         )
         assert_matches_type(ParseResponse, client, path=["response"])
 

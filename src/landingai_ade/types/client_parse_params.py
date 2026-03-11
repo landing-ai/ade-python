@@ -36,3 +36,6 @@ class ClientParseParams(TypedDict, total=False):
     parameter. Set the parameter to page to split documents at the page level. The
     splits object in the API output will contain a set of data for each page.
     """
+
+    password: Optional[str]
+    """The password to use for parsing password-protected documents."""

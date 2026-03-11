@@ -383,6 +383,7 @@ class LandingAIADE(SyncAPIClient):
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
+        password: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -416,6 +417,8 @@ class LandingAIADE(SyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
+          password: The password to use for parsing password-protected documents.
+
           save_to: Optional output folder path. If provided, the response will be saved as
               JSON to this folder with the filename format: {input_file}_parse_output.json.
               The folder will be created if it doesn't exist.
@@ -440,6 +443,7 @@ class LandingAIADE(SyncAPIClient):
                 "document_url": document_url,
                 "model": model,
                 "split": split,
+                "password": password,
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
@@ -829,6 +833,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
+        password: Optional[str] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -861,6 +866,8 @@ class AsyncLandingAIADE(AsyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
+          password: The password to use for parsing password-protected documents.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -878,6 +885,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 "document_url": document_url,
                 "model": model,
                 "split": split,
+                "password": password,
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
