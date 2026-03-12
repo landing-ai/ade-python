@@ -35,6 +35,7 @@ class TestParseJobs:
             document_url="document_url",
             model="model",
             output_save_url="output_save_url",
+            password="password",
             split="page",
         )
         assert_matches_type(ParseJobCreateResponse, parse_job, path=["response"])
@@ -161,6 +162,7 @@ class TestAsyncParseJobs:
             document_url="document_url",
             model="model",
             output_save_url="output_save_url",
+            password="password",
             split="page",
         )
         assert_matches_type(ParseJobCreateResponse, parse_job, path=["response"])

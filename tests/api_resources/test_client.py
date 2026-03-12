@@ -37,6 +37,7 @@ class TestClient:
             markdown=b"Example data",
             markdown_url="markdown_url",
             model="model",
+            strict=True,
         )
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
@@ -79,6 +80,7 @@ class TestClient:
             document=b"Example data",
             document_url="document_url",
             model="model",
+            password="password",
             split="page",
         )
         assert_matches_type(ParseResponse, client_, path=["response"])
@@ -178,6 +180,7 @@ class TestAsyncClient:
             markdown=b"Example data",
             markdown_url="markdown_url",
             model="model",
+            strict=True,
         )
         assert_matches_type(ExtractResponse, client, path=["response"])
 
@@ -220,6 +223,7 @@ class TestAsyncClient:
             document=b"Example data",
             document_url="document_url",
             model="model",
+            password="password",
             split="page",
         )
         assert_matches_type(ParseResponse, client, path=["response"])

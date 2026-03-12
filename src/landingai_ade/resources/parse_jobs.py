@@ -53,6 +53,7 @@ class ParseJobsResource(SyncAPIResource):
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
+        password: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -86,6 +87,10 @@ class ParseJobsResource(SyncAPIResource):
               output to be saved to. When ZDR is enabled, the parsed content will not be in
               the API response.
 
+          password: Password for encrypted document files. If the document is password-protected,
+              provide the password to decrypt and process the document. Ignored for
+              unencrypted documents.
+
           split: If you want to split documents into smaller sections, include the split
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
@@ -104,6 +109,7 @@ class ParseJobsResource(SyncAPIResource):
                 "document_url": document_url,
                 "model": model,
                 "output_save_url": output_save_url,
+                "password": password,
                 "split": split,
             }
         )
@@ -241,6 +247,7 @@ class AsyncParseJobsResource(AsyncAPIResource):
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
+        password: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -274,6 +281,10 @@ class AsyncParseJobsResource(AsyncAPIResource):
               output to be saved to. When ZDR is enabled, the parsed content will not be in
               the API response.
 
+          password: Password for encrypted document files. If the document is password-protected,
+              provide the password to decrypt and process the document. Ignored for
+              unencrypted documents.
+
           split: If you want to split documents into smaller sections, include the split
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
@@ -292,6 +303,7 @@ class AsyncParseJobsResource(AsyncAPIResource):
                 "document_url": document_url,
                 "model": model,
                 "output_save_url": output_save_url,
+                "password": password,
                 "split": split,
             }
         )
