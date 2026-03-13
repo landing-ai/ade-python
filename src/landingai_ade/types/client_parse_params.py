@@ -30,6 +30,13 @@ class ClientParseParams(TypedDict, total=False):
     model: Optional[str]
     """The version of the model to use for parsing."""
 
+    password: Optional[str]
+    """Password for encrypted document files.
+
+    If the document is password-protected, provide the password to decrypt and
+    process the document. Ignored for unencrypted documents.
+    """
+
     split: Optional[Literal["page"]]
     """
     If you want to split documents into smaller sections, include the split
