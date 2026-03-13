@@ -382,6 +382,7 @@ class LandingAIADE(SyncAPIClient):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        password: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -412,6 +413,10 @@ class LandingAIADE(SyncAPIClient):
 
           model: The version of the model to use for parsing.
 
+          password: Password for encrypted document files. If the document is password-protected,
+              provide the password to decrypt and process the document. Ignored for
+              unencrypted documents.
+
           split: If you want to split documents into smaller sections, include the split
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
@@ -439,6 +444,7 @@ class LandingAIADE(SyncAPIClient):
                 "document": document,
                 "document_url": document_url,
                 "model": model,
+                "password": password,
                 "split": split,
             }
         )
@@ -828,6 +834,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        password: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -857,6 +864,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           model: The version of the model to use for parsing.
 
+          password: Password for encrypted document files. If the document is password-protected,
+              provide the password to decrypt and process the document. Ignored for
+              unencrypted documents.
+
           split: If you want to split documents into smaller sections, include the split
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
@@ -877,6 +888,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 "document": document,
                 "document_url": document_url,
                 "model": model,
+                "password": password,
                 "split": split,
             }
         )
