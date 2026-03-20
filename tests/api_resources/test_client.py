@@ -76,6 +76,7 @@ class TestClient:
     @parametrize
     def test_method_parse_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.parse(
+            custom_prompts="custom_prompts",
             document=b"Example data",
             document_url="document_url",
             model="model",
@@ -126,7 +127,7 @@ class TestClient:
                 }
             ],
             markdown=b"Example data",
-            markdown_url="markdownUrl",
+            markdown_url="markdown_url",
             model="model",
         )
         assert_matches_type(SplitResponse, client_, path=["response"])
@@ -218,6 +219,7 @@ class TestAsyncClient:
     @parametrize
     async def test_method_parse_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.parse(
+            custom_prompts="custom_prompts",
             document=b"Example data",
             document_url="document_url",
             model="model",
@@ -268,7 +270,7 @@ class TestAsyncClient:
                 }
             ],
             markdown=b"Example data",
-            markdown_url="markdownUrl",
+            markdown_url="markdown_url",
             model="model",
         )
         assert_matches_type(SplitResponse, client, path=["response"])

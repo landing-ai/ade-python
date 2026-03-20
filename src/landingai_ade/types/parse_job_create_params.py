@@ -11,6 +11,13 @@ __all__ = ["ParseJobCreateParams"]
 
 
 class ParseJobCreateParams(TypedDict, total=False):
+    custom_prompts: Optional[str]
+    """Optional JSON string mapping chunk types to custom parsing prompts.
+
+    Only the `figure` key is supported, for example '{"figure":"Describe axis labels
+    in detail."}'.
+    """
+
     document: Optional[FileTypes]
     """A file to be parsed.
 
