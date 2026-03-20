@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.9.0 (2026-03-20)
+
+Full Changelog: [v1.8.0...v1.9.0](https://github.com/landing-ai/ade-python/compare/v1.8.0...v1.9.0)
+
+### Features
+
+* **api:** api update ([8f035b3](https://github.com/landing-ai/ade-python/commit/8f035b3368a221285abee865cb6cd12b50fc974e))
+
+
+### Bug Fixes
+
+* **deps:** bump minimum typing-extensions version ([92103ae](https://github.com/landing-ai/ade-python/commit/92103aeeac4c4a0dc18d8db817d0c4f1a298b3bb))
+* **pydantic:** do not pass `by_alias` unless set ([cecaa60](https://github.com/landing-ai/ade-python/commit/cecaa6009a971d9c9e353634eadfaac56a4afa92))
+* sanitize endpoint path params ([a36d1b7](https://github.com/landing-ai/ade-python/commit/a36d1b798f29b19ca8dd9d82215d6782dfc3f1ae))
+
+
+### Chores
+
+* **internal:** tweak CI branches ([281394e](https://github.com/landing-ai/ade-python/commit/281394e86292ed7f01bd10113476836cd712538d))
+
 ## 1.8.0 (2026-03-13)
 
 Full Changelog: [v1.7.0...v1.8.0](https://github.com/landing-ai/ade-python/compare/v1.7.0...v1.8.0)
