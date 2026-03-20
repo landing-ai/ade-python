@@ -311,6 +311,7 @@ class LandingAIADE(SyncAPIClient):
     def parse(
         self,
         *,
+        custom_prompts: Optional[str] | Omit = omit,
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -334,6 +335,10 @@ class LandingAIADE(SyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
 
         Args:
+          custom_prompts: Optional JSON string mapping chunk types to custom parsing prompts. Only the
+              `figure` key is supported, for example '{"figure":"Describe axis labels in
+              detail."}'.
+
           document: A file to be parsed. The file can be a PDF or an image. See the list of
               supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
               this parameter or the `document_url` parameter must be provided.
@@ -362,6 +367,7 @@ class LandingAIADE(SyncAPIClient):
         """
         body = deepcopy_minimal(
             {
+                "custom_prompts": custom_prompts,
                 "document": document,
                 "document_url": document_url,
                 "model": model,
@@ -719,6 +725,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
     async def parse(
         self,
         *,
+        custom_prompts: Optional[str] | Omit = omit,
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -742,6 +749,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
 
         Args:
+          custom_prompts: Optional JSON string mapping chunk types to custom parsing prompts. Only the
+              `figure` key is supported, for example '{"figure":"Describe axis labels in
+              detail."}'.
+
           document: A file to be parsed. The file can be a PDF or an image. See the list of
               supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
               this parameter or the `document_url` parameter must be provided.
@@ -770,6 +781,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         """
         body = deepcopy_minimal(
             {
+                "custom_prompts": custom_prompts,
                 "document": document,
                 "document_url": document_url,
                 "model": model,
