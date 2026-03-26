@@ -6,14 +6,14 @@
 
 <img src="logo.png" alt="LandingAI" width="420" />
 
-**Agentic Document Extraction Python Library**
+# Agentic Document Extraction Python Library
 
 [![PyPI version](https://img.shields.io/pypi/v/landingai-ade.svg?label=pypi%20\(stable\))](https://pypi.org/project/landingai-ade/)
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 [![License](https://img.shields.io/pypi/l/landingai-ade)](https://pypi.org/project/landingai-ade/)
 
 
-**[Playground](https://va.landing.ai) · [Discord](https://discord.com/invite/RVcW3j9RgR) · [Blog](https://landing.ai/blog) · [Docs](https://docs.landing.ai/ade/ade-overview)**
+**[Playground](https://va.landing.ai) · [Discord](https://discord.com/invite/RVcW3j9RgR) · [Blog](https://landing.ai/blog) · [Docs](https://docs.landing.ai)**
 
 </div>
 
