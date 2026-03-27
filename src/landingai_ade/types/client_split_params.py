@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from typing import Union, Iterable, Optional
-from typing_extensions import Required, Annotated, TypedDict
+from typing_extensions import Required, TypedDict
 
 from .._types import FileTypes
-from .._utils import PropertyInfo
 
 __all__ = ["ClientSplitParams", "SplitClass"]
 
@@ -21,7 +20,7 @@ class ClientSplitParams(TypedDict, total=False):
     markdown: Union[FileTypes, str, None]
     """The Markdown file or Markdown content to split."""
 
-    markdown_url: Annotated[Optional[str], PropertyInfo(alias="markdownUrl")]
+    markdown_url: Optional[str]
     """The URL to the Markdown file to split."""
 
     model: Optional[str]
