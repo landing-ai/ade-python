@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.9.0 (2026-03-27)
+
+Full Changelog: [v1.8.0...v1.9.0](https://github.com/landing-ai/ade-python/compare/v1.8.0...v1.9.0)
+
+### Features
+
+* **api:** api update ([4e56dbe](https://github.com/landing-ai/ade-python/commit/4e56dbe891996bb7eae995661c8bec222d3acde9))
+* **internal:** implement indices array format for query and form serialization ([7e9d4b5](https://github.com/landing-ai/ade-python/commit/7e9d4b55e3192c25ea9a6fac9d97c5747eacf924))
+
+
+### Bug Fixes
+
+* **deps:** bump minimum typing-extensions version ([488efba](https://github.com/landing-ai/ade-python/commit/488efba5a0a5421dc5abf066d89cbb89a982e7ad))
+* **pydantic:** do not pass `by_alias` unless set ([70493bc](https://github.com/landing-ai/ade-python/commit/70493bc187298ffaf701313264520aaacc6f14ee))
+* sanitize endpoint path params ([b8c5167](https://github.com/landing-ai/ade-python/commit/b8c51676fd545355fd21990209f86310845a2698))
+* update README formatting and heading style ([#82](https://github.com/landing-ai/ade-python/issues/82)) ([a38a40f](https://github.com/landing-ai/ade-python/commit/a38a40f94af60f0a1c86dc23cc92b51a79d98755))
+
+
+### Chores
+
+* **ci:** skip lint on metadata-only changes ([64c3d61](https://github.com/landing-ai/ade-python/commit/64c3d615ef6d348f00b8491c33bef07bc7e0920e))
+* **internal:** tweak CI branches ([218f4e1](https://github.com/landing-ai/ade-python/commit/218f4e1a74b35a8fabb7e5b682d4b6c779709d25))
+* **internal:** update gitignore ([bab03c1](https://github.com/landing-ai/ade-python/commit/bab03c1c2b75e2f932180b4fb5100460cb9447a4))
+
 ## 1.8.0 (2026-03-13)
 
 Full Changelog: [v1.7.0...v1.8.0](https://github.com/landing-ai/ade-python/compare/v1.7.0...v1.8.0)
