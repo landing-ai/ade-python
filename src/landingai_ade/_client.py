@@ -248,6 +248,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        strict: bool | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -277,6 +278,10 @@ class LandingAIADE(SyncAPIClient):
           model: The version of the model to use for extraction. Use `extract-latest` to use the
               latest version.
 
+          strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
+              unsupported fields and continue. Only applies to extract versions that support
+              schema validation.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -291,6 +296,7 @@ class LandingAIADE(SyncAPIClient):
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
+                "strict": strict,
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
@@ -662,6 +668,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        strict: bool | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -691,6 +698,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
           model: The version of the model to use for extraction. Use `extract-latest` to use the
               latest version.
 
+          strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
+              unsupported fields and continue. Only applies to extract versions that support
+              schema validation.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -705,6 +716,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
+                "strict": strict,
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])

@@ -37,6 +37,7 @@ class TestClient:
             markdown=b"Example data",
             markdown_url="markdown_url",
             model="model",
+            strict=True,
         )
         assert_matches_type(ExtractResponse, client_, path=["response"])
 
@@ -180,6 +181,7 @@ class TestAsyncClient:
             markdown=b"Example data",
             markdown_url="markdown_url",
             model="model",
+            strict=True,
         )
         assert_matches_type(ExtractResponse, client, path=["response"])
 
