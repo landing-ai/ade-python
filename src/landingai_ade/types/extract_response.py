@@ -1,10 +1,19 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Optional
+from typing import List, Optional
+from typing_extensions import Literal
 
 from .._models import BaseModel
 
-__all__ = ["ExtractResponse", "Metadata"]
+__all__ = ["ExtractResponse", "Metadata", "MetadataWarning"]
+
+
+class MetadataWarning(BaseModel):
+    code: Literal["nonconformant_schema", "nonconformant_output"]
+    """The type of warning, used to translate to a status code downstream"""
+
+    msg: str
+    """Human-readable description of the warning with more details"""
 
 
 class Metadata(BaseModel):
@@ -33,6 +42,15 @@ class Metadata(BaseModel):
     A detailed error message shows why the extracted data does not fully conform to
     the input schema. Null means the extraction result is consistent with the input
     schema.
+    """
+
+    warnings: Optional[List[MetadataWarning]] = None
+    """Structured warnings from the extraction process.
+
+    Each warning is an instance of ExtractWarning with 'code' (e.g.
+    'nonconformant_schema') and 'msg' (human-readable description). Present only for
+    extract versions from extract-20260314 and above that support structured
+    warnings.
     """
 
 
