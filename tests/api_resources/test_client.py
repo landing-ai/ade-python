@@ -77,7 +77,7 @@ class TestClient:
     @parametrize
     def test_method_parse_with_all_params(self, client: LandingAIADE) -> None:
         client_ = client.parse(
-            custom_prompts="custom_prompts",
+            custom_prompts={"figure": "figure"},
             document=b"Example data",
             document_url="document_url",
             model="model",
@@ -221,7 +221,7 @@ class TestAsyncClient:
     @parametrize
     async def test_method_parse_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
         client = await async_client.parse(
-            custom_prompts="custom_prompts",
+            custom_prompts={"figure": "figure"},
             document=b"Example data",
             document_url="document_url",
             model="model",

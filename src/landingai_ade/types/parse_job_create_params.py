@@ -7,16 +7,12 @@ from typing_extensions import Literal, TypedDict
 
 from .._types import FileTypes
 
-__all__ = ["ParseJobCreateParams"]
+__all__ = ["ParseJobCreateParams", "CustomPrompts"]
 
 
 class ParseJobCreateParams(TypedDict, total=False):
-    custom_prompts: Optional[str]
-    """Optional JSON string mapping chunk types to custom parsing prompts.
-
-    Only the `figure` key is supported, for example '{"figure":"Describe axis labels
-    in detail."}'.
-    """
+    custom_prompts: Optional[CustomPrompts]
+    """Custom parsing prompts by chunk type. Only `figure` is supported."""
 
     document: Optional[FileTypes]
     """A file to be parsed.
@@ -57,3 +53,10 @@ class ParseJobCreateParams(TypedDict, total=False):
     parameter. Set the parameter to page to split documents at the page level. The
     splits object in the API output will contain a set of data for each page.
     """
+
+
+class CustomPrompts(TypedDict, total=False):
+    """Custom parsing prompts by chunk type. Only `figure` is supported."""
+
+    figure: str
+    """Custom parsing prompt for figure chunks."""
