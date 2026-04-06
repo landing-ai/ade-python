@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.0 (2026-04-06)
+
+Full Changelog: [v1.9.0...v1.10.0](https://github.com/landing-ai/ade-python/compare/v1.9.0...v1.10.0)
+
+### Features
+
+* **api:** api update ([8213dc8](https://github.com/landing-ai/ade-python/commit/8213dc8f0e8ffa6dc029c10303a95bd93b0eedde))
+* **api:** custom prompts transformations ([5eeee63](https://github.com/landing-ai/ade-python/commit/5eeee63e9242dfe9e6b4eb30d884283b9ba49519))
+
 ## 1.9.0 (2026-03-27)
 
 Full Changelog: [v1.8.0...v1.9.0](https://github.com/landing-ai/ade-python/compare/v1.8.0...v1.9.0)

@@ -294,6 +294,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        strict: bool | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -324,6 +325,9 @@ class LandingAIADE(SyncAPIClient):
           model: The version of the model to use for extraction. Use `extract-latest` to use the
               latest version.
 
+          strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
+              unsupported fields and continue. Only applies to extract versions that support
+              schema validation.
           save_to: Optional output folder path. If provided, the response will be saved as
               JSON to this folder with the filename format: {input_file}_extract_output.json.
               The folder will be created if it doesn't exist.
@@ -348,6 +352,7 @@ class LandingAIADE(SyncAPIClient):
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
+                "strict": strict,
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
@@ -379,7 +384,7 @@ class LandingAIADE(SyncAPIClient):
     def parse(
         self,
         *,
-        custom_prompts: Optional[str] | Omit = omit,
+        custom_prompts: Optional[client_parse_params.CustomPrompts] | Omit = omit,
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -404,9 +409,7 @@ class LandingAIADE(SyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
 
         Args:
-          custom_prompts: Optional JSON string mapping chunk types to custom parsing prompts. Only the
-              `figure` key is supported, for example '{"figure":"Describe axis labels in
-              detail."}'.
+          custom_prompts: Custom parsing prompts by chunk type. Only `figure` is supported.
 
           document: A file to be parsed. The file can be a PDF or an image. See the list of
               supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
@@ -764,6 +767,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        strict: bool | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -793,6 +797,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
           model: The version of the model to use for extraction. Use `extract-latest` to use the
               latest version.
 
+          strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
+              unsupported fields and continue. Only applies to extract versions that support
+              schema validation.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -810,6 +818,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
+                "strict": strict,
             }
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
@@ -837,7 +846,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
     async def parse(
         self,
         *,
-        custom_prompts: Optional[str] | Omit = omit,
+        custom_prompts: Optional[client_parse_params.CustomPrompts] | Omit = omit,
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -861,9 +870,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse`.
 
         Args:
-          custom_prompts: Optional JSON string mapping chunk types to custom parsing prompts. Only the
-              `figure` key is supported, for example '{"figure":"Describe axis labels in
-              detail."}'.
+          custom_prompts: Custom parsing prompts by chunk type. Only `figure` is supported.
 
           document: A file to be parsed. The file can be a PDF or an image. See the list of
               supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
