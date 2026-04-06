@@ -49,7 +49,7 @@ class ParseJobsResource(SyncAPIResource):
     def create(
         self,
         *,
-        custom_prompts: Optional[str] | Omit = omit,
+        custom_prompts: Optional[parse_job_create_params.CustomPrompts] | Omit = omit,
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -74,9 +74,7 @@ class ParseJobsResource(SyncAPIResource):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse/jobs`.
 
         Args:
-          custom_prompts: Optional JSON string mapping chunk types to custom parsing prompts. Only the
-              `figure` key is supported, for example '{"figure":"Describe axis labels in
-              detail."}'.
+          custom_prompts: Custom parsing prompts by chunk type. Only `figure` is supported.
 
           document: A file to be parsed. The file can be a PDF or an image. See the list of
               supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
@@ -249,7 +247,7 @@ class AsyncParseJobsResource(AsyncAPIResource):
     async def create(
         self,
         *,
-        custom_prompts: Optional[str] | Omit = omit,
+        custom_prompts: Optional[parse_job_create_params.CustomPrompts] | Omit = omit,
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -274,9 +272,7 @@ class AsyncParseJobsResource(AsyncAPIResource):
             `https://api.va.eu-west-1.landing.ai/v1/ade/parse/jobs`.
 
         Args:
-          custom_prompts: Optional JSON string mapping chunk types to custom parsing prompts. Only the
-              `figure` key is supported, for example '{"figure":"Describe axis labels in
-              detail."}'.
+          custom_prompts: Custom parsing prompts by chunk type. Only `figure` is supported.
 
           document: A file to be parsed. The file can be a PDF or an image. See the list of
               supported file types here: https://docs.landing.ai/ade/ade-file-types. Either
