@@ -88,9 +88,9 @@ def _get_input_filename(
         if isinstance(file_input, Path):
             return file_input.stem
         elif isinstance(file_input, str):
-            # Distinguish file paths from raw content: file paths have extensions
-            if Path(file_input).suffix:
-                return Path(file_input).stem
+            # Strings are always treated as raw content, not file paths.
+            # File inputs should use Path objects, tuples, or IO objects.
+            pass
         elif isinstance(file_input, tuple) and len(file_input) > 0:
             # Tuple format: (filename, content, mime_type)
             return Path(str(file_input[0])).stem

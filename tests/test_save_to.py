@@ -21,10 +21,15 @@ class TestGetInputFilename:
         result = _get_input_filename(Path("/path/to/document.pdf"), None)
         assert result == "document"
 
-    def test_string_path_input(self) -> None:
-        """Test with string path input."""
+    def test_string_input_returns_default(self) -> None:
+        """Test that string inputs always return 'output' (strings are content, not paths)."""
         result = _get_input_filename("/path/to/document.pdf", None)
-        assert result == "document"
+        assert result == "output"
+
+    def test_string_with_dots_returns_default(self) -> None:
+        """Test that strings containing periods return 'output'."""
+        result = _get_input_filename("Visit example.com for details", None)
+        assert result == "output"
 
     def test_tuple_input(self) -> None:
         """Test with tuple (filename, content, mime_type) input."""
