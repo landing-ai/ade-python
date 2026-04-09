@@ -153,3 +153,37 @@ class TestSaveResponse:
 
         expected_file = tmp_path / "strpath_split_output.json"
         assert expected_file.exists()
+
+    def test_full_json_path_saves_to_exact_location(self, tmp_path: Path) -> None:
+        """Test that a path ending in .json is used as the exact output file."""
+        output_file = tmp_path / "custom_name.json"
+        mock_result = MagicMock()
+        mock_result.to_json.return_value = '{"key": "value"}'
+
+        _save_response(output_file, "ignored_filename", "extract", mock_result)
+
+        assert output_file.exists()
+        assert output_file.read_text() == '{"key": "value"}'
+        assert not (tmp_path / "ignored_filename_extract_output.json").exists()
+
+    def test_full_json_path_creates_parent_dirs(self, tmp_path: Path) -> None:
+        """Test that parent directories are created for full .json path."""
+        output_file = tmp_path / "nested" / "deep" / "result.json"
+        mock_result = MagicMock()
+        mock_result.to_json.return_value = '{"nested": true}'
+
+        _save_response(output_file, "file", "parse", mock_result)
+
+        assert output_file.exists()
+        assert output_file.read_text() == '{"nested": true}'
+
+    def test_full_json_path_as_string(self, tmp_path: Path) -> None:
+        """Test that a string path ending in .json works as full path mode."""
+        output_file = str(tmp_path / "my_output.json")
+        mock_result = MagicMock()
+        mock_result.to_json.return_value = '{"string": true}'
+
+        _save_response(output_file, "file", "split", mock_result)
+
+        assert Path(output_file).exists()
+        assert Path(output_file).read_text() == '{"string": true}'

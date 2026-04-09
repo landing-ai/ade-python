@@ -115,12 +115,21 @@ def _save_response(
     method_name: str,
     result: Any,
 ) -> None:
-    """Save API response to a JSON file in the specified folder."""
+    """Save API response to a JSON file.
+
+    If save_to ends with '.json', it is treated as a full file path and the
+    response is written there directly. Otherwise it is treated as a directory
+    and the file is auto-named '{filename}_{method_name}_output.json'.
+    """
     try:
-        folder = Path(save_to)
-        folder.mkdir(parents=True, exist_ok=True)
-        output_path = folder / f"{filename}_{method_name}_output.json"
-        output_path.write_text(result.to_json())
+        save_path = Path(save_to)
+        if str(save_to).endswith(".json"):
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            save_path.write_text(result.to_json())
+        else:
+            save_path.mkdir(parents=True, exist_ok=True)
+            output_path = save_path / f"{filename}_{method_name}_output.json"
+            output_path.write_text(result.to_json())
     except OSError as exc:
         raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
 
@@ -332,9 +341,9 @@ class LandingAIADE(SyncAPIClient):
           strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
               unsupported fields and continue. Only applies to extract versions that support
               schema validation.
-          save_to: Optional output folder path. If provided, the response will be saved as
-              JSON to this folder with the filename format: {input_file}_extract_output.json.
-              The folder will be created if it doesn't exist.
+          save_to: Optional output path. Accepts either a directory path (auto-generates
+              filename as {input_file}_extract_output.json) or a full file path ending
+              in .json (saves to that exact path). Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -433,9 +442,9 @@ class LandingAIADE(SyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
-          save_to: Optional output folder path. If provided, the response will be saved as
-              JSON to this folder with the filename format: {input_file}_parse_output.json.
-              The folder will be created if it doesn't exist.
+          save_to: Optional output path. Accepts either a directory path (auto-generates
+              filename as {input_file}_parse_output.json) or a full file path ending
+              in .json (saves to that exact path). Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -522,9 +531,9 @@ class LandingAIADE(SyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
-          save_to: Optional output folder path. If provided, the response will be saved as
-              JSON to this folder with the filename format: {input_file}_split_output.json.
-              The folder will be created if it doesn't exist.
+          save_to: Optional output path. Accepts either a directory path (auto-generates
+              filename as {input_file}_split_output.json) or a full file path ending
+              in .json (saves to that exact path). Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
