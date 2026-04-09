@@ -781,6 +781,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: bool | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -814,6 +815,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
               unsupported fields and continue. Only applies to extract versions that support
               schema validation.
 
+          save_to: Optional output path. Accepts either a directory path (auto-generates
+              filename as {input_file}_extract_output.json) or a full file path ending
+              in .json (saves to that exact path). Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -822,6 +827,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         # Convert local file paths to file parameters
         markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
@@ -843,7 +851,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return await self.post(
+        result = await self.post(
             "/v1/ade/extract",
             body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
@@ -855,6 +863,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=ExtractResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "extract", result)
+        return result
 
     async def parse(
         self,
@@ -865,6 +877,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         model: Optional[str] | Omit = omit,
         password: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -903,6 +916,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
+          save_to: Optional output path. Accepts either a directory path (auto-generates
+              filename as {input_file}_parse_output.json) or a full file path ending
+              in .json (saves to that exact path). Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -911,6 +928,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_document = document
+        original_document_url = document_url
         # Convert local file paths to file parameters
         document, document_url = convert_url_to_file_if_local(document, document_url)
 
@@ -933,7 +953,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return await self.post(
+        result = await self.post(
             "/v1/ade/parse",
             body=await async_maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
@@ -945,6 +965,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=ParseResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_document, original_document_url)
+            _save_response(save_to, filename, "parse", result)
+        return result
 
     async def split(
         self,
@@ -953,6 +977,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -980,6 +1005,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
+          save_to: Optional output path. Accepts either a directory path (auto-generates
+              filename as {input_file}_split_output.json) or a full file path ending
+              in .json (saves to that exact path). Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -988,6 +1017,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         body = deepcopy_minimal(
             {
                 "split_class": split_class,
@@ -1001,7 +1033,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return await self.post(
+        result = await self.post(
             "/v1/ade/split",
             body=await async_maybe_transform(body, client_split_params.ClientSplitParams),
             files=files,
@@ -1010,6 +1042,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=SplitResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "split", result)
+        return result
 
     @override
     def _make_status_error(
