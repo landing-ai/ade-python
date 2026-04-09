@@ -73,6 +73,22 @@ class TestGetInputFilename:
         result = _get_input_filename(Path("local.pdf"), "https://example.com/remote.pdf")
         assert result == "local"
 
+    def test_raw_markdown_string_returns_default(self) -> None:
+        """Test that raw markdown content (not a file path) returns 'output'."""
+        result = _get_input_filename("# Hello World\n\nSome content here", None)
+        assert result == "output"
+
+    def test_multiline_markdown_string_returns_default(self) -> None:
+        """Test that multi-line markdown content returns 'output'."""
+        markdown = "Form completed on September 3, 2025\nReference Number: RT-2025-0847"
+        result = _get_input_filename(markdown, None)
+        assert result == "output"
+
+    def test_short_string_without_extension_returns_default(self) -> None:
+        """Test that a short string without a file extension returns 'output'."""
+        result = _get_input_filename("no_extension", None)
+        assert result == "output"
+
 
 class TestSaveResponse:
     """Tests for _save_response helper function."""

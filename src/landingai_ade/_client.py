@@ -85,8 +85,12 @@ def _get_input_filename(
 ) -> str:
     """Extract base filename (without extension) from file or URL input."""
     if file_input is not None and not isinstance(file_input, Omit):
-        if isinstance(file_input, (Path, str)):
-            return Path(file_input).stem
+        if isinstance(file_input, Path):
+            return file_input.stem
+        elif isinstance(file_input, str):
+            # Distinguish file paths from raw content: file paths have extensions
+            if Path(file_input).suffix:
+                return Path(file_input).stem
         elif isinstance(file_input, tuple) and len(file_input) > 0:
             # Tuple format: (filename, content, mime_type)
             return Path(str(file_input[0])).stem
