@@ -160,6 +160,18 @@ class TestSaveResponse:
         expected_file = tmp_path / "strpath_split_output.json"
         assert expected_file.exists()
 
+    def test_output_filename_skips_redundant_prefix(self, tmp_path: Path) -> None:
+        """Test that 'output' stem produces '{method}_output.json', not 'output_{method}_output.json'."""
+        mock_result = MagicMock()
+        mock_result.to_json.return_value = "{}"
+
+        for method in ["parse", "extract", "split"]:
+            _save_response(tmp_path, "output", method, mock_result)
+            expected = tmp_path / f"{method}_output.json"
+            assert expected.exists(), f"Expected {expected} to exist"
+            redundant = tmp_path / f"output_{method}_output.json"
+            assert not redundant.exists(), f"Redundant {redundant} should NOT exist"
+
     def test_full_json_path_saves_to_exact_location(self, tmp_path: Path) -> None:
         """Test that a path ending in .json is used as the exact output file."""
         output_file = tmp_path / "custom_name.json"

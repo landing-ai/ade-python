@@ -128,7 +128,10 @@ def _save_response(
             save_path.write_text(result.to_json())
         else:
             save_path.mkdir(parents=True, exist_ok=True)
-            output_path = save_path / f"{filename}_{method_name}_output.json"
+            if filename == "output":
+                output_path = save_path / f"{method_name}_output.json"
+            else:
+                output_path = save_path / f"{filename}_{method_name}_output.json"
             output_path.write_text(result.to_json())
     except OSError as exc:
         raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
