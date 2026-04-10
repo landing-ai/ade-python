@@ -85,8 +85,8 @@ def _get_input_filename(
 ) -> str:
     """Extract base filename (without extension) from file or URL input."""
     if file_input is not None and not isinstance(file_input, Omit):
-        if isinstance(file_input, Path):
-            return file_input.stem
+        if isinstance(file_input, (Path, os.PathLike)):
+            return Path(file_input).stem
         elif isinstance(file_input, str):
             # Strings are always treated as raw content, not file paths.
             # File inputs should use Path objects, tuples, or IO objects.
@@ -119,7 +119,8 @@ def _save_response(
 
     If save_to ends with '.json', it is treated as a full file path and the
     response is written there directly. Otherwise it is treated as a directory
-    and the file is auto-named '{filename}_{method_name}_output.json'.
+    and the file is auto-named '{filename}_{method_name}_output.json'
+    (or '{method_name}_output.json' when filename is 'output').
     """
     try:
         save_path = Path(save_to)
@@ -344,9 +345,10 @@ class LandingAIADE(SyncAPIClient):
           strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
               unsupported fields and continue. Only applies to extract versions that support
               schema validation.
-          save_to: Optional output path. Accepts either a directory path (auto-generates
-              filename as {input_file}_extract_output.json) or a full file path ending
-              in .json (saves to that exact path). Parent directories are created automatically.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_extract_output.json, or extract_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -445,9 +447,10 @@ class LandingAIADE(SyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
-          save_to: Optional output path. Accepts either a directory path (auto-generates
-              filename as {input_file}_parse_output.json) or a full file path ending
-              in .json (saves to that exact path). Parent directories are created automatically.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_parse_output.json, or parse_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -534,9 +537,10 @@ class LandingAIADE(SyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
-          save_to: Optional output path. Accepts either a directory path (auto-generates
-              filename as {input_file}_split_output.json) or a full file path ending
-              in .json (saves to that exact path). Parent directories are created automatically.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_split_output.json, or split_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -818,9 +822,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
               unsupported fields and continue. Only applies to extract versions that support
               schema validation.
 
-          save_to: Optional output path. Accepts either a directory path (auto-generates
-              filename as {input_file}_extract_output.json) or a full file path ending
-              in .json (saves to that exact path). Parent directories are created automatically.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_extract_output.json, or extract_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -919,9 +924,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
-          save_to: Optional output path. Accepts either a directory path (auto-generates
-              filename as {input_file}_parse_output.json) or a full file path ending
-              in .json (saves to that exact path). Parent directories are created automatically.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_parse_output.json, or parse_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -1008,9 +1014,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
-          save_to: Optional output path. Accepts either a directory path (auto-generates
-              filename as {input_file}_split_output.json) or a full file path ending
-              in .json (saves to that exact path). Parent directories are created automatically.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_split_output.json, or split_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
