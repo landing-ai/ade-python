@@ -10,7 +10,7 @@ import httpx
 
 from . import _exceptions
 from ._qs import Querystring
-from .types import client_parse_params, client_split_params, client_extract_params
+from .types import client_parse_params, client_split_params, client_extract_params, client_extract_build_params
 from ._types import (
     Body,
     Omit,
@@ -22,6 +22,7 @@ from ._types import (
     Transport,
     ProxiesTypes,
     RequestOptions,
+    SequenceNotStr,
     omit,
     not_given,
 )
@@ -52,6 +53,7 @@ from ._base_client import (
 from .types.parse_response import ParseResponse
 from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
+from .types.extract_build_response import ExtractBuildResponse
 
 if TYPE_CHECKING:
     from .resources import parse_jobs
@@ -312,6 +314,77 @@ class LandingAIADE(SyncAPIClient):
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ExtractResponse,
+        )
+
+    def extract_build(
+        self,
+        *,
+        markdown_urls: Optional[SequenceNotStr[str]] | Omit = omit,
+        markdowns: Optional[SequenceNotStr[Union[FileTypes, str]]] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        prompt: Optional[str] | Omit = omit,
+        schema: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ExtractBuildResponse:
+        """
+        Generate a JSON schema from Markdown using AI.
+
+        This endpoint analyzes Markdown content and generates a JSON schema suitable for
+        use with the extract endpoint. It can also refine an existing schema based on
+        new documents or iterate on a schema based on prompt instructions.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/extract/build-schema`.
+
+        Args:
+          markdown_urls: URLs to Markdown files to analyze for schema generation.
+
+          markdowns: Markdown files or inline content strings to analyze for schema generation.
+              Multiple documents can be provided for better schema coverage.
+
+          model: The version of the model to use for schema generation. Use `extract-latest` to
+              use the latest version.
+
+          prompt: Instructions for how to generate or modify the schema.
+
+          schema: Existing JSON schema to iterate on or refine.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "markdown_urls": markdown_urls,
+                "markdowns": markdowns,
+                "model": model,
+                "prompt": prompt,
+                "schema": schema,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdowns", "<array>"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/extract/build-schema",
+            body=maybe_transform(body, client_extract_build_params.ClientExtractBuildParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExtractBuildResponse,
         )
 
     def parse(
@@ -732,6 +805,77 @@ class AsyncLandingAIADE(AsyncAPIClient):
             cast_to=ExtractResponse,
         )
 
+    async def extract_build(
+        self,
+        *,
+        markdown_urls: Optional[SequenceNotStr[str]] | Omit = omit,
+        markdowns: Optional[SequenceNotStr[Union[FileTypes, str]]] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        prompt: Optional[str] | Omit = omit,
+        schema: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ExtractBuildResponse:
+        """
+        Generate a JSON schema from Markdown using AI.
+
+        This endpoint analyzes Markdown content and generates a JSON schema suitable for
+        use with the extract endpoint. It can also refine an existing schema based on
+        new documents or iterate on a schema based on prompt instructions.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/extract/build-schema`.
+
+        Args:
+          markdown_urls: URLs to Markdown files to analyze for schema generation.
+
+          markdowns: Markdown files or inline content strings to analyze for schema generation.
+              Multiple documents can be provided for better schema coverage.
+
+          model: The version of the model to use for schema generation. Use `extract-latest` to
+              use the latest version.
+
+          prompt: Instructions for how to generate or modify the schema.
+
+          schema: Existing JSON schema to iterate on or refine.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_minimal(
+            {
+                "markdown_urls": markdown_urls,
+                "markdowns": markdowns,
+                "model": model,
+                "prompt": prompt,
+                "schema": schema,
+            }
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdowns", "<array>"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/extract/build-schema",
+            body=await async_maybe_transform(body, client_extract_build_params.ClientExtractBuildParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExtractBuildResponse,
+        )
+
     async def parse(
         self,
         *,
@@ -920,6 +1064,9 @@ class LandingAIADEWithRawResponse:
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
+        self.extract_build = to_raw_response_wrapper(
+            client.extract_build,
+        )
         self.parse = to_raw_response_wrapper(
             client.parse,
         )
@@ -942,6 +1089,9 @@ class AsyncLandingAIADEWithRawResponse:
 
         self.extract = async_to_raw_response_wrapper(
             client.extract,
+        )
+        self.extract_build = async_to_raw_response_wrapper(
+            client.extract_build,
         )
         self.parse = async_to_raw_response_wrapper(
             client.parse,
@@ -966,6 +1116,9 @@ class LandingAIADEWithStreamedResponse:
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
+        self.extract_build = to_streamed_response_wrapper(
+            client.extract_build,
+        )
         self.parse = to_streamed_response_wrapper(
             client.parse,
         )
@@ -988,6 +1141,9 @@ class AsyncLandingAIADEWithStreamedResponse:
 
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
+        )
+        self.extract_build = async_to_streamed_response_wrapper(
+            client.extract_build,
         )
         self.parse = async_to_streamed_response_wrapper(
             client.parse,
