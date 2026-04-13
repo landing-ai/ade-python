@@ -7,10 +7,10 @@ from typing_extensions import TypedDict
 
 from .._types import FileTypes, SequenceNotStr
 
-__all__ = ["ClientExtractBuildParams"]
+__all__ = ["ClientExtractBuildSchemaParams"]
 
 
-class ClientExtractBuildParams(TypedDict, total=False):
+class ClientExtractBuildSchemaParams(TypedDict, total=False):
     markdown_urls: Optional[SequenceNotStr[str]]
     """URLs to Markdown files to analyze for schema generation."""
 
