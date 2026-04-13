@@ -14,3 +14,5 @@ from .parse_job_get_response import ParseJobGetResponse as ParseJobGetResponse
 from .parse_job_create_params import ParseJobCreateParams as ParseJobCreateParams
 from .parse_job_list_response import ParseJobListResponse as ParseJobListResponse
 from .parse_job_create_response import ParseJobCreateResponse as ParseJobCreateResponse
+from .extract_build_schema_response import ExtractBuildSchemaResponse as ExtractBuildSchemaResponse
+from .client_extract_build_schema_params import ClientExtractBuildSchemaParams as ClientExtractBuildSchemaParams
