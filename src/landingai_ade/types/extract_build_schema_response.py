@@ -5,7 +5,7 @@ from typing_extensions import Literal
 
 from .._models import BaseModel
 
-__all__ = ["ExtractBuildResponse", "Metadata", "MetadataWarning"]
+__all__ = ["ExtractBuildSchemaResponse", "Metadata", "MetadataWarning"]
 
 
 class MetadataWarning(BaseModel):
@@ -41,7 +41,7 @@ class Metadata(BaseModel):
     """
 
 
-class ExtractBuildResponse(BaseModel):
+class ExtractBuildSchemaResponse(BaseModel):
     extraction_schema: str
     """The generated JSON schema as a string."""
 

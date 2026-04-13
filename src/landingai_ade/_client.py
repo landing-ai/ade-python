@@ -10,7 +10,7 @@ import httpx
 
 from . import _exceptions
 from ._qs import Querystring
-from .types import client_parse_params, client_split_params, client_extract_params, client_extract_build_params
+from .types import client_parse_params, client_split_params, client_extract_params, client_extract_build_schema_params
 from ._types import (
     Body,
     Omit,
@@ -53,7 +53,7 @@ from ._base_client import (
 from .types.parse_response import ParseResponse
 from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
-from .types.extract_build_response import ExtractBuildResponse
+from .types.extract_build_schema_response import ExtractBuildSchemaResponse
 
 if TYPE_CHECKING:
     from .resources import parse_jobs
@@ -316,7 +316,7 @@ class LandingAIADE(SyncAPIClient):
             cast_to=ExtractResponse,
         )
 
-    def extract_build(
+    def extract_build_schema(
         self,
         *,
         markdown_urls: Optional[SequenceNotStr[str]] | Omit = omit,
@@ -330,7 +330,7 @@ class LandingAIADE(SyncAPIClient):
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
-    ) -> ExtractBuildResponse:
+    ) -> ExtractBuildSchemaResponse:
         """
         Generate a JSON schema from Markdown using AI.
 
@@ -379,12 +379,12 @@ class LandingAIADE(SyncAPIClient):
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return self.post(
             "/v1/ade/extract/build-schema",
-            body=maybe_transform(body, client_extract_build_params.ClientExtractBuildParams),
+            body=maybe_transform(body, client_extract_build_schema_params.ClientExtractBuildSchemaParams),
             files=files,
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
-            cast_to=ExtractBuildResponse,
+            cast_to=ExtractBuildSchemaResponse,
         )
 
     def parse(
@@ -805,7 +805,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             cast_to=ExtractResponse,
         )
 
-    async def extract_build(
+    async def extract_build_schema(
         self,
         *,
         markdown_urls: Optional[SequenceNotStr[str]] | Omit = omit,
@@ -819,7 +819,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
-    ) -> ExtractBuildResponse:
+    ) -> ExtractBuildSchemaResponse:
         """
         Generate a JSON schema from Markdown using AI.
 
@@ -868,12 +868,12 @@ class AsyncLandingAIADE(AsyncAPIClient):
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
         return await self.post(
             "/v1/ade/extract/build-schema",
-            body=await async_maybe_transform(body, client_extract_build_params.ClientExtractBuildParams),
+            body=await async_maybe_transform(body, client_extract_build_schema_params.ClientExtractBuildSchemaParams),
             files=files,
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
-            cast_to=ExtractBuildResponse,
+            cast_to=ExtractBuildSchemaResponse,
         )
 
     async def parse(
@@ -1064,8 +1064,8 @@ class LandingAIADEWithRawResponse:
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
-        self.extract_build = to_raw_response_wrapper(
-            client.extract_build,
+        self.extract_build_schema = to_raw_response_wrapper(
+            client.extract_build_schema,
         )
         self.parse = to_raw_response_wrapper(
             client.parse,
@@ -1090,8 +1090,8 @@ class AsyncLandingAIADEWithRawResponse:
         self.extract = async_to_raw_response_wrapper(
             client.extract,
         )
-        self.extract_build = async_to_raw_response_wrapper(
-            client.extract_build,
+        self.extract_build_schema = async_to_raw_response_wrapper(
+            client.extract_build_schema,
         )
         self.parse = async_to_raw_response_wrapper(
             client.parse,
@@ -1116,8 +1116,8 @@ class LandingAIADEWithStreamedResponse:
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
-        self.extract_build = to_streamed_response_wrapper(
-            client.extract_build,
+        self.extract_build_schema = to_streamed_response_wrapper(
+            client.extract_build_schema,
         )
         self.parse = to_streamed_response_wrapper(
             client.parse,
@@ -1142,8 +1142,8 @@ class AsyncLandingAIADEWithStreamedResponse:
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
         )
-        self.extract_build = async_to_streamed_response_wrapper(
-            client.extract_build,
+        self.extract_build_schema = async_to_streamed_response_wrapper(
+            client.extract_build_schema,
         )
         self.parse = async_to_streamed_response_wrapper(
             client.parse,
