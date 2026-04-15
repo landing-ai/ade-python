@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import importlib.metadata
 from typing import TYPE_CHECKING, Any, Dict, Union, Mapping, Iterable, Optional, cast
 from pathlib import Path
@@ -559,7 +560,7 @@ class LandingAIADE(SyncAPIClient):
     def split(
         self,
         *,
-        split_class: Iterable[client_split_params.SplitClass],
+        split_class: Union[str, Iterable[client_split_params.SplitClass]],
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -606,9 +607,10 @@ class LandingAIADE(SyncAPIClient):
         # Store original inputs for filename extraction
         original_markdown = markdown
         original_markdown_url = markdown_url
+        normalized_split_class = split_class if isinstance(split_class, str) else json.dumps(list(split_class))
         body = deepcopy_minimal(
             {
-                "split_class": split_class,
+                "split_class": normalized_split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
@@ -1080,7 +1082,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
     async def split(
         self,
         *,
-        split_class: Iterable[client_split_params.SplitClass],
+        split_class: Union[str, Iterable[client_split_params.SplitClass]],
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -1119,9 +1121,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        normalized_split_class = split_class if isinstance(split_class, str) else json.dumps(list(split_class))
         body = deepcopy_minimal(
             {
-                "split_class": split_class,
+                "split_class": normalized_split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
