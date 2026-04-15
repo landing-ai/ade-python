@@ -579,6 +579,30 @@ class TestLandingAiade:
             b"",
         ]
 
+    def test_split_sends_split_class_as_json_string_in_multipart(self, client: LandingAIADE) -> None:
+        request = client._build_request(
+            FinalRequestOptions.construct(
+                method="post",
+                url="/v1/ade/split",
+                headers={"Content-Type": "multipart/form-data; boundary=6b7ba517decee4a450543ea6ae821c82"},
+                json_data={"split_class": json.dumps([{"name": "Bank Statement"}]), "markdown": "# doc"},
+                files=(),
+            )
+        )
+
+        assert request.read().split(b"\r\n") == [
+            b"--6b7ba517decee4a450543ea6ae821c82",
+            b'Content-Disposition: form-data; name="split_class"',
+            b"",
+            b'[{"name": "Bank Statement"}]',
+            b"--6b7ba517decee4a450543ea6ae821c82",
+            b'Content-Disposition: form-data; name="markdown"',
+            b"",
+            b"# doc",
+            b"--6b7ba517decee4a450543ea6ae821c82--",
+            b"",
+        ]
+
     @pytest.mark.respx(base_url=base_url)
     def test_binary_content_upload(self, respx_mock: MockRouter, client: LandingAIADE) -> None:
         respx_mock.post("/upload").mock(side_effect=mirror_request_content)

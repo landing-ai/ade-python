@@ -11,7 +11,7 @@ __all__ = ["ClientSplitParams", "SplitClass"]
 
 
 class ClientSplitParams(TypedDict, total=False):
-    split_class: Required[Iterable[SplitClass]]
+    split_class: Required[Union[str, Iterable[SplitClass]]]
     """List of split classification options/configuration.
 
     Can be provided as JSON string in form data.
