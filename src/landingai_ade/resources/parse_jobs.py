@@ -8,8 +8,9 @@ from typing_extensions import Literal
 import httpx
 
 from ..types import parse_job_list_params, parse_job_create_params
+from .._files import deepcopy_with_paths
 from .._types import Body, Omit, Query, Headers, NotGiven, FileTypes, omit, not_given
-from .._utils import extract_files, path_template, maybe_transform, deepcopy_minimal, async_maybe_transform
+from .._utils import extract_files, path_template, maybe_transform, async_maybe_transform
 from .._compat import cached_property
 from .._resource import SyncAPIResource, AsyncAPIResource
 from .._response import (
@@ -106,7 +107,7 @@ class ParseJobsResource(SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "custom_prompts": custom_prompts,
                 "document": document,
@@ -115,7 +116,8 @@ class ParseJobsResource(SyncAPIResource):
                 "output_save_url": output_save_url,
                 "password": password,
                 "split": split,
-            }
+            },
+            [["document"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         # It should be noted that the actual Content-Type header that will be
@@ -304,7 +306,7 @@ class AsyncParseJobsResource(AsyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "custom_prompts": custom_prompts,
                 "document": document,
@@ -313,7 +315,8 @@ class AsyncParseJobsResource(AsyncAPIResource):
                 "output_save_url": output_save_url,
                 "password": password,
                 "split": split,
-            }
+            },
+            [["document"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         # It should be noted that the actual Content-Type header that will be

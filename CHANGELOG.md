@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.1 (2026-04-18)
+
+Full Changelog: [v1.11.0...v1.11.1](https://github.com/landing-ai/ade-python/compare/v1.11.0...v1.11.1)
+
+### Performance Improvements
+
+* **client:** optimize file structure copying in multipart requests ([e78f8c0](https://github.com/landing-ai/ade-python/commit/e78f8c0604a7d59671998f02b7bb1832d8c09aa3))
+
 ## 1.11.0 (2026-04-13)
 
 Full Changelog: [v1.10.0...v1.11.0](https://github.com/landing-ai/ade-python/compare/v1.10.0...v1.11.0)
