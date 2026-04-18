@@ -11,6 +11,7 @@ import httpx
 from . import _exceptions
 from ._qs import Querystring
 from .types import client_parse_params, client_split_params, client_extract_params, client_extract_build_schema_params
+from ._files import deepcopy_with_paths
 from ._types import (
     Body,
     Omit,
@@ -30,7 +31,6 @@ from ._utils import (
     is_given,
     extract_files,
     maybe_transform,
-    deepcopy_minimal,
     get_async_library,
     async_maybe_transform,
 )
@@ -292,14 +292,15 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "schema": schema,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
                 "strict": strict,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -363,14 +364,15 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "markdown_urls": markdown_urls,
                 "markdowns": markdowns,
                 "model": model,
                 "prompt": prompt,
                 "schema": schema,
-            }
+            },
+            [["markdowns", "<array>"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdowns", "<array>"]])
         # It should be noted that the actual Content-Type header that will be
@@ -442,7 +444,7 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "custom_prompts": custom_prompts,
                 "document": document,
@@ -450,7 +452,8 @@ class LandingAIADE(SyncAPIClient):
                 "model": model,
                 "password": password,
                 "split": split,
-            }
+            },
+            [["document"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         # It should be noted that the actual Content-Type header that will be
@@ -509,13 +512,14 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "split_class": split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -781,14 +785,15 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "schema": schema,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
                 "strict": strict,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -852,14 +857,15 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "markdown_urls": markdown_urls,
                 "markdowns": markdowns,
                 "model": model,
                 "prompt": prompt,
                 "schema": schema,
-            }
+            },
+            [["markdowns", "<array>"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdowns", "<array>"]])
         # It should be noted that the actual Content-Type header that will be
@@ -931,7 +937,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "custom_prompts": custom_prompts,
                 "document": document,
@@ -939,7 +945,8 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 "model": model,
                 "password": password,
                 "split": split,
-            }
+            },
+            [["document"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         # It should be noted that the actual Content-Type header that will be
@@ -998,13 +1005,14 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "split_class": split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
