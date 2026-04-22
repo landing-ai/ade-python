@@ -13,6 +13,7 @@ from landingai_ade.types import (
     ParseResponse,
     SplitResponse,
     ExtractResponse,
+    ClassifyResponse,
     ExtractBuildSchemaResponse,
 )
 
@@ -21,6 +22,56 @@ base_url = os.environ.get("TEST_API_BASE_URL", "http://127.0.0.1:4010")
 
 class TestClient:
     parametrize = pytest.mark.parametrize("client", [False, True], indirect=True, ids=["loose", "strict"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_method_classify(self, client: LandingAIADE) -> None:
+        client_ = client.classify(
+            classes=[{"class": "class"}],
+        )
+        assert_matches_type(ClassifyResponse, client_, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_method_classify_with_all_params(self, client: LandingAIADE) -> None:
+        client_ = client.classify(
+            classes=[
+                {
+                    "class": "class",
+                    "description": "description",
+                }
+            ],
+            document=b"Example data",
+            document_url="document_url",
+            model="model",
+        )
+        assert_matches_type(ClassifyResponse, client_, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_raw_response_classify(self, client: LandingAIADE) -> None:
+        response = client.with_raw_response.classify(
+            classes=[{"class": "class"}],
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        client_ = response.parse()
+        assert_matches_type(ClassifyResponse, client_, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_streaming_response_classify(self, client: LandingAIADE) -> None:
+        with client.with_streaming_response.classify(
+            classes=[{"class": "class"}],
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            client_ = response.parse()
+            assert_matches_type(ClassifyResponse, client_, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
 
     @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize
@@ -205,6 +256,56 @@ class TestAsyncClient:
     parametrize = pytest.mark.parametrize(
         "async_client", [False, True, {"http_client": "aiohttp"}], indirect=True, ids=["loose", "strict", "aiohttp"]
     )
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_method_classify(self, async_client: AsyncLandingAIADE) -> None:
+        client = await async_client.classify(
+            classes=[{"class": "class"}],
+        )
+        assert_matches_type(ClassifyResponse, client, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_method_classify_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
+        client = await async_client.classify(
+            classes=[
+                {
+                    "class": "class",
+                    "description": "description",
+                }
+            ],
+            document=b"Example data",
+            document_url="document_url",
+            model="model",
+        )
+        assert_matches_type(ClassifyResponse, client, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_raw_response_classify(self, async_client: AsyncLandingAIADE) -> None:
+        response = await async_client.with_raw_response.classify(
+            classes=[{"class": "class"}],
+        )
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        client = await response.parse()
+        assert_matches_type(ClassifyResponse, client, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_streaming_response_classify(self, async_client: AsyncLandingAIADE) -> None:
+        async with async_client.with_streaming_response.classify(
+            classes=[{"class": "class"}],
+        ) as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            client = await response.parse()
+            assert_matches_type(ClassifyResponse, client, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
 
     @pytest.mark.skip(reason="Mock server tests are disabled")
     @parametrize

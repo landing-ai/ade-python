@@ -10,6 +10,7 @@ Types:
 
 ```python
 from landingai_ade.types import (
+    ClassifyResponse,
     ExtractResponse,
     ExtractBuildSchemaResponse,
     ParseResponse,
@@ -19,6 +20,7 @@ from landingai_ade.types import (
 
 Methods:
 
+- <code title="post /v1/ade/classify">client.<a href="./src/landingai_ade/_client.py">classify</a>(\*\*<a href="src/landingai_ade/types/client_classify_params.py">params</a>) -> <a href="./src/landingai_ade/types/classify_response.py">ClassifyResponse</a></code>
 - <code title="post /v1/ade/extract">client.<a href="./src/landingai_ade/_client.py">extract</a>(\*\*<a href="src/landingai_ade/types/client_extract_params.py">params</a>) -> <a href="./src/landingai_ade/types/extract_response.py">ExtractResponse</a></code>
 - <code title="post /v1/ade/extract/build-schema">client.<a href="./src/landingai_ade/_client.py">extract_build_schema</a>(\*\*<a href="src/landingai_ade/types/client_extract_build_schema_params.py">params</a>) -> <a href="./src/landingai_ade/types/extract_build_schema_response.py">ExtractBuildSchemaResponse</a></code>
 - <code title="post /v1/ade/parse">client.<a href="./src/landingai_ade/_client.py">parse</a>(\*\*<a href="src/landingai_ade/types/client_parse_params.py">params</a>) -> <a href="./src/landingai_ade/types/parse_response.py">ParseResponse</a></code>
