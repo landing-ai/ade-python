@@ -14,6 +14,7 @@ from .types import (
     client_parse_params,
     client_split_params,
     client_extract_params,
+    client_section_params,
     client_classify_params,
     client_extract_build_schema_params,
 )
@@ -59,6 +60,7 @@ from ._base_client import (
 from .types.parse_response import ParseResponse
 from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
+from .types.section_response import SectionResponse
 from .types.classify_response import ClassifyResponse
 from .types.extract_build_schema_response import ExtractBuildSchemaResponse
 
@@ -546,6 +548,74 @@ class LandingAIADE(SyncAPIClient):
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=ParseResponse,
+        )
+
+    def section(
+        self,
+        *,
+        guidelines: Optional[str] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> SectionResponse:
+        """
+        Section parsed markdown into a hierarchical table of contents.
+
+        This endpoint accepts the markdown output from /ade/parse (with reference
+        anchors) and returns a flat, reading-order list of sections with hierarchy
+        levels and reference ranges.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/section`.
+
+        Args:
+          guidelines: Natural-language instructions to control hierarchy. Examples: 'Group by topic',
+              'Treat each numbered section as a top-level entry'.
+
+          markdown: Parsed markdown with reference anchors (<a id='...'></a>). This is the markdown
+              field from a parse response.
+
+          markdown_url: URL to fetch the markdown from.
+
+          model: Section model version. Defaults to latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "guidelines": guidelines,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+                "model": model,
+            },
+            [["markdown"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/section",
+            body=maybe_transform(body, client_section_params.ClientSectionParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=SectionResponse,
         )
 
     def split(
@@ -1112,6 +1182,74 @@ class AsyncLandingAIADE(AsyncAPIClient):
             cast_to=ParseResponse,
         )
 
+    async def section(
+        self,
+        *,
+        guidelines: Optional[str] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> SectionResponse:
+        """
+        Section parsed markdown into a hierarchical table of contents.
+
+        This endpoint accepts the markdown output from /ade/parse (with reference
+        anchors) and returns a flat, reading-order list of sections with hierarchy
+        levels and reference ranges.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/section`.
+
+        Args:
+          guidelines: Natural-language instructions to control hierarchy. Examples: 'Group by topic',
+              'Treat each numbered section as a top-level entry'.
+
+          markdown: Parsed markdown with reference anchors (<a id='...'></a>). This is the markdown
+              field from a parse response.
+
+          markdown_url: URL to fetch the markdown from.
+
+          model: Section model version. Defaults to latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "guidelines": guidelines,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+                "model": model,
+            },
+            [["markdown"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/section",
+            body=await async_maybe_transform(body, client_section_params.ClientSectionParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=SectionResponse,
+        )
+
     async def split(
         self,
         *,
@@ -1230,6 +1368,9 @@ class LandingAIADEWithRawResponse:
         self.parse = to_raw_response_wrapper(
             client.parse,
         )
+        self.section = to_raw_response_wrapper(
+            client.section,
+        )
         self.split = to_raw_response_wrapper(
             client.split,
         )
@@ -1258,6 +1399,9 @@ class AsyncLandingAIADEWithRawResponse:
         )
         self.parse = async_to_raw_response_wrapper(
             client.parse,
+        )
+        self.section = async_to_raw_response_wrapper(
+            client.section,
         )
         self.split = async_to_raw_response_wrapper(
             client.split,
@@ -1288,6 +1432,9 @@ class LandingAIADEWithStreamedResponse:
         self.parse = to_streamed_response_wrapper(
             client.parse,
         )
+        self.section = to_streamed_response_wrapper(
+            client.section,
+        )
         self.split = to_streamed_response_wrapper(
             client.split,
         )
@@ -1316,6 +1463,9 @@ class AsyncLandingAIADEWithStreamedResponse:
         )
         self.parse = async_to_streamed_response_wrapper(
             client.parse,
+        )
+        self.section = async_to_streamed_response_wrapper(
+            client.section,
         )
         self.split = async_to_streamed_response_wrapper(
             client.split,
