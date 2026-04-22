@@ -16,7 +16,7 @@ class Classification(BaseModel):
     """Predicted class label or 'unknown'."""
 
     page: int
-    """Page number (1-based)."""
+    """Page number (0-based)."""
 
     reason: Optional[str] = None
     """Reason for the classification (for debugging)."""
