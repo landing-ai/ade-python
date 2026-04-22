@@ -13,6 +13,7 @@ from landingai_ade.types import (
     ParseResponse,
     SplitResponse,
     ExtractResponse,
+    SectionResponse,
     ClassifyResponse,
     ExtractBuildSchemaResponse,
 )
@@ -197,6 +198,45 @@ class TestClient:
 
             client_ = response.parse()
             assert_matches_type(ParseResponse, client_, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_method_section(self, client: LandingAIADE) -> None:
+        client_ = client.section()
+        assert_matches_type(SectionResponse, client_, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_method_section_with_all_params(self, client: LandingAIADE) -> None:
+        client_ = client.section(
+            guidelines="guidelines",
+            markdown=b"Example data",
+            markdown_url="markdown_url",
+            model="model",
+        )
+        assert_matches_type(SectionResponse, client_, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_raw_response_section(self, client: LandingAIADE) -> None:
+        response = client.with_raw_response.section()
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        client_ = response.parse()
+        assert_matches_type(SectionResponse, client_, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    def test_streaming_response_section(self, client: LandingAIADE) -> None:
+        with client.with_streaming_response.section() as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            client_ = response.parse()
+            assert_matches_type(SectionResponse, client_, path=["response"])
 
         assert cast(Any, response.is_closed) is True
 
@@ -431,6 +471,45 @@ class TestAsyncClient:
 
             client = await response.parse()
             assert_matches_type(ParseResponse, client, path=["response"])
+
+        assert cast(Any, response.is_closed) is True
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_method_section(self, async_client: AsyncLandingAIADE) -> None:
+        client = await async_client.section()
+        assert_matches_type(SectionResponse, client, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_method_section_with_all_params(self, async_client: AsyncLandingAIADE) -> None:
+        client = await async_client.section(
+            guidelines="guidelines",
+            markdown=b"Example data",
+            markdown_url="markdown_url",
+            model="model",
+        )
+        assert_matches_type(SectionResponse, client, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_raw_response_section(self, async_client: AsyncLandingAIADE) -> None:
+        response = await async_client.with_raw_response.section()
+
+        assert response.is_closed is True
+        assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+        client = await response.parse()
+        assert_matches_type(SectionResponse, client, path=["response"])
+
+    @pytest.mark.skip(reason="Mock server tests are disabled")
+    @parametrize
+    async def test_streaming_response_section(self, async_client: AsyncLandingAIADE) -> None:
+        async with async_client.with_streaming_response.section() as response:
+            assert not response.is_closed
+            assert response.http_request.headers.get("X-Stainless-Lang") == "python"
+
+            client = await response.parse()
+            assert_matches_type(SectionResponse, client, path=["response"])
 
         assert cast(Any, response.is_closed) is True
 
