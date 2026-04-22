@@ -10,7 +10,13 @@ import httpx
 
 from . import _exceptions
 from ._qs import Querystring
-from .types import client_parse_params, client_split_params, client_extract_params, client_extract_build_schema_params
+from .types import (
+    client_parse_params,
+    client_split_params,
+    client_extract_params,
+    client_classify_params,
+    client_extract_build_schema_params,
+)
 from ._files import deepcopy_with_paths
 from ._types import (
     Body,
@@ -53,6 +59,7 @@ from ._base_client import (
 from .types.parse_response import ParseResponse
 from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
+from .types.classify_response import ClassifyResponse
 from .types.extract_build_schema_response import ExtractBuildSchemaResponse
 
 if TYPE_CHECKING:
@@ -242,6 +249,77 @@ class LandingAIADE(SyncAPIClient):
     # Alias for `copy` for nicer inline usage, e.g.
     # client.with_options(timeout=10).foo.create(...)
     with_options = copy
+
+    def classify(
+        self,
+        *,
+        classes: Iterable[client_classify_params.Class],
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ClassifyResponse:
+        """
+        Classify the pages of a document into classes you define.
+
+        This endpoint accepts PDFs, images, and other supported file types (either as a
+        `document` upload or `document_url`) together with a list of `classes`, and
+        returns a classification result for each page.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/classify`.
+
+        Args:
+          classes: The possible classes that can be assigned to pages in the document. Each entry
+              is an object with a `class` name and an optional `description`. Only one class
+              is assigned per page; unclassifiable pages receive 'unknown'. Can be provided as
+              a JSON string in form data.
+
+          document: A file to be classified. Either this parameter or the `document_url` parameter
+              must be provided.
+
+          document_url: The URL of the document to be classified. Either this parameter or the
+              `document` parameter must be provided.
+
+          model: Classification model version. Defaults to the latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "classes": classes,
+                "document": document,
+                "document_url": document_url,
+                "model": model,
+            },
+            [["document"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/classify",
+            body=maybe_transform(body, client_classify_params.ClientClassifyParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ClassifyResponse,
+        )
 
     def extract(
         self,
@@ -736,6 +814,77 @@ class AsyncLandingAIADE(AsyncAPIClient):
     # client.with_options(timeout=10).foo.create(...)
     with_options = copy
 
+    async def classify(
+        self,
+        *,
+        classes: Iterable[client_classify_params.Class],
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ClassifyResponse:
+        """
+        Classify the pages of a document into classes you define.
+
+        This endpoint accepts PDFs, images, and other supported file types (either as a
+        `document` upload or `document_url`) together with a list of `classes`, and
+        returns a classification result for each page.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/classify`.
+
+        Args:
+          classes: The possible classes that can be assigned to pages in the document. Each entry
+              is an object with a `class` name and an optional `description`. Only one class
+              is assigned per page; unclassifiable pages receive 'unknown'. Can be provided as
+              a JSON string in form data.
+
+          document: A file to be classified. Either this parameter or the `document_url` parameter
+              must be provided.
+
+          document_url: The URL of the document to be classified. Either this parameter or the
+              `document` parameter must be provided.
+
+          model: Classification model version. Defaults to the latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "classes": classes,
+                "document": document,
+                "document_url": document_url,
+                "model": model,
+            },
+            [["document"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/classify",
+            body=await async_maybe_transform(body, client_classify_params.ClientClassifyParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ClassifyResponse,
+        )
+
     async def extract(
         self,
         *,
@@ -1069,6 +1218,9 @@ class LandingAIADEWithRawResponse:
     def __init__(self, client: LandingAIADE) -> None:
         self._client = client
 
+        self.classify = to_raw_response_wrapper(
+            client.classify,
+        )
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
@@ -1095,6 +1247,9 @@ class AsyncLandingAIADEWithRawResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
         self._client = client
 
+        self.classify = async_to_raw_response_wrapper(
+            client.classify,
+        )
         self.extract = async_to_raw_response_wrapper(
             client.extract,
         )
@@ -1121,6 +1276,9 @@ class LandingAIADEWithStreamedResponse:
     def __init__(self, client: LandingAIADE) -> None:
         self._client = client
 
+        self.classify = to_streamed_response_wrapper(
+            client.classify,
+        )
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
@@ -1147,6 +1305,9 @@ class AsyncLandingAIADEWithStreamedResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
         self._client = client
 
+        self.classify = async_to_streamed_response_wrapper(
+            client.classify,
+        )
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
         )
