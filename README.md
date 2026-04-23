@@ -4,7 +4,11 @@
 
 <div align="center">
 
-<img src="logo.png" alt="LandingAI" width="420" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo-white.svg">
+  <source media="(prefers-color-scheme: light)" srcset="logo-black.svg">
+  <img src="logo-black.svg" alt="LandingAI" width="420" />
+</picture>
 
 # Agentic Document Extraction Python Library
 
