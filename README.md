@@ -1,7 +1,5 @@
 <!-- @format -->
 
-<!-- @format -->
-
 <div align="center">
 
 <picture>
