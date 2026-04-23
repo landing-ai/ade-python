@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.0 (2026-04-23)
+
+Full Changelog: [v1.11.1...v1.12.0](https://github.com/landing-ai/ade-python/compare/v1.11.1...v1.12.0)
+
+### Features
+
+* **api:** api update ([60b523d](https://github.com/landing-ai/ade-python/commit/60b523dc0ea0bd8d4ad05966e056a8af4257bf67))
+* **api:** classify api ([560a18a](https://github.com/landing-ai/ade-python/commit/560a18a8373aa15bd465b123513227dbfe695e78))
+* **api:** section api ([d7216ef](https://github.com/landing-ai/ade-python/commit/d7216ef4b4a69674c2acd4b14642810ee50e430c))
+
+
+### Chores
+
+* **internal:** more robust bootstrap script ([65dba33](https://github.com/landing-ai/ade-python/commit/65dba33561c5504bdc987eaeaae98d2818596b6d))
+
 ## 1.11.1 (2026-04-22)
 
 Full Changelog: [v1.11.0...v1.11.1](https://github.com/landing-ai/ade-python/compare/v1.11.0...v1.11.1)
