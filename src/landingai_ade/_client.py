@@ -13,7 +13,15 @@ import httpx
 
 from . import _exceptions
 from ._qs import Querystring
-from .types import client_parse_params, client_split_params, client_extract_params
+from .types import (
+    client_parse_params,
+    client_split_params,
+    client_extract_params,
+    client_section_params,
+    client_classify_params,
+    client_extract_build_schema_params,
+)
+from ._files import deepcopy_with_paths
 from ._types import (
     Body,
     Omit,
@@ -25,6 +33,7 @@ from ._types import (
     Transport,
     ProxiesTypes,
     RequestOptions,
+    SequenceNotStr,
     omit,
     not_given,
 )
@@ -32,7 +41,6 @@ from ._utils import (
     is_given,
     extract_files,
     maybe_transform,
-    deepcopy_minimal,
     get_async_library,
     async_maybe_transform,
 )
@@ -56,6 +64,9 @@ from .lib.url_utils import convert_url_to_file_if_local
 from .types.parse_response import ParseResponse
 from .types.split_response import SplitResponse
 from .types.extract_response import ExtractResponse
+from .types.section_response import SectionResponse
+from .types.classify_response import ClassifyResponse
+from .types.extract_build_schema_response import ExtractBuildSchemaResponse
 
 if TYPE_CHECKING:
     from .resources import parse_jobs
@@ -304,6 +315,77 @@ class LandingAIADE(SyncAPIClient):
     # client.with_options(timeout=10).foo.create(...)
     with_options = copy
 
+    def classify(
+        self,
+        *,
+        classes: Iterable[client_classify_params.Class],
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ClassifyResponse:
+        """
+        Classify the pages of a document into classes you define.
+
+        This endpoint accepts PDFs, images, and other supported file types (either as a
+        `document` upload or `document_url`) together with a list of `classes`, and
+        returns a classification result for each page.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/classify`.
+
+        Args:
+          classes: The possible classes that can be assigned to pages in the document. Each entry
+              is an object with a `class` name and an optional `description`. Only one class
+              is assigned per page; unclassifiable pages receive 'unknown'. Can be provided as
+              a JSON string in form data.
+
+          document: A file to be classified. Either this parameter or the `document_url` parameter
+              must be provided.
+
+          document_url: The URL of the document to be classified. Either this parameter or the
+              `document` parameter must be provided.
+
+          model: Classification model version. Defaults to the latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "classes": classes,
+                "document": document,
+                "document_url": document_url,
+                "model": model,
+            },
+            [["document"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/classify",
+            body=maybe_transform(body, client_classify_params.ClientClassifyParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ClassifyResponse,
+        )
+
     def extract(
         self,
         *,
@@ -364,14 +446,15 @@ class LandingAIADE(SyncAPIClient):
         # Convert local file paths to file parameters
         markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "schema": schema,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
                 "strict": strict,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -398,6 +481,78 @@ class LandingAIADE(SyncAPIClient):
             filename = _get_input_filename(original_markdown, original_markdown_url)
             _save_response(save_to, filename, "extract", result)
         return result
+
+    def extract_build_schema(
+        self,
+        *,
+        markdown_urls: Optional[SequenceNotStr[str]] | Omit = omit,
+        markdowns: Optional[SequenceNotStr[Union[FileTypes, str]]] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        prompt: Optional[str] | Omit = omit,
+        schema: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ExtractBuildSchemaResponse:
+        """
+        Generate a JSON schema from Markdown using AI.
+
+        This endpoint analyzes Markdown content and generates a JSON schema suitable for
+        use with the extract endpoint. It can also refine an existing schema based on
+        new documents or iterate on a schema based on prompt instructions.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/extract/build-schema`.
+
+        Args:
+          markdown_urls: URLs to Markdown files to analyze for schema generation.
+
+          markdowns: Markdown files or inline content strings to analyze for schema generation.
+              Multiple documents can be provided for better schema coverage.
+
+          model: The version of the model to use for schema generation. Use `extract-latest` to
+              use the latest version.
+
+          prompt: Instructions for how to generate or modify the schema.
+
+          schema: Existing JSON schema to iterate on or refine.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "markdown_urls": markdown_urls,
+                "markdowns": markdowns,
+                "model": model,
+                "prompt": prompt,
+                "schema": schema,
+            },
+            [["markdowns", "<array>"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdowns", "<array>"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/extract/build-schema",
+            body=maybe_transform(body, client_extract_build_schema_params.ClientExtractBuildSchemaParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExtractBuildSchemaResponse,
+        )
 
     def parse(
         self,
@@ -466,7 +621,7 @@ class LandingAIADE(SyncAPIClient):
         # Convert local file paths to file parameters
         document, document_url = convert_url_to_file_if_local(document, document_url)
 
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "custom_prompts": custom_prompts,
                 "document": document,
@@ -474,7 +629,8 @@ class LandingAIADE(SyncAPIClient):
                 "model": model,
                 "password": password,
                 "split": split,
-            }
+            },
+            [["document"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         # It should be noted that the actual Content-Type header that will be
@@ -501,6 +657,74 @@ class LandingAIADE(SyncAPIClient):
             filename = _get_input_filename(original_document, original_document_url)
             _save_response(save_to, filename, "parse", result)
         return result
+
+    def section(
+        self,
+        *,
+        guidelines: Optional[str] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> SectionResponse:
+        """
+        Section parsed markdown into a hierarchical table of contents.
+
+        This endpoint accepts the markdown output from /ade/parse (with reference
+        anchors) and returns a flat, reading-order list of sections with hierarchy
+        levels and reference ranges.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/section`.
+
+        Args:
+          guidelines: Natural-language instructions to control hierarchy. Examples: 'Group by topic',
+              'Treat each numbered section as a top-level entry'.
+
+          markdown: Parsed markdown with reference anchors (<a id='...'></a>). This is the markdown
+              field from a parse response.
+
+          markdown_url: URL to fetch the markdown from.
+
+          model: Section model version. Defaults to latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "guidelines": guidelines,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+                "model": model,
+            },
+            [["markdown"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return self.post(
+            "/v1/ade/section",
+            body=maybe_transform(body, client_section_params.ClientSectionParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=SectionResponse,
+        )
 
     def split(
         self,
@@ -553,13 +777,14 @@ class LandingAIADE(SyncAPIClient):
         # Store original inputs for filename extraction
         original_markdown = markdown
         original_markdown_url = markdown_url
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "split_class": split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -780,6 +1005,77 @@ class AsyncLandingAIADE(AsyncAPIClient):
     # client.with_options(timeout=10).foo.create(...)
     with_options = copy
 
+    async def classify(
+        self,
+        *,
+        classes: Iterable[client_classify_params.Class],
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ClassifyResponse:
+        """
+        Classify the pages of a document into classes you define.
+
+        This endpoint accepts PDFs, images, and other supported file types (either as a
+        `document` upload or `document_url`) together with a list of `classes`, and
+        returns a classification result for each page.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/classify`.
+
+        Args:
+          classes: The possible classes that can be assigned to pages in the document. Each entry
+              is an object with a `class` name and an optional `description`. Only one class
+              is assigned per page; unclassifiable pages receive 'unknown'. Can be provided as
+              a JSON string in form data.
+
+          document: A file to be classified. Either this parameter or the `document_url` parameter
+              must be provided.
+
+          document_url: The URL of the document to be classified. Either this parameter or the
+              `document` parameter must be provided.
+
+          model: Classification model version. Defaults to the latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "classes": classes,
+                "document": document,
+                "document_url": document_url,
+                "model": model,
+            },
+            [["document"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/classify",
+            body=await async_maybe_transform(body, client_classify_params.ClientClassifyParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ClassifyResponse,
+        )
+
     async def extract(
         self,
         *,
@@ -841,14 +1137,15 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # Convert local file paths to file parameters
         markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "schema": schema,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
                 "strict": strict,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -875,6 +1172,78 @@ class AsyncLandingAIADE(AsyncAPIClient):
             filename = _get_input_filename(original_markdown, original_markdown_url)
             _save_response(save_to, filename, "extract", result)
         return result
+
+    async def extract_build_schema(
+        self,
+        *,
+        markdown_urls: Optional[SequenceNotStr[str]] | Omit = omit,
+        markdowns: Optional[SequenceNotStr[Union[FileTypes, str]]] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        prompt: Optional[str] | Omit = omit,
+        schema: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> ExtractBuildSchemaResponse:
+        """
+        Generate a JSON schema from Markdown using AI.
+
+        This endpoint analyzes Markdown content and generates a JSON schema suitable for
+        use with the extract endpoint. It can also refine an existing schema based on
+        new documents or iterate on a schema based on prompt instructions.
+
+        For EU users, use this endpoint:
+
+            `https://api.va.eu-west-1.landing.ai/v1/ade/extract/build-schema`.
+
+        Args:
+          markdown_urls: URLs to Markdown files to analyze for schema generation.
+
+          markdowns: Markdown files or inline content strings to analyze for schema generation.
+              Multiple documents can be provided for better schema coverage.
+
+          model: The version of the model to use for schema generation. Use `extract-latest` to
+              use the latest version.
+
+          prompt: Instructions for how to generate or modify the schema.
+
+          schema: Existing JSON schema to iterate on or refine.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "markdown_urls": markdown_urls,
+                "markdowns": markdowns,
+                "model": model,
+                "prompt": prompt,
+                "schema": schema,
+            },
+            [["markdowns", "<array>"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdowns", "<array>"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/extract/build-schema",
+            body=await async_maybe_transform(body, client_extract_build_schema_params.ClientExtractBuildSchemaParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=ExtractBuildSchemaResponse,
+        )
 
     async def parse(
         self,
@@ -943,7 +1312,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # Convert local file paths to file parameters
         document, document_url = convert_url_to_file_if_local(document, document_url)
 
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "custom_prompts": custom_prompts,
                 "document": document,
@@ -951,7 +1320,8 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 "model": model,
                 "password": password,
                 "split": split,
-            }
+            },
+            [["document"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         # It should be noted that the actual Content-Type header that will be
@@ -978,6 +1348,74 @@ class AsyncLandingAIADE(AsyncAPIClient):
             filename = _get_input_filename(original_document, original_document_url)
             _save_response(save_to, filename, "parse", result)
         return result
+
+    async def section(
+        self,
+        *,
+        guidelines: Optional[str] | Omit = omit,
+        markdown: Union[FileTypes, str, None] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> SectionResponse:
+        """
+        Section parsed markdown into a hierarchical table of contents.
+
+        This endpoint accepts the markdown output from /ade/parse (with reference
+        anchors) and returns a flat, reading-order list of sections with hierarchy
+        levels and reference ranges.
+
+        For EU users, use this endpoint:
+
+        `https://api.va.eu-west-1.landing.ai/v1/ade/section`.
+
+        Args:
+          guidelines: Natural-language instructions to control hierarchy. Examples: 'Group by topic',
+              'Treat each numbered section as a top-level entry'.
+
+          markdown: Parsed markdown with reference anchors (<a id='...'></a>). This is the markdown
+              field from a parse response.
+
+          markdown_url: URL to fetch the markdown from.
+
+          model: Section model version. Defaults to latest.
+
+          extra_headers: Send extra headers
+
+          extra_query: Add additional query parameters to the request
+
+          extra_body: Add additional JSON properties to the request
+
+          timeout: Override the client-level default timeout for this request, in seconds
+        """
+        body = deepcopy_with_paths(
+            {
+                "guidelines": guidelines,
+                "markdown": markdown,
+                "markdown_url": markdown_url,
+                "model": model,
+            },
+            [["markdown"]],
+        )
+        files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
+        # It should be noted that the actual Content-Type header that will be
+        # sent to the server will contain a `boundary` parameter, e.g.
+        # multipart/form-data; boundary=---abc--
+        extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+        return await self.post(
+            "/v1/ade/section",
+            body=await async_maybe_transform(body, client_section_params.ClientSectionParams),
+            files=files,
+            options=make_request_options(
+                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+            ),
+            cast_to=SectionResponse,
+        )
 
     async def split(
         self,
@@ -1030,13 +1468,14 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # Store original inputs for filename extraction
         original_markdown = markdown
         original_markdown_url = markdown_url
-        body = deepcopy_minimal(
+        body = deepcopy_with_paths(
             {
                 "split_class": split_class,
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
-            }
+            },
+            [["markdown"]],
         )
         files = extract_files(cast(Mapping[str, object], body), paths=[["markdown"]])
         # It should be noted that the actual Content-Type header that will be
@@ -1097,11 +1536,20 @@ class LandingAIADEWithRawResponse:
     def __init__(self, client: LandingAIADE) -> None:
         self._client = client
 
+        self.classify = to_raw_response_wrapper(
+            client.classify,
+        )
         self.extract = to_raw_response_wrapper(
             client.extract,
         )
+        self.extract_build_schema = to_raw_response_wrapper(
+            client.extract_build_schema,
+        )
         self.parse = to_raw_response_wrapper(
             client.parse,
+        )
+        self.section = to_raw_response_wrapper(
+            client.section,
         )
         self.split = to_raw_response_wrapper(
             client.split,
@@ -1120,11 +1568,20 @@ class AsyncLandingAIADEWithRawResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
         self._client = client
 
+        self.classify = async_to_raw_response_wrapper(
+            client.classify,
+        )
         self.extract = async_to_raw_response_wrapper(
             client.extract,
         )
+        self.extract_build_schema = async_to_raw_response_wrapper(
+            client.extract_build_schema,
+        )
         self.parse = async_to_raw_response_wrapper(
             client.parse,
+        )
+        self.section = async_to_raw_response_wrapper(
+            client.section,
         )
         self.split = async_to_raw_response_wrapper(
             client.split,
@@ -1143,11 +1600,20 @@ class LandingAIADEWithStreamedResponse:
     def __init__(self, client: LandingAIADE) -> None:
         self._client = client
 
+        self.classify = to_streamed_response_wrapper(
+            client.classify,
+        )
         self.extract = to_streamed_response_wrapper(
             client.extract,
         )
+        self.extract_build_schema = to_streamed_response_wrapper(
+            client.extract_build_schema,
+        )
         self.parse = to_streamed_response_wrapper(
             client.parse,
+        )
+        self.section = to_streamed_response_wrapper(
+            client.section,
         )
         self.split = to_streamed_response_wrapper(
             client.split,
@@ -1166,11 +1632,20 @@ class AsyncLandingAIADEWithStreamedResponse:
     def __init__(self, client: AsyncLandingAIADE) -> None:
         self._client = client
 
+        self.classify = async_to_streamed_response_wrapper(
+            client.classify,
+        )
         self.extract = async_to_streamed_response_wrapper(
             client.extract,
         )
+        self.extract_build_schema = async_to_streamed_response_wrapper(
+            client.extract_build_schema,
+        )
         self.parse = async_to_streamed_response_wrapper(
             client.parse,
+        )
+        self.section = async_to_streamed_response_wrapper(
+            client.section,
         )
         self.split = async_to_streamed_response_wrapper(
             client.split,

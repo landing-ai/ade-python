@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.12.0 (2026-04-23)
+
+Full Changelog: [v1.11.1...v1.12.0](https://github.com/landing-ai/ade-python/compare/v1.11.1...v1.12.0)
+
+### Features
+
+* **api:** api update ([60b523d](https://github.com/landing-ai/ade-python/commit/60b523dc0ea0bd8d4ad05966e056a8af4257bf67))
+* **api:** classify api ([560a18a](https://github.com/landing-ai/ade-python/commit/560a18a8373aa15bd465b123513227dbfe695e78))
+* **api:** section api ([d7216ef](https://github.com/landing-ai/ade-python/commit/d7216ef4b4a69674c2acd4b14642810ee50e430c))
+
+
+### Chores
+
+* **internal:** more robust bootstrap script ([65dba33](https://github.com/landing-ai/ade-python/commit/65dba33561c5504bdc987eaeaae98d2818596b6d))
+
+## 1.11.1 (2026-04-22)
+
+Full Changelog: [v1.11.0...v1.11.1](https://github.com/landing-ai/ade-python/compare/v1.11.0...v1.11.1)
+
+### Performance Improvements
+
+* **client:** optimize file structure copying in multipart requests ([e78f8c0](https://github.com/landing-ai/ade-python/commit/e78f8c0604a7d59671998f02b7bb1832d8c09aa3))
+
+## 1.11.0 (2026-04-13)
+
+Full Changelog: [v1.10.0...v1.11.0](https://github.com/landing-ai/ade-python/compare/v1.10.0...v1.11.0)
+
+### Features
+
+* **api:** extract build ([8eae5bb](https://github.com/landing-ai/ade-python/commit/8eae5bb1e4683d4c2899cfc611cca008df932f58))
+* **api:** extract-build-schema ([b837252](https://github.com/landing-ai/ade-python/commit/b83725290313a519b28802e4c898673199c1e67d))
+
+
+### Bug Fixes
+
+* **client:** preserve hardcoded query params when merging with user params ([ce8fbb0](https://github.com/landing-ai/ade-python/commit/ce8fbb05283ef06ed237dc0df00d4db74436b80a))
+* ensure file data are only sent as 1 parameter ([5917bd2](https://github.com/landing-ai/ade-python/commit/5917bd22142ee3749fe919004b758d44d4e68028))
+
 ## 1.10.0 (2026-04-06)
 
 Full Changelog: [v1.9.0...v1.10.0](https://github.com/landing-ai/ade-python/compare/v1.9.0...v1.10.0)
