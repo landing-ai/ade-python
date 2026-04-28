@@ -128,14 +128,16 @@ def _save_response(
 ) -> None:
     """Save API response to a JSON file.
 
-    If save_to ends with '.json', it is treated as a full file path and the
-    response is written there directly. Otherwise it is treated as a directory
-    and the file is auto-named '{filename}_{method_name}_output.json'
-    (or '{method_name}_output.json' when filename is 'output').
+    If save_to has a '.json' suffix (case-insensitive), it is treated as a full
+    file path and the response is written there directly. Otherwise it is
+    treated as a directory and the file is auto-named
+    '{filename}_{method_name}_output.json', except when filename is 'output'
+    (i.e. no input filename could be derived) — in that case the redundant
+    prefix is dropped and the file is named '{method_name}_output.json'.
     """
     try:
         save_path = Path(save_to)
-        if str(save_to).endswith(".json"):
+        if save_path.suffix.lower() == ".json":
             save_path.parent.mkdir(parents=True, exist_ok=True)
             save_path.write_text(result.to_json())
         else:

@@ -220,13 +220,13 @@ class TestAsyncSaveTo:
     async def test_async_extract_save_to_directory(self, tmp_path: Path, mock_response: MagicMock) -> None:
         from unittest.mock import AsyncMock, patch
 
-        client = AsyncLandingAIADE(apikey="test-key", base_url="http://localhost")
-        with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
-            result = await client.extract(
-                schema="{}",
-                markdown=Path("/path/to/doc.pdf"),
-                save_to=tmp_path,
-            )
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                result = await client.extract(
+                    schema="{}",
+                    markdown=Path("/path/to/doc.pdf"),
+                    save_to=tmp_path,
+                )
 
         assert (tmp_path / "doc_extract_output.json").exists()
         assert result is mock_response
@@ -236,9 +236,9 @@ class TestAsyncSaveTo:
         from unittest.mock import AsyncMock, patch
 
         output_file = tmp_path / "custom.json"
-        client = AsyncLandingAIADE(apikey="test-key", base_url="http://localhost")
-        with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
-            await client.extract(schema="{}", markdown=Path("/doc.pdf"), save_to=output_file)
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.extract(schema="{}", markdown=Path("/doc.pdf"), save_to=output_file)
 
         assert output_file.exists()
 
@@ -246,9 +246,9 @@ class TestAsyncSaveTo:
     async def test_async_parse_save_to(self, tmp_path: Path, mock_response: MagicMock) -> None:
         from unittest.mock import AsyncMock, patch
 
-        client = AsyncLandingAIADE(apikey="test-key", base_url="http://localhost")
-        with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
-            await client.parse(document=Path("/path/to/doc.pdf"), save_to=tmp_path)
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.parse(document=Path("/path/to/doc.pdf"), save_to=tmp_path)
 
         assert (tmp_path / "doc_parse_output.json").exists()
 
@@ -256,13 +256,13 @@ class TestAsyncSaveTo:
     async def test_async_split_save_to(self, tmp_path: Path, mock_response: MagicMock) -> None:
         from unittest.mock import AsyncMock, patch
 
-        client = AsyncLandingAIADE(apikey="test-key", base_url="http://localhost")
-        with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
-            await client.split(
-                split_class=[{"name": "type1"}],
-                markdown=Path("/path/to/doc.md"),
-                save_to=tmp_path,
-            )
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.split(
+                    split_class=[{"name": "type1"}],
+                    markdown=Path("/path/to/doc.md"),
+                    save_to=tmp_path,
+                )
 
         assert (tmp_path / "doc_split_output.json").exists()
 
@@ -270,9 +270,9 @@ class TestAsyncSaveTo:
     async def test_async_no_save_when_save_to_none(self, tmp_path: Path, mock_response: MagicMock) -> None:
         from unittest.mock import AsyncMock, patch
 
-        client = AsyncLandingAIADE(apikey="test-key", base_url="http://localhost")
-        with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
-            result = await client.extract(schema="{}")
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                result = await client.extract(schema="{}")
 
         assert result is mock_response
         assert not list(tmp_path.iterdir())
