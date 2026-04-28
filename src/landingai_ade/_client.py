@@ -96,8 +96,12 @@ def _get_input_filename(
 ) -> str:
     """Extract base filename (without extension) from file or URL input."""
     if file_input is not None and not isinstance(file_input, Omit):
-        if isinstance(file_input, (Path, str)):
+        if isinstance(file_input, (Path, os.PathLike)):
             return Path(file_input).stem
+        elif isinstance(file_input, str):
+            # Strings are always treated as raw content, not file paths.
+            # File inputs should use Path objects, tuples, or IO objects.
+            pass
         elif isinstance(file_input, tuple) and len(file_input) > 0:
             # Tuple format: (filename, content, mime_type)
             return Path(str(file_input[0])).stem
@@ -122,12 +126,27 @@ def _save_response(
     method_name: str,
     result: Any,
 ) -> None:
-    """Save API response to a JSON file in the specified folder."""
+    """Save API response to a JSON file.
+
+    If save_to has a '.json' suffix (case-insensitive), it is treated as a full
+    file path and the response is written there directly. Otherwise it is
+    treated as a directory and the file is auto-named
+    '{filename}_{method_name}_output.json', except when filename is 'output'
+    (i.e. no input filename could be derived) — in that case the redundant
+    prefix is dropped and the file is named '{method_name}_output.json'.
+    """
     try:
-        folder = Path(save_to)
-        folder.mkdir(parents=True, exist_ok=True)
-        output_path = folder / f"{filename}_{method_name}_output.json"
-        output_path.write_text(result.to_json())
+        save_path = Path(save_to)
+        if save_path.suffix.lower() == ".json":
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            save_path.write_text(result.to_json())
+        else:
+            save_path.mkdir(parents=True, exist_ok=True)
+            if filename == "output":
+                output_path = save_path / f"{method_name}_output.json"
+            else:
+                output_path = save_path / f"{filename}_{method_name}_output.json"
+            output_path.write_text(result.to_json())
     except OSError as exc:
         raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
 
@@ -410,9 +429,10 @@ class LandingAIADE(SyncAPIClient):
           strict: If True, reject schemas with unsupported fields (HTTP 422). If False, prune
               unsupported fields and continue. Only applies to extract versions that support
               schema validation.
-          save_to: Optional output folder path. If provided, the response will be saved as
-              JSON to this folder with the filename format: {input_file}_extract_output.json.
-              The folder will be created if it doesn't exist.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_extract_output.json, or extract_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -584,9 +604,10 @@ class LandingAIADE(SyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
-          save_to: Optional output folder path. If provided, the response will be saved as
-              JSON to this folder with the filename format: {input_file}_parse_output.json.
-              The folder will be created if it doesn't exist.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_parse_output.json, or parse_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -742,9 +763,10 @@ class LandingAIADE(SyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
-          save_to: Optional output folder path. If provided, the response will be saved as
-              JSON to this folder with the filename format: {input_file}_split_output.json.
-              The folder will be created if it doesn't exist.
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_split_output.json, or split_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
 
           extra_headers: Send extra headers
 
@@ -1064,6 +1086,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: bool | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1097,6 +1120,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
               unsupported fields and continue. Only applies to extract versions that support
               schema validation.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_extract_output.json, or extract_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -1105,6 +1133,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         # Convert local file paths to file parameters
         markdown, markdown_url = convert_url_to_file_if_local(markdown, markdown_url)
 
@@ -1127,7 +1158,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return await self.post(
+        result = await self.post(
             "/v1/ade/extract",
             body=await async_maybe_transform(body, client_extract_params.ClientExtractParams),
             files=files,
@@ -1139,6 +1170,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=ExtractResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "extract", result)
+        return result
 
     async def extract_build_schema(
         self,
@@ -1221,6 +1256,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         model: Optional[str] | Omit = omit,
         password: Optional[str] | Omit = omit,
         split: Optional[Literal["page"]] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1259,6 +1295,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
               parameter. Set the parameter to page to split documents at the page level. The
               splits object in the API output will contain a set of data for each page.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_parse_output.json, or parse_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -1267,6 +1308,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction before conversion
+        original_document = document
+        original_document_url = document_url
         # Convert local file paths to file parameters
         document, document_url = convert_url_to_file_if_local(document, document_url)
 
@@ -1290,7 +1334,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             "runtime_tag": f"ade-python-v{_LIB_VERSION}",
             **(extra_headers or {}),
         }
-        return await self.post(
+        result = await self.post(
             "/v1/ade/parse",
             body=await async_maybe_transform(body, client_parse_params.ClientParseParams),
             files=files,
@@ -1302,6 +1346,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=ParseResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_document, original_document_url)
+            _save_response(save_to, filename, "parse", result)
+        return result
 
     async def section(
         self,
@@ -1378,6 +1426,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1405,6 +1454,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           model: Model version to use for split classification. Defaults to the latest version.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_split_output.json, or split_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -1413,6 +1467,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_markdown = markdown
+        original_markdown_url = markdown_url
         body = deepcopy_with_paths(
             {
                 "split_class": split_class,
@@ -1427,7 +1484,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return await self.post(
+        result = await self.post(
             "/v1/ade/split",
             body=await async_maybe_transform(body, client_split_params.ClientSplitParams),
             files=files,
@@ -1436,6 +1493,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=SplitResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "split", result)
+        return result
 
     @override
     def _make_status_error(
