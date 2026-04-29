@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from landingai_ade import AsyncLandingAIADE, LandingAIADE
+from landingai_ade import LandingAIADE, AsyncLandingAIADE
 from landingai_ade._client import _save_response, _get_input_filename
 from landingai_ade._exceptions import LandingAiadeError
 
