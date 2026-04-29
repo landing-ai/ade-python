@@ -324,6 +324,7 @@ class LandingAIADE(SyncAPIClient):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -356,6 +357,11 @@ class LandingAIADE(SyncAPIClient):
 
           model: Classification model version. Defaults to the latest.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_classify_output.json, or classify_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -364,6 +370,10 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_document = document
+        original_document_url = document_url
+
         body = deepcopy_with_paths(
             {
                 "classes": classes,
@@ -378,7 +388,7 @@ class LandingAIADE(SyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return self.post(
+        result = self.post(
             "/v1/ade/classify",
             body=maybe_transform(body, client_classify_params.ClientClassifyParams),
             files=files,
@@ -387,6 +397,10 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=ClassifyResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_document, original_document_url)
+            _save_response(save_to, filename, "classify", result)
+        return result
 
     def extract(
         self,
@@ -667,6 +681,7 @@ class LandingAIADE(SyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -696,6 +711,11 @@ class LandingAIADE(SyncAPIClient):
 
           model: Section model version. Defaults to latest.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_section_output.json, or section_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -704,6 +724,10 @@ class LandingAIADE(SyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_markdown = markdown
+        original_markdown_url = markdown_url
+
         body = deepcopy_with_paths(
             {
                 "guidelines": guidelines,
@@ -718,7 +742,7 @@ class LandingAIADE(SyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return self.post(
+        result = self.post(
             "/v1/ade/section",
             body=maybe_transform(body, client_section_params.ClientSectionParams),
             files=files,
@@ -727,6 +751,10 @@ class LandingAIADE(SyncAPIClient):
             ),
             cast_to=SectionResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "section", result)
+        return result
 
     def split(
         self,
@@ -1014,6 +1042,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1046,6 +1075,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           model: Classification model version. Defaults to the latest.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_classify_output.json, or classify_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -1054,6 +1088,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_document = document
+        original_document_url = document_url
+
         body = deepcopy_with_paths(
             {
                 "classes": classes,
@@ -1068,7 +1106,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return await self.post(
+        result = await self.post(
             "/v1/ade/classify",
             body=await async_maybe_transform(body, client_classify_params.ClientClassifyParams),
             files=files,
@@ -1077,6 +1115,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=ClassifyResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_document, original_document_url)
+            _save_response(save_to, filename, "classify", result)
+        return result
 
     async def extract(
         self,
@@ -1358,6 +1400,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1387,6 +1430,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           model: Section model version. Defaults to latest.
 
+          save_to: Optional output path. If a directory, auto-generates the filename
+              (e.g. {input_file}_section_output.json, or section_output.json when no
+              input filename is available). If a full path ending in .json, saves there
+              directly. Parent directories are created automatically.
+
           extra_headers: Send extra headers
 
           extra_query: Add additional query parameters to the request
@@ -1395,6 +1443,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
+        # Store original inputs for filename extraction
+        original_markdown = markdown
+        original_markdown_url = markdown_url
+
         body = deepcopy_with_paths(
             {
                 "guidelines": guidelines,
@@ -1409,7 +1461,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         # sent to the server will contain a `boundary` parameter, e.g.
         # multipart/form-data; boundary=---abc--
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
-        return await self.post(
+        result = await self.post(
             "/v1/ade/section",
             body=await async_maybe_transform(body, client_section_params.ClientSectionParams),
             files=files,
@@ -1418,6 +1470,10 @@ class AsyncLandingAIADE(AsyncAPIClient):
             ),
             cast_to=SectionResponse,
         )
+        if save_to:
+            filename = _get_input_filename(original_markdown, original_markdown_url)
+            _save_response(save_to, filename, "section", result)
+        return result
 
     async def split(
         self,
