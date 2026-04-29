@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from landingai_ade import AsyncLandingAIADE
+from landingai_ade import AsyncLandingAIADE, LandingAIADE
 from landingai_ade._client import _save_response, _get_input_filename
 from landingai_ade._exceptions import LandingAiadeError
 
@@ -128,7 +128,7 @@ class TestSaveResponse:
         mock_result = MagicMock()
         mock_result.to_json.return_value = "{}"
 
-        for method in ["parse", "extract", "split"]:
+        for method in ["parse", "extract", "split", "classify", "section"]:
             _save_response(tmp_path, "myinput", method, mock_result)
             expected_file = tmp_path / f"myinput_{method}_output.json"
             assert expected_file.exists(), f"Expected {expected_file} to exist"
@@ -165,7 +165,7 @@ class TestSaveResponse:
         mock_result = MagicMock()
         mock_result.to_json.return_value = "{}"
 
-        for method in ["parse", "extract", "split"]:
+        for method in ["parse", "extract", "split", "classify", "section"]:
             _save_response(tmp_path, "output", method, mock_result)
             expected = tmp_path / f"{method}_output.json"
             assert expected.exists(), f"Expected {expected} to exist"
@@ -267,6 +267,62 @@ class TestAsyncSaveTo:
         assert (tmp_path / "doc_split_output.json").exists()
 
     @pytest.mark.asyncio
+    async def test_async_classify_save_to_directory(self, tmp_path: Path, mock_response: MagicMock) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.classify(
+                    classes=[{"class": "invoice"}],
+                    document=Path("/path/to/doc.pdf"),
+                    save_to=tmp_path,
+                )
+
+        assert (tmp_path / "doc_classify_output.json").exists()
+
+    @pytest.mark.asyncio
+    async def test_async_classify_save_to_json_path(self, tmp_path: Path, mock_response: MagicMock) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        output_file = tmp_path / "custom.json"
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.classify(
+                    classes=[{"class": "invoice"}],
+                    document_url="https://example.com/doc.pdf",
+                    save_to=output_file,
+                )
+
+        assert output_file.exists()
+
+    @pytest.mark.asyncio
+    async def test_async_section_save_to_directory(self, tmp_path: Path, mock_response: MagicMock) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.section(
+                    markdown=Path("/path/to/doc.md"),
+                    save_to=tmp_path,
+                )
+
+        assert (tmp_path / "doc_section_output.json").exists()
+
+    @pytest.mark.asyncio
+    async def test_async_section_save_to_with_string_input(self, tmp_path: Path, mock_response: MagicMock) -> None:
+        """Section commonly receives raw markdown strings — filename should fall back to 'output'."""
+        from unittest.mock import AsyncMock, patch
+
+        async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+            with patch.object(client, "post", new_callable=AsyncMock, return_value=mock_response):
+                await client.section(
+                    markdown="# Heading\n\nbody content",
+                    save_to=tmp_path,
+                )
+
+        assert (tmp_path / "section_output.json").exists()
+
+    @pytest.mark.asyncio
     async def test_async_no_save_when_save_to_none(self, tmp_path: Path, mock_response: MagicMock) -> None:
         from unittest.mock import AsyncMock, patch
 
@@ -276,3 +332,39 @@ class TestAsyncSaveTo:
 
         assert result is mock_response
         assert not list(tmp_path.iterdir())
+
+
+class TestSyncSaveTo:
+    """Tests that sync client methods accept save_to and save correctly for classify/section."""
+
+    @pytest.fixture
+    def mock_response(self) -> MagicMock:
+        mock = MagicMock()
+        mock.to_json.return_value = '{"result": "ok"}'
+        return mock
+
+    def test_sync_classify_save_to_directory(self, tmp_path: Path, mock_response: MagicMock) -> None:
+        from unittest.mock import patch
+
+        client = LandingAIADE(apikey="test-key", base_url="http://localhost")
+        with patch.object(client, "post", return_value=mock_response):
+            client.classify(
+                classes=[{"class": "invoice"}],
+                document=Path("/path/to/doc.pdf"),
+                save_to=tmp_path,
+            )
+
+        assert (tmp_path / "doc_classify_output.json").exists()
+
+    def test_sync_section_save_to_json_path(self, tmp_path: Path, mock_response: MagicMock) -> None:
+        from unittest.mock import patch
+
+        output_file = tmp_path / "toc.json"
+        client = LandingAIADE(apikey="test-key", base_url="http://localhost")
+        with patch.object(client, "post", return_value=mock_response):
+            client.section(
+                markdown=Path("/path/to/doc.md"),
+                save_to=output_file,
+            )
+
+        assert output_file.exists()
