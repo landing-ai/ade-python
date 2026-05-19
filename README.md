@@ -544,6 +544,131 @@ import landingai_ade
 print(landingai_ade.__version__)
 ```
 
+## FAQ
+
+### What is LandingAI ADE?
+
+**Agentic Document Extraction (ADE)** is a Python library for interacting with LandingAI's REST API for document parsing, splitting, and classification. Built for Python 3.9+ with fully-typed SDK using Pydantic response models.
+
+### Key Features
+
+- **Parse**: Extract structured data from documents (PDF, images, etc.)
+- **Split**: Divide documents into logical sections
+- **Classify**: Categorize documents by type
+- **Schema-based extraction**: Define custom schemas for data extraction
+- **Large document processing**: Async jobs for big files
+- **MCP Server**: Integration with AI assistants (Cursor, VS Code)
+
+### How does this differ from other document extraction tools?
+
+| Tool | Focus | Key Difference |
+|------|-------|----------------|
+| LandingAI ADE | Agentic extraction | Schema-based + agentic approach, MCP integration |
+| Unstructured | General extraction | Library-focused, no agentic features |
+| PyMuPDF | PDF parsing | Low-level PDF operations, no AI extraction |
+
+### What file formats are supported?
+
+- **Documents**: PDF, images (PNG, JPEG, etc.)
+- **Input methods**: Local files (`document=`) or remote URLs (`document_url=`)
+- **Output**: Structured chunks, parsed data, classification results
+
+### Getting Started
+
+```python
+import os
+from pathlib import Path
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE(
+    apikey=os.environ.get("VISION_AGENT_API_KEY"),
+    environment="production",  # or "eu"
+)
+
+# Parse a document
+response = client.parse(
+    document=Path("path/to/file.pdf"),
+    model="dpt-2-latest",
+    save_to="./output_folder",  # optional
+)
+print(response.chunks)
+```
+
+### API Key Setup
+
+1. Get your API key from [LandingAI](https://landing.ai)
+2. Set environment variable:
+   ```bash
+   export VISION_AGENT_API_KEY="your-api-key"
+   ```
+3. Or use `.env` file with `python-dotenv`
+
+### Models Available
+
+- `dpt-2-latest`: Latest document parsing model
+- Models are continuously updated
+
+### MCP Server Integration
+
+Add LandingAI ADE MCP to your AI assistant:
+
+**Cursor**: Use the deeplink button in README
+**VS Code**: Use the install button or configure manually
+
+```json
+{
+  "name": "landingai-ade-mcp",
+  "command": "npx",
+  "args": ["-y", "landingai-ade-mcp"],
+  "env": {"VISION_AGENT_API_KEY": "your-key"}
+}
+```
+
+### Sync vs Async Clients
+
+```python
+# Sync client
+from landingai_ade import LandingAIADE
+client = LandingAIADE()
+
+# Async client
+from landingai_ade import AsyncLandingAIADE
+async_client = AsyncLandingAIADE()
+```
+
+### Error Handling & Retries
+
+- Built-in retries with exponential backoff
+- Secure API key handling
+- Pluggable HTTP backends (`httpx` or `aiohttp`)
+
+### Environment Options
+
+- `production`: Default US endpoint
+- `eu`: European endpoint for GDPR compliance
+
+### Python Version Requirements
+
+- **Minimum**: Python 3.9+
+- **Recommended**: Python 3.11+ for best performance
+
+### Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+### License
+
+See [PyPI license info](https://pypi.org/project/landingai-ade/) for license details.
+
+### Help Resources
+
+- **Documentation**: [docs.landing.ai](https://docs.landing.ai/)
+- **Playground**: [va.landing.ai](https://va.landing.ai)
+- **Discord**: [Join Discord](https://discord.com/invite/RVcW3j9RgR)
+- **Blog**: [landing.ai/blog](https://landing.ai/blog)
+- **Issues**: [GitHub Issues](https://github.com/landing-ai/ade-python/issues)
+
+
 ## Requirements
 
 Python 3.9 or higher.
