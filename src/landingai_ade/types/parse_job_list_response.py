@@ -22,6 +22,12 @@ class Job(BaseModel):
 
     status: str
 
+    created_at: Optional[int] = None
+    """Unix timestamp (seconds) for when the job was created.
+
+    Mirrors received_at; exposed so clients have an explicit creation time.
+    """
+
     failure_reason: Optional[str] = None
 
 
