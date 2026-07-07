@@ -59,8 +59,8 @@ dev-dependencies = [
     "importlib-metadata>=6.7.0",
     "rich>=13.7.1",
     "pytest-xdist>=3.6.1",
-    "datamodel-code-generator>=0.25",
-    "griffe>=0.49",
+    "datamodel-code-generator>=0.45",
+    "griffe>=1.14",
 ]
 
 [tool.rye.scripts]

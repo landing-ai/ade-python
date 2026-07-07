@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, RootModel
 
@@ -16,22 +16,22 @@ class AsyncExtractRequest(BaseModel):
     Extends ExtractRequest with output_save_url for ZDR support.
     """
 
-    markdown: bytes | str | None = Field(
+    markdown: Optional[Union[bytes, str]] = Field(
         None,
         description='The Markdown file or Markdown content to extract data from.',
         title='Markdown',
     )
-    markdown_url: str | None = Field(
+    markdown_url: Optional[str] = Field(
         None,
         description='The URL to the Markdown file to extract data from.',
         title='Markdown Url',
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None,
         description='The version of the model to use for extraction. Use `extract-latest` to use the latest version.',
         title='Model',
     )
-    output_save_url: str | None = Field(
+    output_save_url: Optional[str] = Field(
         None,
         description='If zero data retention (ZDR) is enabled, you must enter a URL for the extracted output to be saved to. When ZDR is enabled, the extracted content will not be in the API response.',
         title='Output Save Url',
@@ -42,7 +42,7 @@ class AsyncExtractRequest(BaseModel):
         description='JSON schema for field extraction. This schema determines what key-values pairs are extracted from the Markdown. The schema must be a valid JSON object and will be validated before processing the document.',
         title='Schema',
     )
-    strict: bool | None = Field(
+    strict: Optional[bool] = Field(
         False,
         description='If True, reject schemas with unsupported fields (HTTP 422). If False, prune unsupported fields and continue. Only applies to extract versions that support schema validation.',
         title='Strict',
@@ -50,27 +50,27 @@ class AsyncExtractRequest(BaseModel):
 
 
 class BuildSchemaRequest(BaseModel):
-    markdown_urls: list[str] | None = Field(
+    markdown_urls: Optional[list[str]] = Field(
         None,
         description='URLs to Markdown files to analyze for schema generation.',
         title='Markdown Urls',
     )
-    markdowns: list[bytes | str] | None = Field(
+    markdowns: Optional[list[Union[bytes, str]]] = Field(
         None,
         description='Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.',
         title='Markdowns',
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None,
         description='The version of the model to use for schema generation. Use `extract-latest` to use the latest version.',
         title='Model',
     )
-    prompt: str | None = Field(
+    prompt: Optional[str] = Field(
         None,
         description='Instructions for how to generate or modify the schema.',
         title='Prompt',
     )
-    schema_: str | None = Field(
+    schema_: Optional[str] = Field(
         None,
         alias='schema',
         description='Existing JSON schema to iterate on or refine.',
@@ -90,10 +90,10 @@ class ClassificationItem(BaseModel):
         title='Class',
     )
     page: int = Field(..., description='Page number (0-based).', title='Page')
-    reason: str | None = Field(
+    reason: Optional[str] = Field(
         '', description='Reason for the classification (for debugging).', title='Reason'
     )
-    suggested_class: str | None = Field(
+    suggested_class: Optional[str] = Field(
         None,
         description="Proposed class when the prediction is 'unknown'.",
         title='Suggested Class',
@@ -108,7 +108,7 @@ class ClassifyClass(BaseModel):
     class_: str = Field(
         ..., alias='class', description='Name of the class.', title='Class'
     )
-    description: str | None = Field(
+    description: Optional[str] = Field(
         None,
         description='Detailed description of what this class represents.',
         title='Description',
@@ -123,10 +123,10 @@ class ClassifyMetadata(BaseModel):
     credit_usage: float = Field(..., title='Credit Usage')
     duration_ms: int = Field(..., title='Duration Ms')
     filename: str = Field(..., title='Filename')
-    job_id: str | None = Field('', title='Job Id')
-    org_id: str | None = Field(None, title='Org Id')
+    job_id: Optional[str] = Field('', title='Job Id')
+    org_id: Optional[str] = Field(None, title='Org Id')
     page_count: int = Field(..., title='Page Count')
-    version: str | None = Field(None, title='Version')
+    version: Optional[str] = Field(None, title='Version')
 
 
 class ClassifyRequest(BaseModel):
@@ -135,17 +135,17 @@ class ClassifyRequest(BaseModel):
         description="The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. Can be provided as a JSON string in form data.",
         title='Classes',
     )
-    document: bytes | None = Field(
+    document: Optional[bytes] = Field(
         None,
         description='A file to be classified. Either this parameter or the `document_url` parameter must be provided.',
         title='Document',
     )
-    document_url: str | None = Field(
+    document_url: Optional[str] = Field(
         None,
         description='The URL of the document to be classified. Either this parameter or the `document` parameter must be provided.',
         title='Document Url',
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None,
         description='Classification model version. Defaults to the latest.',
         title='Model',
@@ -178,17 +178,17 @@ class CustomPrompts(RootModel[dict[str, str]]):
 
 
 class ExtractRequest(BaseModel):
-    markdown: bytes | str | None = Field(
+    markdown: Optional[Union[bytes, str]] = Field(
         None,
         description='The Markdown file or Markdown content to extract data from.',
         title='Markdown',
     )
-    markdown_url: str | None = Field(
+    markdown_url: Optional[str] = Field(
         None,
         description='The URL to the Markdown file to extract data from.',
         title='Markdown Url',
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None,
         description='The version of the model to use for extraction. Use `extract-latest` to use the latest version.',
         title='Model',
@@ -199,7 +199,7 @@ class ExtractRequest(BaseModel):
         description='JSON schema for field extraction. This schema determines what key-values pairs are extracted from the Markdown. The schema must be a valid JSON object and will be validated before processing the document.',
         title='Schema',
     )
-    strict: bool | None = Field(
+    strict: Optional[bool] = Field(
         False,
         description='If True, reject schemas with unsupported fields (HTTP 422). If False, prune unsupported fields and continue. Only applies to extract versions that support schema validation.',
         title='Strict',
@@ -239,12 +239,12 @@ class JobSummary(BaseModel):
     Summary of a job for listing.
     """
 
-    created_at: int | None = Field(
+    created_at: Optional[int] = Field(
         0,
         description='Unix timestamp (seconds) for when the job was created. Mirrors received_at; exposed so clients have an explicit creation time.',
         title='Created At',
     )
-    failure_reason: str | None = Field(None, title='Failure Reason')
+    failure_reason: Optional[str] = Field(None, title='Failure Reason')
     job_id: str = Field(..., title='Job Id')
     progress: float = Field(
         ...,
@@ -262,9 +262,9 @@ class JobsListResponse(BaseModel):
     Response for listing jobs.
     """
 
-    has_more: bool | None = Field(False, title='Has More')
+    has_more: Optional[bool] = Field(False, title='Has More')
     jobs: list[JobSummary] = Field(..., title='Jobs')
-    org_id: str | None = Field(None, title='Org Id')
+    org_id: Optional[str] = Field(None, title='Org Id')
 
 
 class ParseGroundingBox(BaseModel):
@@ -277,12 +277,12 @@ class ParseGroundingBox(BaseModel):
 class ParseMetadata(BaseModel):
     credit_usage: float = Field(..., title='Credit Usage')
     duration_ms: int = Field(..., title='Duration Ms')
-    failed_pages: list[int] | None = Field(None, title='Failed Pages')
+    failed_pages: Optional[list[int]] = Field(None, title='Failed Pages')
     filename: str = Field(..., title='Filename')
     job_id: str = Field(..., title='Job Id')
-    org_id: str | None = Field(..., title='Org Id')
+    org_id: Optional[str] = Field(..., title='Org Id')
     page_count: int = Field(..., title='Page Count')
-    version: str | None = Field(..., title='Version')
+    version: Optional[str] = Field(..., title='Version')
 
 
 class ParseResponseTableCellGroundingPosition(BaseModel):
@@ -303,7 +303,7 @@ class ParseSplit(BaseModel):
 
 class Patch(BaseModel):
     confidence: float = Field(..., title='Confidence')
-    span: tuple[int, int] = Field(..., title='Span')
+    span: list[Any] = Field(..., max_length=2, min_length=2, title='Span')
     text: str = Field(..., title='Text')
 
 
@@ -315,9 +315,9 @@ class SectionMetadata(BaseModel):
     credit_usage: float = Field(..., title='Credit Usage')
     duration_ms: int = Field(..., title='Duration Ms')
     filename: str = Field(..., title='Filename')
-    job_id: str | None = Field('', title='Job Id')
-    org_id: str | None = Field(None, title='Org Id')
-    version: str | None = Field(None, title='Version')
+    job_id: Optional[str] = Field('', title='Job Id')
+    org_id: Optional[str] = Field(None, title='Org Id')
+    version: Optional[str] = Field(None, title='Version')
 
 
 class SectionRequest(BaseModel):
@@ -325,20 +325,20 @@ class SectionRequest(BaseModel):
     Request model for section endpoint.
     """
 
-    guidelines: str | None = Field(
+    guidelines: Optional[str] = Field(
         None,
         description="Natural-language instructions to control hierarchy. Examples: 'Group by topic', 'Treat each numbered section as a top-level entry'.",
         title='Guidelines',
     )
-    markdown: bytes | str | None = Field(
+    markdown: Optional[Union[bytes, str]] = Field(
         None,
         description="Parsed markdown with reference anchors (<a id='...'></a>). This is the markdown field from a parse response.",
         title='Markdown',
     )
-    markdown_url: str | None = Field(
+    markdown_url: Optional[str] = Field(
         None, description='URL to fetch the markdown from.', title='Markdown Url'
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None, description='Section model version. Defaults to latest.', title='Model'
     )
 
@@ -359,12 +359,12 @@ class SplitClass(BaseModel):
     Model for split classification option.
     """
 
-    description: str | None = Field(
+    description: Optional[str] = Field(
         None,
         description='Detailed description of what this split type represents',
         title='Description',
     )
-    identifier: str | None = Field(
+    identifier: Optional[str] = Field(
         None,
         description='Identifier to partition/group the splits by',
         title='Identifier',
@@ -380,7 +380,7 @@ class SplitData(BaseModel):
     """
 
     classification: str = Field(..., title='Classification')
-    identifier: str | None = Field(..., title='Identifier')
+    identifier: Optional[str] = Field(..., title='Identifier')
     markdowns: list[str] = Field(..., title='Markdowns')
     pages: list[int] = Field(..., title='Pages')
 
@@ -393,12 +393,12 @@ class SplitMetadata(BaseModel):
     credit_usage: float = Field(..., title='Credit Usage')
     duration_ms: int = Field(..., title='Duration Ms')
     filename: str = Field(..., title='Filename')
-    job_id: str | None = Field(
+    job_id: Optional[str] = Field(
         '', description='Inference history job ID', title='Job Id'
     )
-    org_id: str | None = Field(None, description='Organization ID', title='Org Id')
+    org_id: Optional[str] = Field(None, description='Organization ID', title='Org Id')
     page_count: int = Field(..., title='Page Count')
-    version: str | None = Field(
+    version: Optional[str] = Field(
         None, description='Model version used for split classification', title='Version'
     )
 
@@ -408,15 +408,15 @@ class SplitRequest(BaseModel):
     Request model for split classification endpoint.
     """
 
-    markdown: bytes | str | None = Field(
+    markdown: Optional[Union[bytes, str]] = Field(
         None,
         description='The Markdown file or Markdown content to split.',
         title='Markdown',
     )
-    markdown_url: str | None = Field(
+    markdown_url: Optional[str] = Field(
         None, description='The URL to the Markdown file to split.', title='Markdown Url'
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         'split-20251105',
         description='Model version to use for split classification. Defaults to the latest version.',
         title='Model',
@@ -446,17 +446,17 @@ class SpreadsheetParseMetadata(BaseModel):
     Metadata for spreadsheet parsing result.
     """
 
-    credit_usage: float | None = Field(
+    credit_usage: Optional[float] = Field(
         0.0, description='Credits charged', title='Credit Usage'
     )
     duration_ms: int = Field(
         ..., description='Processing duration in milliseconds', title='Duration Ms'
     )
     filename: str = Field(..., description='Original filename', title='Filename')
-    job_id: str | None = Field(
+    job_id: Optional[str] = Field(
         '', description='Inference history job ID', title='Job Id'
     )
-    org_id: str | None = Field(None, description='Organization ID', title='Org Id')
+    org_id: Optional[str] = Field(None, description='Organization ID', title='Org Id')
     sheet_count: int = Field(
         ..., description='Number of sheets processed', title='Sheet Count'
     )
@@ -468,13 +468,13 @@ class SpreadsheetParseMetadata(BaseModel):
         description='Total chunks (tables + images) extracted',
         title='Total Chunks',
     )
-    total_images: int | None = Field(
+    total_images: Optional[int] = Field(
         0, description='Total images extracted', title='Total Images'
     )
     total_rows: int = Field(
         ..., description='Total rows across all sheets', title='Total Rows'
     )
-    version: str | None = Field(
+    version: Optional[str] = Field(
         None, description='Model version for parsing images', title='Version'
     )
 
@@ -512,41 +512,41 @@ class SpreadsheetSplit(BaseModel):
 
 
 class ValidationError(BaseModel):
-    loc: list[str | int] = Field(..., title='Location')
+    loc: list[Union[str, int]] = Field(..., title='Location')
     msg: str = Field(..., title='Message')
     type: str = Field(..., title='Error Type')
 
 
 class AsyncParseRequestWithEncryptedPassword(BaseModel):
-    custom_prompts: str | None = Field(
+    custom_prompts: Optional[str] = Field(
         None,
         description='Optional JSON string mapping chunk types to custom parsing prompts. Only the `figure` key is supported, for example \'{"figure":"Describe axis labels in detail."}\'.',
         title='Custom Prompts',
     )
-    document: bytes | None = Field(
+    document: Optional[bytes] = Field(
         None,
         description='A file to be parsed. The file can be a PDF or an image. See the list of supported file types here: https://docs.landing.ai/ade/ade-file-types. Either this parameter or the `document_url` parameter must be provided.',
         title='Document',
     )
-    document_url: str | None = Field(
+    document_url: Optional[str] = Field(
         None,
         description='The URL to the file to be parsed. The file can be a PDF or an image. See the list of supported file types here: https://docs.landing.ai/ade/ade-file-types. Either this parameter or the `document` parameter must be provided.',
         title='Document Url',
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None, description='The version of the model to use for parsing.', title='Model'
     )
-    output_save_url: str | None = Field(
+    output_save_url: Optional[str] = Field(
         None,
         description='If zero data retention (ZDR) is enabled, you must enter a URL for the parsed output to be saved to. When ZDR is enabled, the parsed content will not be in the API response.',
         title='Output Save Url',
     )
-    password: str | None = Field(
+    password: Optional[str] = Field(
         None,
         description='Password for encrypted document files. If the document is password-protected, provide the password to decrypt and process the document. Ignored for unencrypted documents.',
         title='Password',
     )
-    split: SplitType | None = Field(
+    split: Optional[SplitType] = Field(
         None,
         description='If you want to split documents into smaller sections, include the split parameter. Set the parameter to page to split documents at the page level. The splits object in the API output will contain a set of data for each page.',
     )
@@ -565,7 +565,7 @@ class ExtractWarning(BaseModel):
 
 
 class HTTPValidationError(BaseModel):
-    detail: list[ValidationError] | None = Field(None, title='Detail')
+    detail: Optional[list[ValidationError]] = Field(None, title='Detail')
 
 
 class ParseGrounding(BaseModel):
@@ -574,30 +574,30 @@ class ParseGrounding(BaseModel):
 
 
 class ParseRequestWithEncryptedPassword(BaseModel):
-    custom_prompts: str | None = Field(
+    custom_prompts: Optional[str] = Field(
         None,
         description='Optional JSON string mapping chunk types to custom parsing prompts. Only the `figure` key is supported, for example \'{"figure":"Describe axis labels in detail."}\'.',
         title='Custom Prompts',
     )
-    document: bytes | None = Field(
+    document: Optional[bytes] = Field(
         None,
         description='A file to be parsed. The file can be a PDF or an image. See the list of supported file types here: https://docs.landing.ai/ade/ade-file-types. Either this parameter or the `document_url` parameter must be provided.',
         title='Document',
     )
-    document_url: str | None = Field(
+    document_url: Optional[str] = Field(
         None,
         description='The URL to the file to be parsed. The file can be a PDF or an image. See the list of supported file types here: https://docs.landing.ai/ade/ade-file-types. Either this parameter or the `document` parameter must be provided.',
         title='Document Url',
     )
-    model: str | None = Field(
+    model: Optional[str] = Field(
         None, description='The version of the model to use for parsing.', title='Model'
     )
-    password: str | None = Field(
+    password: Optional[str] = Field(
         None,
         description='Password for encrypted document files. If the document is password-protected, provide the password to decrypt and process the document. Ignored for unencrypted documents.',
         title='Password',
     )
-    split: SplitType | None = Field(
+    split: Optional[SplitType] = Field(
         None,
         description='If you want to split documents into smaller sections, include the split parameter. Set the parameter to page to split documents at the page level. The splits object in the API output will contain a set of data for each page.',
     )
@@ -605,17 +605,19 @@ class ParseRequestWithEncryptedPassword(BaseModel):
 
 class ParseResponseGrounding(BaseModel):
     box: ParseGroundingBox
-    confidence: float | None = Field(None, title='Confidence')
-    low_confidence_spans: list[Patch] | None = Field(None, title='Low Confidence Spans')
+    confidence: Optional[float] = Field(None, title='Confidence')
+    low_confidence_spans: Optional[list[Patch]] = Field(
+        None, title='Low Confidence Spans'
+    )
     page: int = Field(..., title='Page')
     type: GroundingType
 
 
 class ParseResponseTableCellGrounding(BaseModel):
     box: ParseGroundingBox
-    confidence: float | None = Field(None, title='Confidence')
+    confidence: Optional[float] = Field(None, title='Confidence')
     page: int = Field(..., title='Page')
-    position: ParseResponseTableCellGroundingPosition | None = None
+    position: Optional[ParseResponseTableCellGroundingPosition] = None
     type: GroundingType
 
 
@@ -638,7 +640,7 @@ class SpreadsheetChunk(BaseModel):
     - Parsed content chunks from embedded images (text, table, figure, etc.)
     """
 
-    grounding: ParseGrounding | None = Field(
+    grounding: Optional[ParseGrounding] = Field(
         None,
         description='Visual grounding coordinates from /parse API (only for chunks derived from embedded images)',
     )
@@ -681,13 +683,13 @@ class SpreadsheetParseResponse(BaseModel):
 
 
 class BuildSchemaMetadata(BaseModel):
-    credit_usage: float | None = Field(0.0, title='Credit Usage')
-    duration_ms: int | None = Field(0, title='Duration Ms')
-    filename: str | None = Field(None, title='Filename')
-    job_id: str | None = Field('', title='Job Id')
-    org_id: str | None = Field(None, title='Org Id')
-    version: str | None = Field(None, title='Version')
-    warnings: list[ExtractWarning] | None = Field(
+    credit_usage: Optional[float] = Field(0.0, title='Credit Usage')
+    duration_ms: Optional[int] = Field(0, title='Duration Ms')
+    filename: Optional[str] = Field(None, title='Filename')
+    job_id: Optional[str] = Field('', title='Job Id')
+    org_id: Optional[str] = Field(None, title='Org Id')
+    version: Optional[str] = Field(None, title='Version')
+    warnings: Optional[list[ExtractWarning]] = Field(
         None,
         description="Structured warnings from the extraction process. Each warning is an instance of ExtractWarning with 'code' (e.g. 'nonconformant_schema') and 'msg' (human-readable description). Present only for extract versions from extract-20260314 and above that support structured warnings.",
         title='Warnings',
@@ -708,21 +710,21 @@ class BuildSchemaResponse(BaseModel):
 class ExtractMetadata(BaseModel):
     credit_usage: float = Field(..., title='Credit Usage')
     duration_ms: int = Field(..., title='Duration Ms')
-    fallback_model_version: str | None = Field(
+    fallback_model_version: Optional[str] = Field(
         None,
         description='The extract model that was actually used to extract the data when the initial extraction attempt failed with the requested version.',
         title='Fallback Model Version',
     )
     filename: str = Field(..., title='Filename')
     job_id: str = Field(..., title='Job Id')
-    org_id: str | None = Field(..., title='Org Id')
-    schema_violation_error: str | None = Field(
+    org_id: Optional[str] = Field(..., title='Org Id')
+    schema_violation_error: Optional[str] = Field(
         None,
         description='A detailed error message shows why the extracted data does not fully conform to the input schema. Null means the extraction result is consistent with the input schema.',
         title='Schema Violation Error',
     )
-    version: str | None = Field(..., title='Version')
-    warnings: list[ExtractWarning] | None = Field(
+    version: Optional[str] = Field(..., title='Version')
+    warnings: Optional[list[ExtractWarning]] = Field(
         None,
         description="Structured warnings from the extraction process. Each warning is an instance of ExtractWarning with 'code' (e.g. 'nonconformant_schema') and 'msg' (human-readable description). Present only for extract versions from extract-20260314 and above that support structured warnings.",
         title='Warnings',
@@ -752,9 +754,9 @@ class ParseChunk(BaseModel):
 
 class ParseResponse(BaseModel):
     chunks: list[ParseChunk] = Field(..., title='Chunks')
-    grounding: (
-        dict[str, ParseResponseGrounding | ParseResponseTableCellGrounding] | None
-    ) = Field(None, title='Grounding')
+    grounding: Optional[
+        dict[str, Union[ParseResponseGrounding, ParseResponseTableCellGrounding]]
+    ] = Field(None, title='Grounding')
     markdown: str = Field(..., title='Markdown')
     metadata: ParseMetadata
     splits: list[ParseSplit] = Field(..., title='Splits')
@@ -765,16 +767,16 @@ class ExtractJobStatusResponse(BaseModel):
     The status of an extract job, plus the results once it completes.
     """
 
-    created_at: int | None = Field(
+    created_at: Optional[int] = Field(
         0,
         description='Unix timestamp (in seconds) for when the job was created.',
         title='Created At',
     )
-    data: ExtractResponse | None = Field(
+    data: Optional[ExtractResponse] = Field(
         None,
         description='The extraction results, returned here when the job is complete and you did not set an `output_save_url`. Large results are returned through `output_url` instead.',
     )
-    failure_reason: str | None = Field(
+    failure_reason: Optional[str] = Field(
         None,
         description='If the job failed, a message describing what went wrong.',
         title='Failure Reason',
@@ -782,12 +784,12 @@ class ExtractJobStatusResponse(BaseModel):
     job_id: str = Field(
         ..., description='A unique identifier for this extract job.', title='Job Id'
     )
-    metadata: ExtractMetadata | None = Field(
+    metadata: Optional[ExtractMetadata] = Field(
         None,
         description='Information about the extraction, such as the model version, duration, credit usage, and any schema warnings.',
     )
-    org_id: str | None = Field(None, description='Organization ID.', title='Org Id')
-    output_url: str | None = Field(
+    org_id: Optional[str] = Field(None, description='Organization ID.', title='Org Id')
+    output_url: Optional[str] = Field(
         None,
         description='A URL to download the extraction results. Provided when the job is complete and either you set an `output_save_url` or the result is larger than 1 MB. URLs for large results are temporary and expire one hour after you request the job.',
         title='Output Url',
@@ -809,7 +811,7 @@ class ExtractJobStatusResponse(BaseModel):
         description='The current state of the job: `pending`, `processing`, `completed`, `failed`, or `cancelled`.',
         title='Status',
     )
-    version: str | None = Field(
+    version: Optional[str] = Field(
         None,
         description='The exact model snapshot used for the extraction.',
         title='Version',
@@ -821,21 +823,21 @@ class JobStatusResponse(BaseModel):
     Unified response for job status endpoint.
     """
 
-    created_at: int | None = Field(
+    created_at: Optional[int] = Field(
         0,
         description='Unix timestamp (seconds) for when the job was created. Mirrors received_at; exposed so clients have an explicit creation time.',
         title='Created At',
     )
-    data: ParseResponse | SpreadsheetParseResponse | None = Field(
+    data: Optional[Union[ParseResponse, SpreadsheetParseResponse]] = Field(
         None,
         description='The parsed output (ParseResponse for documents, SpreadsheetParseResponse for spreadsheets), if the job is complete and the `output_save_url` parameter was not used.',
         title='Data',
     )
-    failure_reason: str | None = Field(None, title='Failure Reason')
+    failure_reason: Optional[str] = Field(None, title='Failure Reason')
     job_id: str = Field(..., title='Job Id')
-    metadata: ParseMetadata | None = None
-    org_id: str | None = Field(None, title='Org Id')
-    output_url: str | None = Field(
+    metadata: Optional[ParseMetadata] = None
+    org_id: Optional[str] = Field(None, title='Org Id')
+    output_url: Optional[str] = Field(
         None,
         description='The URL to the parsed content. This field contains a URL when the job is complete and either you specified the `output_save_url` parameter or the result is larger than 1MB. When the result exceeds 1MB, the URL is a presigned S3 URL that expires after 1 hour. Each time you GET the job, a new presigned URL is generated.',
         title='Output Url',
@@ -849,4 +851,4 @@ class JobStatusResponse(BaseModel):
     )
     received_at: int = Field(..., title='Received At')
     status: str = Field(..., title='Status')
-    version: str | None = Field(None, title='Version')
+    version: Optional[str] = Field(None, title='Version')
