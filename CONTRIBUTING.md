@@ -154,10 +154,13 @@ Every spec-sync PR (and any PR to `main`) must pass `.github/workflows/pr-gates.
 
 Spec-sync PRs are AI-drafted and **require human review** before merge.
 
-**Secrets required:** `SPEC_SYNC_APP_ID` + `SPEC_SYNC_APP_PRIVATE_KEY` (a GitHub App with
-`contents: write` and `pull-requests: write` — needed because commits pushed with the default
-`GITHUB_TOKEN` do not trigger the gate workflows), `ANTHROPIC_API_KEY`, and
-`LANDINGAI_ADE_STAGING_APIKEY`.
+**Secrets required:** `SPEC_SYNC_TOKEN` (a fine-grained PAT scoped to this repo with
+`Contents: Read and write` and `Pull requests: Read and write`), `ANTHROPIC_API_KEY`, and
+`LANDINGAI_ADE_STAGING_APIKEY`. `SPEC_SYNC_TOKEN` must **not** be the default `GITHUB_TOKEN`:
+pushes and PRs authored by `GITHUB_TOKEN` do not trigger the gate workflows (GitHub
+anti-recursion), so the gates would never run on the sync PR. A GitHub App installation token
+(org-owned) is the cleaner long-term choice and can replace the PAT without other workflow
+changes.
 
 **V2:** once the aide gateway serves its curated spec unauthenticated, add `specs/v2-aide.json` and
 its URL as a second drift-check in the workflow; the two-phase machinery is unchanged.

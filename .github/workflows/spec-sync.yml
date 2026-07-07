@@ -15,16 +15,12 @@ jobs:
     env:
       V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
     steps:
-      - name: Mint GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.SPEC_SYNC_APP_ID }}
-          private-key: ${{ secrets.SPEC_SYNC_APP_PRIVATE_KEY }}
-
       - uses: actions/checkout@v6
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          # SPEC_SYNC_TOKEN is a fine-grained PAT (Contents: RW, Pull requests: RW)
+          # scoped to this repo. It must NOT be the default GITHUB_TOKEN: pushes/PRs
+          # authored by GITHUB_TOKEN do not trigger the gate workflows (anti-recursion).
+          token: ${{ secrets.SPEC_SYNC_TOKEN }}
           fetch-depth: 0     # tags needed for surface-lock baseline
 
       - name: Install Rye
@@ -76,7 +72,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ steps.app-token.outputs.token }}
+          github_token: ${{ secrets.SPEC_SYNC_TOKEN }}
           prompt: |
             The previous commit updated specs/v1-ade.json and regenerated reference
             models in specs/_generated/v1_models.py. Update the SDK to match the spec
@@ -93,7 +89,7 @@ jobs:
       - name: Open sync PR
         if: steps.drift.outputs.code == '10'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: |
           gh pr create \
             --base main \
