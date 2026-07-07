@@ -9,9 +9,11 @@ Release workflow prepends the output to CHANGELOG.md and uses it as the GitHub
 Release notes.
 """
 
+from __future__ import annotations
+
 import re
-import subprocess
 import sys
+import subprocess
 from datetime import date
 
 SECTIONS = [
@@ -39,7 +41,7 @@ def main() -> None:
         check=True,
     ).stdout
 
-    buckets = {}
+    buckets: dict[str, list[str]] = {}
     for line in log.splitlines():
         if not line.strip():
             continue
@@ -67,7 +69,7 @@ def main() -> None:
         entries = buckets.get(kind, [])
         if entries:
             out += ["", f"### {title}", ""] + entries
-    print("\n".join(out))
+    sys.stdout.write("\n".join(out) + "\n")
 
 
 if __name__ == "__main__":
