@@ -1,25 +1,27 @@
 # Manual, dispatch-only release automation (replaces the Stainless-run
 # release-please after the platform sunset on 2026-09-01).
 #
-# How a release works:
-#   1. A maintainer runs this workflow (Actions -> Release -> Run workflow)
-#      and picks the bump: patch / minor / major.
-#   2. The open-release-pr job computes the next version from
-#      .release-please-manifest.json and opens (or updates) a
-#      "release: x.y.z" PR pinned to exactly that version, with a changelog
-#      generated from the commits since the last release tag. Nothing is
-#      released at this point.
-#   3. When that release PR is merged, the finalize job creates the git tag
-#      and the GitHub Release, which triggers publish-pypi.yml.
+# A maintainer runs this workflow (Actions -> Release -> Run workflow) and
+# picks the bump: patch / minor / major. The workflow then, in one shot:
+#   1. computes the next version from the latest git tag,
+#   2. stamps it into pyproject.toml and src/landingai_ade/_version.py,
+#   3. prepends a changelog section (grouped by Conventional Commit prefixes)
+#      to CHANGELOG.md,
+#   4. lands that as a "release: x.y.z" commit directly on main,
+#   5. tags it and creates the GitHub Release, which triggers
+#      .github/workflows/publish-pypi.yml.
 #
-# Ordinary PR merges never create release PRs or releases — releases happen
-# only when a maintainer dispatches this workflow and merges the PR it opens.
+# No release PR, no second confirmation: dispatching the workflow IS the
+# release decision. Ordinary PR merges never trigger any of this.
 #
-# RELEASE_PLEASE_TOKEN must be a fine-grained PAT (or GitHub App installation
-# token) with Contents: write and Pull requests: write on this repository.
-# The default GITHUB_TOKEN cannot be used: PRs and releases it creates do not
-# trigger other workflows, so CI would not run on the release PR and
-# publishing would silently never run.
+# RELEASE_TOKEN requirements:
+#   - a fine-grained PAT (or GitHub App installation token) with
+#     Contents: write on this repository;
+#   - its owner must be able to bypass the main-branch ruleset (the ruleset
+#     requires PRs; this repo's ruleset grants "always" bypass to
+#     organization admins). Otherwise the direct push in step 4 is rejected.
+#   - The default GITHUB_TOKEN cannot be used: releases it creates do not
+#     trigger other workflows, so publishing would silently never run.
 name: Release
 
 on:
@@ -33,23 +35,25 @@ on:
           - patch
           - minor
           - major
-  pull_request:
-    types: [closed]
 
 jobs:
-  open-release-pr:
-    name: open release PR
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'landing-ai/ade-python'
+  release:
+    name: release
     runs-on: ubuntu-latest
+    if: github.repository == 'landing-ai/ade-python' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history: needed for the previous tag + changelog range
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Compute next version
         id: version
         env:
           BUMP: ${{ inputs.bump }}
         run: |
-          current="$(jq -r '.["."]' .release-please-manifest.json)"
+          prev_tag="$(git describe --tags --abbrev=0)"
+          current="${prev_tag#v}"
           IFS='.' read -r major minor patch <<< "$current"
           case "$BUMP" in
             major) next="$((major + 1)).0.0" ;;
@@ -57,34 +61,40 @@ jobs:
             patch) next="${major}.${minor}.$((patch + 1))" ;;
           esac
           echo "bumping $current -> $next ($BUMP)"
-          echo "version=$next" >> "$GITHUB_OUTPUT"
+          {
+            echo "prev_tag=$prev_tag"
+            echo "version=$next"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Open or update the release PR
+      - name: Stamp version
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          NEXT: ${{ steps.version.outputs.version }}
         run: |
-          npx --yes release-please@17.10.2 release-pr \
-            --token="$GITHUB_TOKEN" \
-            --repo-url="${{ github.repository }}" \
-            --target-branch=main \
-            --release-as="${{ steps.version.outputs.version }}"
+          sed -i -E "s/^version = \".*\"/version = \"$NEXT\"/" pyproject.toml
+          sed -i -E "s/__version__ = \".*\"/__version__ = \"$NEXT\"/" src/landingai_ade/_version.py
+          git diff --stat
 
-  finalize:
-    name: tag + GitHub release
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'release-please--') &&
-      github.repository == 'landing-ai/ade-python'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Create tag and GitHub Release
+      - name: Update changelog
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PREV_TAG: ${{ steps.version.outputs.prev_tag }}
+          NEXT: ${{ steps.version.outputs.version }}
         run: |
-          npx --yes release-please@17.10.2 github-release \
-            --token="$GITHUB_TOKEN" \
-            --repo-url="${{ github.repository }}" \
-            --target-branch=main
+          python3 .github/scripts/generate_release_notes.py \
+            "${{ github.repository }}" "$PREV_TAG" "$NEXT" > /tmp/release-notes.md
+          { head -n 2 CHANGELOG.md; cat /tmp/release-notes.md; echo; tail -n +3 CHANGELOG.md; } > /tmp/changelog.md
+          mv /tmp/changelog.md CHANGELOG.md
+
+      - name: Commit, tag, and create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          NEXT: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml src/landingai_ade/_version.py CHANGELOG.md
+          git commit -m "release: $NEXT"
+          git push origin HEAD:main
+          gh release create "v$NEXT" \
+            --target "$(git rev-parse HEAD)" \
+            --title "v$NEXT" \
+            --notes-file /tmp/release-notes.md

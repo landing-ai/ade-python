@@ -41,8 +41,9 @@ Please use [Conventional Commits](https://www.conventionalcommits.org/) for comm
 titles (`feat:`, `fix:`, `chore:`, …) — the release changelog is grouped by these prefixes.
 
 Releases are cut manually: a maintainer runs the **Release** workflow (Actions → Release → Run
-workflow), chooses the version bump (patch / minor / major), and merges the release PR it opens.
-Ordinary PR merges never trigger a release.
+workflow) and chooses the version bump (patch / minor / major). The workflow lands a
+`release: x.y.z` commit on `main` (version stamping + changelog), tags it, and creates the GitHub
+Release — which triggers publishing. Ordinary PR merges never trigger a release.
 
 ## Adding and running examples
 
