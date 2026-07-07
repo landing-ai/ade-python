@@ -28,6 +28,7 @@ SECTIONS = [
     ("build", "Build System"),
     ("other", "Other Changes"),
 ]
+SECTION_KEYS = {key for key, _ in SECTIONS}
 HIDDEN = {"test", "ci", "release"}
 CONVENTIONAL = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]*)\))?!?:\s*(?P<desc>.+)$")
 
@@ -51,7 +52,7 @@ def main() -> None:
             kind = match.group("type")
             if kind in HIDDEN:
                 continue
-            if kind not in {key for key, _ in SECTIONS}:
+            if kind not in SECTION_KEYS:
                 kind = "other"
             scope, desc = match.group("scope"), match.group("desc")
             text = f"**{scope}:** {desc}" if scope else desc

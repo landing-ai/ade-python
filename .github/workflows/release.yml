@@ -36,6 +36,12 @@ on:
           - minor
           - major
 
+# Only one release can run at a time; a second dispatch queues rather than
+# racing the version computation and the push to main.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     name: release
