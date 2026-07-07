@@ -7,8 +7,10 @@
 #   2. stamps it into pyproject.toml and src/landingai_ade/_version.py,
 #   3. prepends a changelog section (grouped by Conventional Commit prefixes)
 #      to CHANGELOG.md,
-#   4. lands that as a "release: x.y.z" commit directly on main,
-#   5. tags it and creates the GitHub Release, which triggers
+#   4. builds and tests the stamped tree — the release aborts here, before
+#      any commit or tag exists, if anything is red,
+#   5. lands that as a "release: x.y.z" commit directly on main,
+#   6. tags it and creates the GitHub Release, which triggers
 #      .github/workflows/publish-pypi.yml.
 #
 # No release PR, no second confirmation: dispatching the workflow IS the
@@ -89,6 +91,20 @@ jobs:
             "${{ github.repository }}" "$PREV_TAG" "$NEXT" > /tmp/release-notes.md
           { head -n 2 CHANGELOG.md; cat /tmp/release-notes.md; echo; tail -n +3 CHANGELOG.md; } > /tmp/changelog.md
           mv /tmp/changelog.md CHANGELOG.md
+
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> $GITHUB_PATH
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+
+      - name: Build and test the stamped tree
+        run: |
+          ./scripts/bootstrap
+          rye build
+          ./scripts/test
 
       - name: Commit, tag, and create the GitHub Release
         env:
