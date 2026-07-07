@@ -9,10 +9,19 @@ prod="$(mktemp)"
 trap 'rm -f "$prod"' EXIT
 "$here/fetch-normalize.sh" "$prod_url" > "$prod"
 
-# The committed staging snapshot is the surface we ship code for; every path in it
-# must also exist in production before we release.
+# The committed staging snapshot is the surface we ship code for; every route in it
+# must also exist in production before we release. A route is a (path, method) pair,
+# so we compare at method granularity — a path present in prod but missing a specific
+# method (e.g. a newly added POST) must still block the release.
 missing="$(jq -r --slurpfile p "$prod" '
-  .paths | keys[] as $k | select(($p[0].paths | has($k)) | not) | $k
+  ($p[0].paths) as $prod
+  | .paths
+  | to_entries[]
+  | .key as $path
+  | (.value | keys[]) as $method
+  | select(["get","put","post","delete","patch","options","head","trace"] | index($method))
+  | select(($prod[$path] // {} | has($method)) | not)
+  | "\($method | ascii_upcase) \($path)"
 ' specs/v1-ade.json)"
 
 if [ -n "$missing" ]; then

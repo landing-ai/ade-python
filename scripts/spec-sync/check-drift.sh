@@ -23,6 +23,7 @@ if [ -f "$committed" ] && diff -q "$committed" "$tmp" >/dev/null; then
   exit 0
 fi
 
+mkdir -p "$(dirname "$committed")"
 cp "$tmp" "$committed"
 echo "drift detected -> updated $committed"
 exit 10
