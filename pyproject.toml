@@ -155,6 +155,7 @@ exclude = [
     ".venv",
     ".nox",
     ".git",
+    "specs",
 ]
 
 reportImplicitOverride = true
@@ -173,7 +174,7 @@ show_error_codes = true
 #
 # We also exclude our `tests` as mypy doesn't always infer
 # types correctly and Pyright will still catch any type errors.
-exclude = ['src/landingai_ade/_files.py', '_dev/.*.py', 'tests/.*']
+exclude = ['src/landingai_ade/_files.py', '_dev/.*.py', 'tests/.*', 'specs/.*']
 
 strict_equality = true
 implicit_reexport = true
@@ -219,6 +220,9 @@ ignore_missing_imports = true
 line-length = 120
 output-format = "grouped"
 target-version = "py38"
+# specs/_generated holds datamodel-code-generator reference models (not shipped);
+# they are not held to the SDK's lint standards.
+extend-exclude = ["specs"]
 
 [tool.ruff.format]
 docstring-code-format = true
