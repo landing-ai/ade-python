@@ -1,0 +1,43 @@
+name: PR Gates
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  surface-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0     # tags for the release-tag baseline
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+      - name: Install dependencies
+        run: rye sync --all-features
+      - name: Surface lock (no breaking change to released API)
+        run: ./scripts/spec-sync/surface-lock.sh
+
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+      - name: Install dependencies
+        run: rye sync --all-features
+      - name: Contract tests vs staging
+        env:
+          LANDINGAI_ADE_STAGING_APIKEY: ${{ secrets.LANDINGAI_ADE_STAGING_APIKEY }}
+        run: rye run pytest tests/contract -m contract -v
