@@ -38,8 +38,11 @@ This SDK is fully owned and hand-maintained by LandingAI; it is no longer regene
 All code in the repository can be edited directly, like any other codebase.
 
 Please use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages and PR
-titles (`feat:`, `fix:`, `chore:`, …) — release automation (release-please) derives version bumps and
-the changelog from them.
+titles (`feat:`, `fix:`, `chore:`, …) — the release changelog is grouped by these prefixes.
+
+Releases are cut manually: a maintainer runs the **Release** workflow (Actions → Release → Run
+workflow), chooses the version bump (patch / minor / major), and merges the release PR it opens.
+Ordinary PR merges never trigger a release.
 
 ## Adding and running examples
 

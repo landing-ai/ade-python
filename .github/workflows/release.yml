@@ -1,0 +1,90 @@
+# Manual, dispatch-only release automation (replaces the Stainless-run
+# release-please after the platform sunset on 2026-09-01).
+#
+# How a release works:
+#   1. A maintainer runs this workflow (Actions -> Release -> Run workflow)
+#      and picks the bump: patch / minor / major.
+#   2. The open-release-pr job computes the next version from
+#      .release-please-manifest.json and opens (or updates) a
+#      "release: x.y.z" PR pinned to exactly that version, with a changelog
+#      generated from the commits since the last release tag. Nothing is
+#      released at this point.
+#   3. When that release PR is merged, the finalize job creates the git tag
+#      and the GitHub Release, which triggers publish-pypi.yml.
+#
+# Ordinary PR merges never create release PRs or releases — releases happen
+# only when a maintainer dispatches this workflow and merges the PR it opens.
+#
+# RELEASE_PLEASE_TOKEN must be a fine-grained PAT (or GitHub App installation
+# token) with Contents: write and Pull requests: write on this repository.
+# The default GITHUB_TOKEN cannot be used: PRs and releases it creates do not
+# trigger other workflows, so CI would not run on the release PR and
+# publishing would silently never run.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump for this release'
+        type: choice
+        required: true
+        options:
+          - patch
+          - minor
+          - major
+  pull_request:
+    types: [closed]
+
+jobs:
+  open-release-pr:
+    name: open release PR
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'landing-ai/ade-python'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compute next version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          current="$(jq -r '.["."]' .release-please-manifest.json)"
+          IFS='.' read -r major minor patch <<< "$current"
+          case "$BUMP" in
+            major) next="$((major + 1)).0.0" ;;
+            minor) next="${major}.$((minor + 1)).0" ;;
+            patch) next="${major}.${minor}.$((patch + 1))" ;;
+          esac
+          echo "bumping $current -> $next ($BUMP)"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the release PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          npx --yes release-please@17.10.2 release-pr \
+            --token="$GITHUB_TOKEN" \
+            --repo-url="${{ github.repository }}" \
+            --target-branch=main \
+            --release-as="${{ steps.version.outputs.version }}"
+
+  finalize:
+    name: tag + GitHub release
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release-please--') &&
+      github.repository == 'landing-ai/ade-python'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create tag and GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          npx --yes release-please@17.10.2 github-release \
+            --token="$GITHUB_TOKEN" \
+            --repo-url="${{ github.repository }}" \
+            --target-branch=main
