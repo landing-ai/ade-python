@@ -1,6 +1,6 @@
 [project]
 name = "landingai-ade"
-version = "1.12.0"
+version = "1.13.0"
 description = "The official Python library for the landingai-ade API"
 dynamic = ["readme"]
 license = "Apache-2.0"
@@ -168,7 +168,7 @@ show_error_codes = true
 #
 # We also exclude our `tests` as mypy doesn't always infer
 # types correctly and Pyright will still catch any type errors.
-exclude = ['src/landingai_ade/_files.py', '_dev/.*.py', 'tests/.*']
+exclude = ["src/landingai_ade/_files.py", "_dev/.*.py", "tests/.*"]
 
 strict_equality = true
 implicit_reexport = true

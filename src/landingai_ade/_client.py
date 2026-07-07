@@ -39,6 +39,7 @@ from ._types import (
 )
 from ._utils import (
     is_given,
+    is_mapping_t,
     extract_files,
     maybe_transform,
     get_async_library,
@@ -218,6 +219,15 @@ class LandingAIADE(SyncAPIClient):
                 base_url = ENVIRONMENTS[environment]
             except KeyError as exc:
                 raise ValueError(f"Unknown environment: {environment}") from exc
+
+        custom_headers_env = os.environ.get("LANDINGAI_ADE_CUSTOM_HEADERS")
+        if custom_headers_env is not None:
+            parsed: dict[str, str] = {}
+            for line in custom_headers_env.split("\n"):
+                colon = line.find(":")
+                if colon >= 0:
+                    parsed[line[:colon].strip()] = line[colon + 1 :].strip()
+            default_headers = {**parsed, **(default_headers if is_mapping_t(default_headers) else {})}
 
         super().__init__(
             version=__version__,
@@ -908,6 +918,15 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 base_url = ENVIRONMENTS[environment]
             except KeyError as exc:
                 raise ValueError(f"Unknown environment: {environment}") from exc
+
+        custom_headers_env = os.environ.get("LANDINGAI_ADE_CUSTOM_HEADERS")
+        if custom_headers_env is not None:
+            parsed: dict[str, str] = {}
+            for line in custom_headers_env.split("\n"):
+                colon = line.find(":")
+                if colon >= 0:
+                    parsed[line[:colon].strip()] = line[colon + 1 :].strip()
+            default_headers = {**parsed, **(default_headers if is_mapping_t(default_headers) else {})}
 
         super().__init__(
             version=__version__,

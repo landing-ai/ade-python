@@ -13,14 +13,17 @@ class Job(BaseModel):
     job_id: str
 
     progress: float
-    """
-    Job completion progress as a decimal from 0 to 1, where 0 is not started, 1 is
-    finished, and values between 0 and 1 indicate work in progress.
-    """
+    """Job completion as a decimal from 0 (not started) to 1 (complete)."""
 
     received_at: int
 
     status: str
+
+    created_at: Optional[int] = None
+    """Unix timestamp (seconds) for when the job was created.
+
+    Mirrors received_at; exposed so clients have an explicit creation time.
+    """
 
     failure_reason: Optional[str] = None
 

@@ -296,6 +296,12 @@ class ParseJobGetResponse(BaseModel):
 
     status: str
 
+    created_at: Optional[int] = None
+    """Unix timestamp (seconds) for when the job was created.
+
+    Mirrors received_at; exposed so clients have an explicit creation time.
+    """
+
     data: Optional[Data] = None
     """
     The parsed output (ParseResponse for documents, SpreadsheetParseResponse for
