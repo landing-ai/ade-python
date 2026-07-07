@@ -1,0 +1,102 @@
+name: Spec Sync
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every ~6h; cron covers correctness, dispatch cuts latency
+  workflow_dispatch: {}
+
+permissions:
+  contents: read            # writes happen via the app token, not GITHUB_TOKEN
+
+jobs:
+  spec-sync:
+    if: github.repository == 'landing-ai/ade-python'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
+    steps:
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SPEC_SYNC_APP_ID }}
+          private-key: ${{ secrets.SPEC_SYNC_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0     # tags needed for surface-lock baseline
+
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+
+      - name: Install dependencies
+        run: rye sync --all-features
+
+      - name: Detect drift
+        id: drift
+        run: |
+          set +e
+          ./scripts/spec-sync/check-drift.sh "$V1_SPEC_URL" specs/v1-ade.json
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: No drift
+        if: steps.drift.outputs.code == '0'
+        run: echo "specs in sync; nothing to do."
+
+      - name: Fail on fetch error
+        if: steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10'
+        run: |
+          echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }})"
+          exit 1
+
+      # ---- Phase 1: mechanical ----
+      - name: Mechanical commit (snapshot + reference models)
+        if: steps.drift.outputs.code == '10'
+        id: mech
+        run: |
+          git config user.name "spec-sync[bot]"
+          git config user.email "spec-sync@users.noreply.github.com"
+          branch="spec-sync/v1-$(date -u +%Y%m%dT%H%M%SZ)"
+          git checkout -b "$branch"
+          ./scripts/spec-sync/gen-models.sh specs/v1-ade.json specs/_generated/v1_models.py
+          git add specs/v1-ade.json specs/_generated/v1_models.py
+          git commit -m "chore(spec-sync): update V1 spec snapshot + regenerated reference models"
+          git push -u origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      # ---- Phase 2: AI wiring (same checkout/branch) ----
+      - name: AI wiring commit
+        if: steps.drift.outputs.code == '10'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          prompt: |
+            The previous commit updated specs/v1-ade.json and regenerated reference
+            models in specs/_generated/v1_models.py. Update the SDK to match the spec
+            diff: add or adjust resource classes, method signatures, param TypedDicts,
+            response models, tests, api.md, and README examples, mirroring the existing
+            conventions in src/landingai_ade/resources/parse_jobs.py.
+            Rules: PURELY ADDITIVE — never modify or remove an existing public signature
+            (the surface-lock CI job will fail the PR); follow existing code style;
+            run ./scripts/format; commit to the current branch.
+          claude_args: |
+            --max-turns 40
+            --allowedTools "Edit,Write,Read,Bash(git *),Bash(rye *),Bash(./scripts/*)"
+
+      - name: Open sync PR
+        if: steps.drift.outputs.code == '10'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.mech.outputs.branch }}" \
+            --title "spec-sync: track V1 spec drift" \
+            --body $'Automated spec-sync PR.\n\n- **Commit 1 (mechanical):** normalized spec snapshot + regenerated reference models.\n- **Commit 2 (AI):** resources/methods/tests/docs wired from the spec diff.\n\nGates (surface-lock, contract tests, lint/test/typecheck) must pass. **Human review required before merge.**'
