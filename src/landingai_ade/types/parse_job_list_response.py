@@ -13,10 +13,7 @@ class Job(BaseModel):
     job_id: str
 
     progress: float
-    """
-    Job completion progress as a decimal from 0 to 1, where 0 is not started, 1 is
-    finished, and values between 0 and 1 indicate work in progress.
-    """
+    """Job completion as a decimal from 0 (not started) to 1 (complete)."""
 
     received_at: int
 
