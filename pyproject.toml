@@ -136,6 +136,9 @@ addopts = "--tb=short -n auto"
 xfail_strict = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+markers = [
+  "contract: hits the live staging API; requires LANDINGAI_ADE_STAGING_APIKEY",
+]
 filterwarnings = [
   "error"
 ]
