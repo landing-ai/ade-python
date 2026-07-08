@@ -4,6 +4,8 @@ from enum import Enum
 from typing import Dict, Optional
 from datetime import datetime
 
+from pydantic import Field
+
 from ..._models import BaseModel
 
 __all__ = ["JobStatus", "JobError", "Job"]
@@ -34,7 +36,7 @@ class Job(BaseModel):
     result: Optional[object] = None
     error: Optional[JobError] = None
     # Full original envelope for fields not surfaced above (org_id, output_url, version, ...).
-    raw: Dict[str, object] = {}
+    raw: Dict[str, object] = Field(default_factory=dict)
 
     @property
     def is_terminal(self) -> bool:

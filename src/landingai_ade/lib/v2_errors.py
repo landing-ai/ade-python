@@ -14,8 +14,9 @@ __all__ = [
 class V2SyncTimeoutError(LandingAiadeError):
     """A synchronous /v2/parse or /v2/extract call exceeded the server wait window (504).
 
-    The server cancels the work; use the async jobs route (`*_jobs.create` + `wait`)
-    for long-running documents."""
+    The server cancels the work; use the async jobs route
+    (`client.v2.parse_jobs.create(...)` / `client.v2.extract_jobs.create(...)`, then
+    `.wait(...)`) for long-running documents."""
 
 
 class JobWaitTimeoutError(LandingAiadeError):
@@ -30,6 +31,6 @@ def raise_if_sync_timeout(exc: APIStatusError) -> None:
     if exc.response.status_code == 504:
         raise V2SyncTimeoutError(
             "The synchronous request timed out (HTTP 504). The server cancels the work on "
-            "timeout — use the async jobs routes (`.parse_jobs.create(...)` / `.extract_jobs.create(...)` "
-            "then `.wait(...)`) for long-running documents."
+            "timeout — use the async jobs route (`client.v2.parse_jobs.create(...)` / "
+            "`client.v2.extract_jobs.create(...)`, then `.wait(...)`) for long-running documents."
         ) from exc
