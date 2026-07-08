@@ -74,5 +74,19 @@ def test_parse_response_tolerates_loose_shape() -> None:
     assert r.metadata.billing.total_credits == 3.0
 
 
+def test_parse_response_retains_unknown_fields() -> None:
+    r = V2ParseResponse(markdown="# hi", surprise_field="x")  # type: ignore[call-arg]
+    assert r.to_dict()["surprise_field"] == "x"
+
+    e = V2ExtractResult(
+        extraction={},
+        extraction_metadata={},
+        markdown="doc",
+        metadata={"job_id": "j1", "version": "extract-1", "duration_ms": 12},  # type: ignore[arg-type]
+        another_surprise=42,  # type: ignore[call-arg]
+    )
+    assert e.to_dict()["another_surprise"] == 42
+
+
 def test_file_upload_response() -> None:
     assert V2FileUploadResponse(file_ref="abc").file_ref == "abc"
