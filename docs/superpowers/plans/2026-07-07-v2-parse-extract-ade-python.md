@@ -19,10 +19,12 @@
 
   | environment | V1 base URL | V2 base URL |
   |---|---|---|
-  | production (default) | `https://api.va.landing.ai` | `https://api.ade.landing.ai` |
-  | eu | `https://api.va.eu-west-1.landing.ai` | `https://api.ade.eu-west-1.landing.ai` |
-  | staging | `https://api.va.staging.landing.ai` | `https://api.ade.staging.landing.ai` |
-  | dev | `https://api.va.dev.landing.ai` | `https://api.ade.dev.landing.ai` |
+  | production (default) | `https://api.va.landing.ai` | `https://aide.landing.ai` |
+  | eu | `https://api.va.eu-west-1.landing.ai` | `https://aide.eu-west-1.landing.ai` |
+  | staging | `https://api.va.staging.landing.ai` | `https://aide.staging.landing.ai` |
+  | dev | `https://api.va.dev.landing.ai` | `https://aide.dev.landing.ai` |
+
+  > **V2 host (corrected 2026-07-08):** the V2 customer surface — API **and** spec — is served by the AIDE gateway at `aide.[env].landing.ai` (`aide.[env]/openapi.json` = title "AIDE Gateway", the 10-path V2 surface). An earlier draft used `api.ade.[env].landing.ai`; that host is the VTRA "Vision Tools API" (V1 `/v1/ade/*` + `/v1/tools/*`) and does **not** serve `/v2/parse|extract|workflow` or `/v1/files`. Confirmed against the two hosts' `openapi.json` content (probe status codes on these POST routes are unreliable — trust the spec).
 
 - **Env vars:** `LANDINGAI_ADE_ENVIRONMENT` selects the environment; `LANDINGAI_ADE_BASE_URL` overrides V1; `LANDINGAI_ADE_V2_BASE_URL` overrides V2. If only `base_url` (V1) is set with no V2 override, **V2 traffic follows `base_url`** (so a single mock captures everything).
 - **Auth unchanged:** `Authorization: Bearer <apikey>`, applied globally by the transport to both hosts. Same key per environment.
@@ -81,16 +83,16 @@ APIKEY = "My Apikey"
 def test_default_production_pair() -> None:
     c = LandingAIADE(apikey=APIKEY)
     assert str(c.base_url).rstrip("/") == "https://api.va.landing.ai"
-    assert c._v2_base_url == "https://api.ade.landing.ai"
+    assert c._v2_base_url == "https://aide.landing.ai"
 
 
 @pytest.mark.parametrize(
     "env,v1,v2",
     [
-        ("production", "https://api.va.landing.ai", "https://api.ade.landing.ai"),
-        ("eu", "https://api.va.eu-west-1.landing.ai", "https://api.ade.eu-west-1.landing.ai"),
-        ("staging", "https://api.va.staging.landing.ai", "https://api.ade.staging.landing.ai"),
-        ("dev", "https://api.va.dev.landing.ai", "https://api.ade.dev.landing.ai"),
+        ("production", "https://api.va.landing.ai", "https://aide.landing.ai"),
+        ("eu", "https://api.va.eu-west-1.landing.ai", "https://aide.eu-west-1.landing.ai"),
+        ("staging", "https://api.va.staging.landing.ai", "https://aide.staging.landing.ai"),
+        ("dev", "https://api.va.dev.landing.ai", "https://aide.dev.landing.ai"),
     ],
 )
 def test_environment_pairs(env: str, v1: str, v2: str) -> None:
@@ -102,7 +104,7 @@ def test_environment_pairs(env: str, v1: str, v2: str) -> None:
 def test_environment_from_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANDINGAI_ADE_ENVIRONMENT", "staging")
     c = LandingAIADE(apikey=APIKEY)
-    assert c._v2_base_url == "https://api.ade.staging.landing.ai"
+    assert c._v2_base_url == "https://aide.staging.landing.ai"
 
 
 def test_explicit_v2_base_url_wins() -> None:
@@ -140,10 +142,10 @@ ENVIRONMENTS: Dict[str, str] = {
 }
 
 V2_ENVIRONMENTS: Dict[str, str] = {
-    "production": "https://api.ade.landing.ai",
-    "eu": "https://api.ade.eu-west-1.landing.ai",
-    "staging": "https://api.ade.staging.landing.ai",
-    "dev": "https://api.ade.dev.landing.ai",
+    "production": "https://aide.landing.ai",
+    "eu": "https://aide.eu-west-1.landing.ai",
+    "staging": "https://aide.staging.landing.ai",
+    "dev": "https://aide.dev.landing.ai",
 }
 ```
 
@@ -849,7 +851,7 @@ from landingai_ade.lib.v2_errors import (
 
 
 def _status_error(code: int) -> APIStatusError:
-    request = httpx.Request("POST", "https://api.ade.landing.ai/v2/extract")
+    request = httpx.Request("POST", "https://aide.landing.ai/v2/extract")
     response = httpx.Response(code, request=request)
     return APIStatusError("err", response=response, body=None)
 
@@ -960,7 +962,7 @@ APIKEY = "My Apikey"
 @respx.mock
 def test_v2_subclient_routes_to_v2_host() -> None:
     c = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v1/files").mock(
+    route = respx.post("https://aide.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "ref-123"})
     )
     ref = c.v2.files.upload(file=b"hello")
@@ -1236,7 +1238,7 @@ APIKEY = "My Apikey"
 @respx.mock
 def test_files_upload_returns_ref_and_hits_v2_host() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v1/files").mock(
+    route = respx.post("https://aide.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "fr_1"})
     )
     ref = client.v2.files.upload(file=b"markdown bytes")
@@ -1249,7 +1251,7 @@ def test_files_upload_returns_ref_and_hits_v2_host() -> None:
 @pytest.mark.asyncio
 async def test_async_files_upload() -> None:
     client = AsyncLandingAIADE(apikey=APIKEY, environment="staging")
-    respx.post("https://api.ade.staging.landing.ai/v1/files").mock(
+    respx.post("https://aide.staging.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "fr_2"})
     )
     ref = await client.v2.files.upload(file=b"bytes")
@@ -1401,7 +1403,7 @@ PARSE_BODY = {
 @respx.mock
 def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
+    route = respx.post("https://aide.landing.ai/v2/parse").mock(
         return_value=httpx.Response(200, json=PARSE_BODY)
     )
     result = client.v2.parse(document=b"pdf", model="dpt-3-latest", options={"foo": "bar"})
@@ -1417,7 +1419,7 @@ def test_parse_sync_206_returns_response_with_failed_pages() -> None:
     client = LandingAIADE(apikey=APIKEY)
     body = dict(PARSE_BODY)
     body["metadata"] = {**PARSE_BODY["metadata"], "failed_pages": [3]}
-    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(206, json=body))
+    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(206, json=body))
     result = client.v2.parse(document=b"pdf")
     assert result.metadata is not None and result.metadata.failed_pages == [3]
 
@@ -1425,7 +1427,7 @@ def test_parse_sync_206_returns_response_with_failed_pages() -> None:
 @respx.mock
 def test_parse_sync_504_raises_v2_sync_timeout() -> None:
     client = LandingAIADE(apikey=APIKEY, max_retries=0)
-    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(504, json={"detail": "x"}))
+    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(504, json={"detail": "x"}))
     with pytest.raises(V2SyncTimeoutError):
         client.v2.parse(document=b"pdf")
 
@@ -1433,7 +1435,7 @@ def test_parse_sync_504_raises_v2_sync_timeout() -> None:
 @respx.mock
 def test_parse_save_to_writes_file(tmp_path) -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     client.v2.parse(document=b"pdf", save_to=str(tmp_path))
     written = list(tmp_path.glob("*.json"))
     assert written and json.loads(written[0].read_text())["markdown"] == "# Hello"
@@ -1672,7 +1674,7 @@ from landingai_ade.types.v2 import Job, JobStatus
 @respx.mock
 def test_parse_job_create_normalizes_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
+    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending", "received_at": 1700000000})
     )
     job = client.v2.parse_jobs.create(document=b"pdf", priority="priority")
@@ -1683,7 +1685,7 @@ def test_parse_job_create_normalizes_envelope() -> None:
 @respx.mock
 def test_parse_job_get_completed_has_typed_result() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
+    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(
         return_value=httpx.Response(
             200,
             json={"job_id": "p1", "status": "completed", "created_at": 1700000000, "data": PARSE_BODY},
@@ -1697,7 +1699,7 @@ def test_parse_job_get_completed_has_typed_result() -> None:
 @respx.mock
 def test_parse_job_list_carries_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+    respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(
             200,
             json={"jobs": [{"job_id": "p1", "status": "completed"}], "org_id": "o1", "has_more": True},
@@ -1715,7 +1717,7 @@ def test_parse_job_wait_polls_until_completed() -> None:
         httpx.Response(200, json={"job_id": "p1", "status": "processing", "progress": 0.5}),
         httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY}),
     ]
-    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
+    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
     # inject fake clock/sleep so no real time passes
     from landingai_ade.resources.v2 import _base
 
@@ -1906,7 +1908,7 @@ class Invoice(BaseModel):
 @respx.mock
 def test_extract_sync_json_body_with_pydantic_schema() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+    route = respx.post("https://aide.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
     )
     result = client.v2.extract(schema=Invoice, markdown="# doc", idempotency_key="k1")
@@ -1921,7 +1923,7 @@ def test_extract_sync_json_body_with_pydantic_schema() -> None:
 @respx.mock
 def test_extract_sync_strict_option() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+    route = respx.post("https://aide.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
     )
     client.v2.extract(schema={"type": "object", "properties": {}}, markdown_url="https://x/y.md", strict=True)
@@ -1933,7 +1935,7 @@ def test_extract_sync_strict_option() -> None:
 @respx.mock
 def test_extract_sync_504() -> None:
     client = LandingAIADE(apikey=APIKEY, max_retries=0)
-    respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(504, json={"detail": "x"}))
+    respx.post("https://aide.landing.ai/v2/extract").mock(return_value=httpx.Response(504, json={"detail": "x"}))
     with pytest.raises(V2SyncTimeoutError):
         client.v2.extract(schema={"type": "object"}, markdown="x")
 ```
@@ -2111,13 +2113,13 @@ from landingai_ade.types.v2 import Job, JobStatus
 @respx.mock
 def test_extract_job_create_and_get() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://api.ade.landing.ai/v2/extract/jobs").mock(
+    respx.post("https://aide.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "e1", "status": "pending", "created_at": "2026-01-01T00:00:00Z"})
     )
     job = client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", priority="priority")
     assert job.job_id == "e1" and job.status is JobStatus.PENDING
 
-    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e1").mock(
+    respx.get("https://aide.landing.ai/v2/extract/jobs/e1").mock(
         return_value=httpx.Response(
             200,
             json={"job_id": "e1", "status": "completed", "created_at": "2026-01-01T00:00:00Z",
@@ -2132,7 +2134,7 @@ def test_extract_job_create_and_get() -> None:
 @respx.mock
 def test_extract_job_get_failed_maps_error_object() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e2").mock(
+    respx.get("https://aide.landing.ai/v2/extract/jobs/e2").mock(
         return_value=httpx.Response(
             200, json={"job_id": "e2", "status": "failed", "error": {"code": "internal_error", "message": "boom"}}
         )
@@ -2146,7 +2148,7 @@ def test_extract_job_wait_raise_on_failure() -> None:
     from landingai_ade.lib.v2_errors import JobFailedError
 
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e3").mock(
+    respx.get("https://aide.landing.ai/v2/extract/jobs/e3").mock(
         return_value=httpx.Response(200, json={"job_id": "e3", "status": "failed", "error": {"code": "x", "message": "no"}})
     )
     with pytest.raises(JobFailedError):
@@ -2278,12 +2280,12 @@ APIKEY = "My Apikey"
 @pytest.mark.asyncio
 async def test_async_parse_and_jobs() -> None:
     client = AsyncLandingAIADE(apikey=APIKEY)
-    respx.post("https://api.ade.landing.ai/v2/parse").mock(
+    respx.post("https://aide.landing.ai/v2/parse").mock(
         return_value=httpx.Response(200, json={"markdown": "# a", "metadata": {"job_id": "j"}})
     )
     assert isinstance(await client.v2.parse(document=b"x"), V2ParseResponse)
 
-    respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
+    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending"})
     )
     job = await client.v2.parse_jobs.create(document=b"x")
@@ -2294,7 +2296,7 @@ async def test_async_parse_and_jobs() -> None:
 @pytest.mark.asyncio
 async def test_async_extract() -> None:
     client = AsyncLandingAIADE(apikey=APIKEY)
-    respx.post("https://api.ade.landing.ai/v2/extract").mock(
+    respx.post("https://aide.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json={
             "extraction": {}, "extraction_metadata": {}, "markdown": "m",
             "metadata": {"job_id": "e", "version": "v", "duration_ms": 1}})
