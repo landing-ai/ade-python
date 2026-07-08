@@ -126,3 +126,44 @@ You can release to package managers by using [the `Publish PyPI` GitHub action](
 
 If you need to manually release a package, you can run the `bin/publish-pypi` script with a `PYPI_TOKEN` set on
 the environment.
+
+## Spec-sync pipeline
+
+The SDK tracks the live ADE OpenAPI spec automatically via `.github/workflows/spec-sync.yml`
+(hourly cron + manual `workflow_dispatch`). It is driven by the **staging** spec; releases gate on
+the **production** spec ("staging in, production out").
+
+On each run it fetches and normalizes the live spec (`scripts/spec-sync/fetch-normalize.sh`) and
+diffs it against the committed snapshot `specs/v1-ade.json` (`scripts/spec-sync/check-drift.sh`).
+On drift it opens one PR with two attributed commits:
+
+1. **Mechanical** — updated `specs/v1-ade.json` snapshot plus regenerated *reference* models in
+   `specs/_generated/v1_models.py` (`scripts/spec-sync/gen-models.sh`, `datamodel-code-generator`).
+   These reference models are an input for the AI step and for review — they are **not** shipped and
+   do **not** replace `src/landingai_ade/types/*`.
+2. **AI** — `anthropics/claude-code-action` (automation mode) wires the resources, methods, param
+   types, tests, and docs from the spec diff, following existing conventions.
+
+Every spec-sync PR (and any PR to `main`) must pass `.github/workflows/pr-gates.yml`:
+
+- **surface-lock** (`scripts/spec-sync/surface-lock.sh`, `griffe`) — baseline is the **last release
+  tag**, so any change to *released* public surface fails mechanically. Merged-but-unreleased surface
+  stays mutable.
+- **contract-tests** — `tests/contract` (marker `contract`) run against staging when
+  `LANDINGAI_ADE_STAGING_APIKEY` is set; skipped otherwise.
+
+Spec-sync PRs are AI-drafted and **require human review** before merge.
+
+**Secrets required:** `SPEC_SYNC_TOKEN` (a fine-grained PAT scoped to this repo with
+`Contents: Read and write` and `Pull requests: Read and write`), `ANTHROPIC_API_KEY`, and
+`LANDINGAI_ADE_STAGING_APIKEY`. `SPEC_SYNC_TOKEN` must **not** be the default `GITHUB_TOKEN`:
+pushes and PRs authored by `GITHUB_TOKEN` do not trigger the gate workflows (GitHub
+anti-recursion), so the gates would never run on the sync PR. A GitHub App installation token
+(org-owned) is the cleaner long-term choice and can replace the PAT without other workflow
+changes.
+
+**V2:** once the aide gateway serves its curated spec unauthenticated, add `specs/v2-aide.json` and
+its URL as a second drift-check in the workflow; the two-phase machinery is unchanged.
+
+The same pipeline shape ports to `ade-typescript` with `openapi-typescript` (mechanical) and
+`api-extractor` (surface-lock), tracked separately.

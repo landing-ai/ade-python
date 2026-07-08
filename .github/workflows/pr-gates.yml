@@ -1,0 +1,52 @@
+name: PR Gates
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  surface-lock:
+    # Escape hatch for intentional breaking changes (major releases): label the PR
+    # `breaking-change-approved` to skip the released-surface lock.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'breaking-change-approved') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0     # tags for the release-tag baseline
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+      - name: Install dependencies
+        run: rye sync --all-features
+      - name: Surface lock (no breaking change to released API)
+        run: ./scripts/spec-sync/surface-lock.sh
+
+  contract-tests:
+    # Only spec-sync PRs are gated on the live staging API. Gating *every* PR would let a
+    # staging outage or transient 5xx block all merges repo-wide. Keep this job OUT of the
+    # required-checks list for ordinary PRs (it is skipped there); require it only where it runs.
+    if: startsWith(github.head_ref, 'spec-sync/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+      - name: Install dependencies
+        run: rye sync --all-features
+      - name: Contract tests vs staging
+        env:
+          LANDINGAI_ADE_STAGING_APIKEY: ${{ secrets.LANDINGAI_ADE_STAGING_APIKEY }}
+        # -n 0 forces serial execution: these hit the live API, and the repo's default
+        # `-n auto` (xdist) would run them in parallel, inviting flakiness/rate-limits.
+        run: rye run pytest tests/contract -m contract -n 0 -v

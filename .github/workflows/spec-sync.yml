@@ -1,0 +1,136 @@
+name: Spec Sync
+on:
+  schedule:
+    - cron: '0 * * * *'   # hourly; cron covers correctness, dispatch cuts latency
+  workflow_dispatch: {}
+
+# Serialize runs so a cron tick and a manual dispatch can't race on the sync branch.
+concurrency:
+  group: spec-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read            # all writes go through SPEC_SYNC_TOKEN, never GITHUB_TOKEN
+
+jobs:
+  spec-sync:
+    # Guard so the scheduled/dispatch job only runs on the canonical repo — forks lack the
+    # secrets and would just produce noisy failing runs.
+    if: github.repository == 'landing-ai/ade-python'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
+      SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # SPEC_SYNC_TOKEN is a fine-grained PAT (Contents: RW, Pull requests: RW) scoped to this
+          # repo. It must NOT be the default GITHUB_TOKEN: pushes/PRs authored by GITHUB_TOKEN do
+          # not trigger the gate workflows (anti-recursion).
+          token: ${{ secrets.SPEC_SYNC_TOKEN }}
+          fetch-depth: 0     # tags needed for surface-lock baseline
+
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+
+      - name: Install dependencies
+        run: rye sync --all-features
+
+      - name: Detect drift
+        id: drift
+        run: |
+          set +e
+          ./scripts/spec-sync/check-drift.sh "$V1_SPEC_URL" specs/v1-ade.json
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: No drift
+        if: steps.drift.outputs.code == '0'
+        run: echo "specs in sync; nothing to do."
+
+      - name: Fail on fetch error
+        if: steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10'
+        run: |
+          echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }})"
+          exit 1
+
+      # If a sync PR is already open, do nothing: it's awaiting human review, and re-running
+      # would duplicate gate runs and Claude API spend every hour until it merges.
+      - name: Check for an open sync PR
+        id: existing
+        if: steps.drift.outputs.code == '10'
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+        run: |
+          if gh pr list --state open --head "$SYNC_BRANCH" --json number --jq '.[0].number' | grep -q .; then
+            echo "open=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "open=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync PR already open — skip
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true'
+        run: echo "A spec-sync PR is already open; skipping until it is merged or closed."
+
+      # ---- Phase 1: mechanical (deterministic) ----
+      - name: Mechanical commit + push
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        run: |
+          git config user.name "spec-sync[bot]"
+          git config user.email "spec-sync@users.noreply.github.com"
+          git checkout -B "$SYNC_BRANCH"
+          ./scripts/spec-sync/gen-models.sh specs/v1-ade.json specs/_generated/v1_models.py
+          git add specs/v1-ade.json specs/_generated/v1_models.py
+          git commit -m "chore(spec-sync): update V1 spec snapshot + regenerated reference models"
+          git push --force origin "$SYNC_BRANCH"
+
+      # Open the PR now — before the AI step — so a run that dies in phase 2 leaves a visible PR
+      # (with just the mechanical commit) instead of an orphan branch.
+      - name: Open sync PR
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+        run: |
+          gh pr create --base main --head "$SYNC_BRANCH" \
+            --title "spec-sync: track V1 spec drift" \
+            --body $'Automated spec-sync PR.\n\n- **Commit 1 (mechanical):** normalized spec snapshot + regenerated reference models.\n- **Commit 2 (AI):** resources/methods/tests/docs wired from the spec diff (added after this PR opened).\n\nGates (surface-lock, contract tests, lint/test/typecheck) must pass. **Human review required before merge.**'
+
+      # ---- Phase 2: AI wiring — edits ONLY. The agent holds no git/push capability, so a
+      # prompt-injected spec description cannot route around review to push to a branch. ----
+      - name: AI wiring (edits only)
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.SPEC_SYNC_TOKEN }}
+          prompt: |
+            The previous commit updated specs/v1-ade.json and regenerated reference models in
+            specs/_generated/v1_models.py. Edit the SDK to match the spec diff: add or adjust
+            resource classes, method signatures, param TypedDicts, response models, tests, api.md,
+            and README examples, mirroring the conventions in
+            src/landingai_ade/resources/parse_jobs.py. Then run `./scripts/format`.
+            Rules: PURELY ADDITIVE — never modify or remove an existing public signature (the
+            surface-lock CI job will fail the PR). Do NOT run git or push; a later workflow step
+            commits and pushes your edits.
+          claude_args: |
+            --max-turns 40
+            --allowedTools "Edit,Write,Read,Bash(rye *),Bash(./scripts/*)"
+
+      # Deterministic: commit whatever the AI edited and push to the sync branch. This guarantees
+      # the AI changes actually reach the PR (the action's automation mode does not push), and it
+      # is the only step with push capability.
+      - name: Commit + push AI wiring
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "AI step produced no changes."
+          else
+            git commit -m "feat(spec-sync): wire SDK to spec diff (AI)"
+            git push origin HEAD:"$SYNC_BRANCH"
+          fi
