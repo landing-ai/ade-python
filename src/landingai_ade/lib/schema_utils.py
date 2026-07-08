@@ -11,6 +11,24 @@ from typing import Any, Dict, Type, Union, Mapping, cast
 
 from pydantic import BaseModel
 
+from .._compat import PYDANTIC_V1
+
+
+def _model_json_schema(model: Type[BaseModel]) -> Dict[str, Any]:
+    """Return a model's JSON schema, keyed the same way regardless of pydantic major.
+
+    Pydantic v2 exposes `model_json_schema()` and nests shared definitions under
+    `$defs`; pydantic v1 only has `.schema()` and nests them under `definitions`.
+    We normalize to `$defs` here so callers (and `_resolve_refs`) don't need to
+    know which pydantic major produced the schema.
+    """
+    if PYDANTIC_V1:
+        schema = model.schema()  # type: ignore[attr-defined]
+        if "definitions" in schema:
+            schema["$defs"] = schema.pop("definitions")
+        return schema
+    return model.model_json_schema()
+
 
 def _resolve_refs(obj: Any, defs: Dict[str, Any]) -> Any:
     """
@@ -65,10 +83,13 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
     """
     # The type annotation already ensures model is Type[BaseModel]
     # but we'll do a runtime check for safety
-    if not hasattr(model, "model_json_schema"):
+    if not (
+        isinstance(model, type)  # pyright: ignore[reportUnnecessaryIsInstance]
+        and issubclass(model, BaseModel)  # pyright: ignore[reportUnnecessaryIsInstance]
+    ):
         raise TypeError("model must be a Pydantic BaseModel subclass")
 
-    schema = model.model_json_schema()
+    schema = _model_json_schema(model)
     defs = schema.pop("$defs", {})
     schema = _resolve_refs(schema, defs)
     return json.dumps(schema)
@@ -76,9 +97,12 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
 
 def pydantic_to_schema_dict(model: Type[BaseModel]) -> Dict[str, Any]:
     """Like `pydantic_to_json_schema` but returns a dict with $refs resolved."""
-    if not hasattr(model, "model_json_schema"):
+    if not (
+        isinstance(model, type)  # pyright: ignore[reportUnnecessaryIsInstance]
+        and issubclass(model, BaseModel)  # pyright: ignore[reportUnnecessaryIsInstance]
+    ):
         raise TypeError("model must be a Pydantic BaseModel subclass")
-    schema = model.model_json_schema()
+    schema = _model_json_schema(model)
     defs = schema.pop("$defs", {})
     return cast(Dict[str, Any], _resolve_refs(schema, defs))
 
