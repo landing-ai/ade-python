@@ -32,7 +32,7 @@ def _build_parse_body(
     password: object,
 ) -> dict[str, Any]:
     # `options` is a JSON-encoded string form field per the contract.
-    if is_given(options):
+    if is_given(options) and options is not None:
         options = json.dumps(options) if not isinstance(options, str) else options
     raw_body = {
         "document": document,
@@ -43,8 +43,11 @@ def _build_parse_body(
     }
     # Multipart requests aren't run through `maybe_transform`, which is what
     # normally strips `omit`/`not_given` sentinels from a params TypedDict --
-    # drop them here so unset fields aren't serialized as form fields.
-    return {key: value for key, value in raw_body.items() if is_given(value)}
+    # drop them here so unset fields aren't serialized as form fields. An
+    # explicit `None` is likewise treated as "unset" for these optional wire
+    # fields, since `is_given` only filters the `omit`/`not_given` sentinels
+    # and otherwise returns True for `None`.
+    return {key: value for key, value in raw_body.items() if is_given(value) and value is not None}
 
 
 class ParseResource(V2ResourceMixin, SyncAPIResource):
@@ -228,9 +231,9 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         body = _build_parse_body(document, document_url, model, options, password)
-        if is_given(output_save_url):
+        if is_given(output_save_url) and output_save_url is not None:
             body["output_save_url"] = output_save_url
-        if is_given(priority):
+        if is_given(priority) and priority is not None:
             body["priority"] = priority
         body = deepcopy_with_paths(body, [["document"]])
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
@@ -282,7 +285,7 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         query = {
             key: value
             for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if is_given(value)
+            if is_given(value) and value is not None
         }
         raw = self._get(
             self._v2_url("/v2/parse/jobs"),
@@ -347,9 +350,9 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
     ) -> Job:
         """Async mirror of `ParseJobsResource.create`. See there for full documentation."""
         body = _build_parse_body(document, document_url, model, options, password)
-        if is_given(output_save_url):
+        if is_given(output_save_url) and output_save_url is not None:
             body["output_save_url"] = output_save_url
-        if is_given(priority):
+        if is_given(priority) and priority is not None:
             body["priority"] = priority
         body = deepcopy_with_paths(body, [["document"]])
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
@@ -401,7 +404,7 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         query = {
             key: value
             for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if is_given(value)
+            if is_given(value) and value is not None
         }
         raw = await self._get(
             self._v2_url("/v2/parse/jobs"),

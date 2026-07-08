@@ -98,7 +98,7 @@ Methods:
 - <code title="get /v2/parse/jobs">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 
-  Blocks, polling `.get(job_id)` with exponential backoff, until the job reaches a terminal status. Raises `JobWaitTimeoutError` if `timeout` seconds elapse first, and `JobFailedError` if `raise_on_failure=True` and the job ends `failed`/`cancelled`.
+  Blocks, polling `.get(job_id)` with exponential backoff, until the job reaches a terminal status. Raises `JobWaitTimeoutError` if `timeout` seconds elapse first, and `JobFailedError` if `raise_on_failure=True` and the terminal job carries an `error` (not simply every `failed`/`cancelled` status).
 
 - <code title="post /v2/extract">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">extract</a>(\*, schema, markdown=..., markdown_ref=..., markdown_url=..., model=..., strict=..., idempotency_key=..., save_to=...) -> <a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code>
 

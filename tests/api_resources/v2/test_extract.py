@@ -115,6 +115,48 @@ def test_extract_job_get_empty_job_id_raises() -> None:
 
 
 @respx.mock
+def test_extract_job_list_status_none_omits_query_param() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://aide.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.extract_jobs.list(status=None)
+    assert "status" not in route.calls.last.request.url.params
+
+
+def test_extract_job_list_status_none_excluded_from_query_dict(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression test at the query-dict level: the underlying querystring
+    # encoder happens to drop `None`-valued params when serializing to a URL,
+    # which would mask this bug in an end-to-end/respx assertion. Capture the
+    # dict handed to `options["params"]` directly so a regression is caught
+    # even before it reaches that encoder.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_get(path: str, *, cast_to: Any, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["params"] = dict(options or {}).get("params", {})
+        return {"jobs": [], "has_more": False}
+
+    monkeypatch.setattr(client.v2.extract_jobs, "_get", fake_get)
+
+    client.v2.extract_jobs.list(status=None)
+    assert "status" not in captured["params"]
+
+    client.v2.extract_jobs.list(status="completed")
+    assert captured["params"].get("status") == "completed"
+
+
+@respx.mock
+def test_extract_job_list_status_given_includes_query_param() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://aide.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.extract_jobs.list(status="completed")
+    assert route.calls.last.request.url.params["status"] == "completed"
+
+
+@respx.mock
 def test_extract_job_list_carries_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
     respx.get("https://aide.landing.ai/v2/extract/jobs").mock(

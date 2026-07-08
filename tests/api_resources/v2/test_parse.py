@@ -53,6 +53,85 @@ def test_parse_sync_omits_unset_fields_from_multipart_body() -> None:
 
 
 @respx.mock
+def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
+    # `is_given(None)` is True (it only filters the `omit`/`not_given` sentinels),
+    # so an explicit `None` for an optional field must be dropped by hand -- it
+    # must never leak into the multipart body as a literal "None"/"null" field.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://aide.landing.ai/v2/parse").mock(
+        return_value=httpx.Response(200, json=PARSE_BODY)
+    )
+    client.v2.parse(document=b"x", document_url=None, model=None, options=None, password=None)
+    sent = route.calls.last.request.content
+    assert b"document_url" not in sent
+    assert b"model" not in sent
+    assert b"options" not in sent
+    assert b"password" not in sent
+    assert b"null" not in sent
+    assert b"None" not in sent
+
+
+def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression test at the body-dict level (before multipart encoding, which
+    # happens to drop bare `None` values and would otherwise mask this bug):
+    # `output_save_url=None`/`priority=None` must not survive into the body
+    # dict handed to the request layer.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_post(path: str, *, cast_to: Any, body: Any = None, files: Any = None, options: Any = None) -> Any:  # noqa: ARG001
+        captured["body"] = body
+        return {"job_id": "p1", "status": "pending"}
+
+    monkeypatch.setattr(client.v2.parse_jobs, "_post", fake_post)
+    client.v2.parse_jobs.create(document=b"x", output_save_url=None, priority=None)
+    assert "output_save_url" not in captured["body"]
+    assert "priority" not in captured["body"]
+
+
+@respx.mock
+def test_parse_job_list_status_none_omits_query_param() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.parse_jobs.list(status=None)
+    assert "status" not in route.calls.last.request.url.params
+
+
+def test_parse_job_list_status_none_excluded_from_query_dict(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression test at the query-dict level: the underlying querystring
+    # encoder happens to drop `None`-valued params when serializing to a URL,
+    # which would mask this bug in an end-to-end/respx assertion. Capture the
+    # dict handed to `options["params"]` directly so a regression is caught
+    # even before it reaches that encoder.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_get(path: str, *, cast_to: Any, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["params"] = dict(options or {}).get("params", {})
+        return {"jobs": [], "has_more": False}
+
+    monkeypatch.setattr(client.v2.parse_jobs, "_get", fake_get)
+
+    client.v2.parse_jobs.list(status=None)
+    assert "status" not in captured["params"]
+
+    client.v2.parse_jobs.list(status="completed")
+    assert captured["params"].get("status") == "completed"
+
+
+@respx.mock
+def test_parse_job_list_status_given_includes_query_param() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.parse_jobs.list(status="completed")
+    assert route.calls.last.request.url.params["status"] == "completed"
+
+
+@respx.mock
 def test_parse_sync_206_returns_response_with_failed_pages() -> None:
     client = LandingAIADE(apikey=APIKEY)
     body: Dict[str, Any] = dict(PARSE_BODY)

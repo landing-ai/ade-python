@@ -5,10 +5,17 @@ This drives every V2 surface end-to-end so you can confirm auth, routing, and th
 response shapes against a real gateway. It is a manual/QA tool — not part of the
 automated test suite (which uses mocked transports).
 
+This is a *live* test that can hit real endpoints (and consume credits), so — unlike
+the client itself, which defaults to `production` when no environment is configured —
+this script defaults to `staging` when neither `--environment` nor
+`LANDINGAI_ADE_ENVIRONMENT` is set. Pass `--environment production` (or set
+`LANDINGAI_ADE_ENVIRONMENT=production`) explicitly if you really want production.
+
 Setup
 -----
     export VISION_AGENT_API_KEY=<your api key for the target environment>
-    # target environment (default: staging). V2 lives on aide.<env>.landing.ai
+    # optional: override the target environment (script default: staging).
+    # V2 lives on aide.<env>.landing.ai
     export LANDINGAI_ADE_ENVIRONMENT=staging
 
 Run
@@ -24,6 +31,7 @@ Exit code is non-zero if any selected check failed, so it is CI-friendly too.
 
 from __future__ import annotations
 
+import os
 import sys
 import asyncio
 import argparse
@@ -55,7 +63,11 @@ def _short(value: Any, limit: int = 200) -> str:
 
 def _make_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Live smoke test for client.v2 endpoints.")
-    p.add_argument("--environment", default=None, help="production|eu|staging|dev (else LANDINGAI_ADE_ENVIRONMENT, default staging)")
+    p.add_argument(
+        "--environment",
+        default=None,
+        help="production|eu|staging|dev (else LANDINGAI_ADE_ENVIRONMENT; this script defaults to staging if neither is set)",
+    )
     p.add_argument("--document", type=Path, default=None, help="Local document (PDF/image) for the parse checks")
     p.add_argument("--document-url", default=None, help="Public document URL for the parse checks")
     p.add_argument("--only", default=None, help=f"Comma-separated subset of: {','.join(ALL_CHECKS)}")
@@ -64,6 +76,22 @@ def _make_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, default=600.0, help="wait() timeout for job checks (seconds)")
     p.add_argument("--use-async", "--async", dest="use_async", action="store_true", help="Exercise the async client")
     return p
+
+
+def _resolve_environment(args: argparse.Namespace) -> Optional[str]:
+    """Pick the target environment, defaulting this *live* smoke test to `staging`.
+
+    The client itself defaults to `production` when no environment is configured,
+    but that's the wrong default for a script that can hit real endpoints and
+    consume credits. Only fall back to `staging` when the caller hasn't set
+    either `--environment` or `LANDINGAI_ADE_ENVIRONMENT`.
+    """
+    explicit_environment: Optional[str] = args.environment
+    if explicit_environment:
+        return explicit_environment
+    if os.environ.get("LANDINGAI_ADE_ENVIRONMENT"):
+        return None  # let the client pick it up from the env var
+    return "staging"
 
 
 def _selected(only: Optional[str]) -> List[str]:
@@ -80,8 +108,9 @@ def _selected(only: Optional[str]) -> List[str]:
 
 def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
     kwargs: dict[str, Any] = {}
-    if args.environment:
-        kwargs["environment"] = args.environment
+    environment = _resolve_environment(args)
+    if environment:
+        kwargs["environment"] = environment
     client = LandingAIADE(**kwargs)
     print(f"V1 base: {client.base_url}  |  V2 base: {client._v2_base_url}\n")
 
@@ -163,8 +192,9 @@ def _document_kwargs(args: argparse.Namespace) -> Optional[dict[str, Any]]:
 def run_async(args: argparse.Namespace, checks: List[str]) -> int:
     async def _main() -> int:
         kwargs: dict[str, Any] = {}
-        if args.environment:
-            kwargs["environment"] = args.environment
+        environment = _resolve_environment(args)
+        if environment:
+            kwargs["environment"] = environment
         client = AsyncLandingAIADE(**kwargs)
         print(f"[async] V1 base: {client.base_url}  |  V2 base: {client._v2_base_url}\n")
         results: dict[str, str] = {}

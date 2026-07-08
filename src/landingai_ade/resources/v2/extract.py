@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from ._base import DEFAULT_WAIT_TIMEOUT, JobList, V2ResourceMixin, poll_until_terminal, apoll_until_terminal
 from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
+from ..._utils import is_given
 from ...types.v2 import Job, V2ExtractResult
 from ._normalize import normalize_extract_job
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -272,7 +273,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         query = {
             key: value
             for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if value is not omit
+            if is_given(value) and value is not None
         }
         raw = self._get(
             self._v2_url("/v2/extract/jobs"),
@@ -387,7 +388,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         query = {
             key: value
             for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if value is not omit
+            if is_given(value) and value is not None
         }
         raw = await self._get(
             self._v2_url("/v2/extract/jobs"),
