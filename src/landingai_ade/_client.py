@@ -67,8 +67,9 @@ from .types.classify_response import ClassifyResponse
 from .types.extract_build_schema_response import ExtractBuildSchemaResponse
 
 if TYPE_CHECKING:
-    from .resources import parse_jobs
+    from .resources import parse_jobs, extract_jobs
     from .resources.parse_jobs import ParseJobsResource, AsyncParseJobsResource
+    from .resources.extract_jobs import ExtractJobsResource, AsyncExtractJobsResource
 _LIB_VERSION = importlib.metadata.version("landingai-ade")
 
 __all__ = [
@@ -89,9 +90,7 @@ ENVIRONMENTS: Dict[str, str] = {
 }
 
 
-def _get_input_filename(
-    file_input: Union[FileTypes, Omit, None], url_input: Union[str, Omit, None]
-) -> str:
+def _get_input_filename(file_input: Union[FileTypes, Omit, None], url_input: Union[str, Omit, None]) -> str:
     """Extract base filename (without extension) from file or URL input."""
     if file_input is not None and not isinstance(file_input, Omit):
         if isinstance(file_input, (Path, os.PathLike)):
@@ -233,6 +232,12 @@ class LandingAIADE(SyncAPIClient):
         from .resources.parse_jobs import ParseJobsResource
 
         return ParseJobsResource(self)
+
+    @cached_property
+    def extract_jobs(self) -> ExtractJobsResource:
+        from .resources.extract_jobs import ExtractJobsResource
+
+        return ExtractJobsResource(self)
 
     @cached_property
     def with_raw_response(self) -> LandingAIADEWithRawResponse:
@@ -925,6 +930,12 @@ class AsyncLandingAIADE(AsyncAPIClient):
         return AsyncParseJobsResource(self)
 
     @cached_property
+    def extract_jobs(self) -> AsyncExtractJobsResource:
+        from .resources.extract_jobs import AsyncExtractJobsResource
+
+        return AsyncExtractJobsResource(self)
+
+    @cached_property
     def with_raw_response(self) -> AsyncLandingAIADEWithRawResponse:
         return AsyncLandingAIADEWithRawResponse(self)
 
@@ -1561,6 +1572,12 @@ class LandingAIADEWithRawResponse:
 
         return ParseJobsResourceWithRawResponse(self._client.parse_jobs)
 
+    @cached_property
+    def extract_jobs(self) -> extract_jobs.ExtractJobsResourceWithRawResponse:
+        from .resources.extract_jobs import ExtractJobsResourceWithRawResponse
+
+        return ExtractJobsResourceWithRawResponse(self._client.extract_jobs)
+
 
 class AsyncLandingAIADEWithRawResponse:
     _client: AsyncLandingAIADE
@@ -1592,6 +1609,12 @@ class AsyncLandingAIADEWithRawResponse:
         from .resources.parse_jobs import AsyncParseJobsResourceWithRawResponse
 
         return AsyncParseJobsResourceWithRawResponse(self._client.parse_jobs)
+
+    @cached_property
+    def extract_jobs(self) -> extract_jobs.AsyncExtractJobsResourceWithRawResponse:
+        from .resources.extract_jobs import AsyncExtractJobsResourceWithRawResponse
+
+        return AsyncExtractJobsResourceWithRawResponse(self._client.extract_jobs)
 
 
 class LandingAIADEWithStreamedResponse:
@@ -1625,6 +1648,12 @@ class LandingAIADEWithStreamedResponse:
 
         return ParseJobsResourceWithStreamingResponse(self._client.parse_jobs)
 
+    @cached_property
+    def extract_jobs(self) -> extract_jobs.ExtractJobsResourceWithStreamingResponse:
+        from .resources.extract_jobs import ExtractJobsResourceWithStreamingResponse
+
+        return ExtractJobsResourceWithStreamingResponse(self._client.extract_jobs)
+
 
 class AsyncLandingAIADEWithStreamedResponse:
     _client: AsyncLandingAIADE
@@ -1656,6 +1685,12 @@ class AsyncLandingAIADEWithStreamedResponse:
         from .resources.parse_jobs import AsyncParseJobsResourceWithStreamingResponse
 
         return AsyncParseJobsResourceWithStreamingResponse(self._client.parse_jobs)
+
+    @cached_property
+    def extract_jobs(self) -> extract_jobs.AsyncExtractJobsResourceWithStreamingResponse:
+        from .resources.extract_jobs import AsyncExtractJobsResourceWithStreamingResponse
+
+        return AsyncExtractJobsResourceWithStreamingResponse(self._client.extract_jobs)
 
 
 Client = LandingAIADE

@@ -41,3 +41,21 @@ Methods:
 - <code title="post /v1/ade/parse/jobs">client.parse_jobs.<a href="./src/landingai_ade/resources/parse_jobs.py">create</a>(\*\*<a href="src/landingai_ade/types/parse_job_create_params.py">params</a>) -> <a href="./src/landingai_ade/types/parse_job_create_response.py">ParseJobCreateResponse</a></code>
 - <code title="get /v1/ade/parse/jobs">client.parse_jobs.<a href="./src/landingai_ade/resources/parse_jobs.py">list</a>(\*\*<a href="src/landingai_ade/types/parse_job_list_params.py">params</a>) -> <a href="./src/landingai_ade/types/parse_job_list_response.py">ParseJobListResponse</a></code>
 - <code title="get /v1/ade/parse/jobs/{job_id}">client.parse_jobs.<a href="./src/landingai_ade/resources/parse_jobs.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/parse_job_get_response.py">ParseJobGetResponse</a></code>
+
+# ExtractJobs
+
+Types:
+
+```python
+from landingai_ade.types import (
+    ExtractJobCreateResponse,
+    ExtractJobListResponse,
+    ExtractJobGetResponse,
+)
+```
+
+Methods:
+
+- <code title="post /v1/ade/extract/jobs">client.extract_jobs.<a href="./src/landingai_ade/resources/extract_jobs.py">create</a>(\*\*<a href="src/landingai_ade/types/extract_job_create_params.py">params</a>) -> <a href="./src/landingai_ade/types/extract_job_create_response.py">ExtractJobCreateResponse</a></code>
+- <code title="get /v1/ade/extract/jobs">client.extract_jobs.<a href="./src/landingai_ade/resources/extract_jobs.py">list</a>(\*\*<a href="src/landingai_ade/types/extract_job_list_params.py">params</a>) -> <a href="./src/landingai_ade/types/extract_job_list_response.py">ExtractJobListResponse</a></code>
+- <code title="get /v1/ade/extract/jobs/{job_id}">client.extract_jobs.<a href="./src/landingai_ade/resources/extract_jobs.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/extract_job_get_response.py">ExtractJobGetResponse</a></code>
