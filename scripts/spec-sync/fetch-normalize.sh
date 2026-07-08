@@ -9,4 +9,8 @@ if [ "$#" -ne 1 ]; then
 fi
 
 url="$1"
+# `jq -S` sorts object keys only; array element order (e.g. `required`, `enum`, `tags`) is
+# preserved as emitted by the backend. This assumes the gateway emits arrays deterministically.
+# If it ever reorders them, drift detection would fire on cosmetic churn (phantom PRs) — start
+# debugging false drift here.
 curl -fsSL --max-time 30 --retry 3 --retry-delay 2 "$url" | jq -S .
