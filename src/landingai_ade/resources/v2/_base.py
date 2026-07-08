@@ -122,7 +122,8 @@ class JobList(List[Job]):
     @classmethod
     def build(cls, jobs: List[Job], **envelope: object) -> "JobList":
         out = cls(jobs)
-        out.has_more = bool(envelope.get("has_more", False))
+        hm = envelope.get("has_more")
+        out.has_more = hm if isinstance(hm, bool) else False
         out.org_id = _cast_opt_str(envelope.get("org_id"))
         page = envelope.get("page")
         page_size = envelope.get("page_size")

@@ -36,10 +36,13 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
     if reason:
         error = JobError(message=str(reason))
 
+    created = raw.get("created_at")
+    created = created if created is not None else raw.get("received_at")
+
     return Job(
         job_id=str(raw["job_id"]),
         status=status,
-        created_at=_ts(raw.get("created_at") or raw.get("received_at")),
+        created_at=_ts(created),
         completed_at=None,  # parse envelope has no completed_at
         progress=_progress(raw.get("progress")),
         result=result,

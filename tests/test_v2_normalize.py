@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from datetime import datetime, timezone
 
 from landingai_ade.types.v2 import JobStatus, V2ExtractResult, V2ParseResponse
 from landingai_ade.resources.v2._normalize import normalize_parse_job, normalize_extract_job
@@ -26,6 +27,18 @@ def test_normalize_parse_job_epoch_and_data() -> None:
     assert job.result.markdown == "# hi"
     assert job.error is None
     assert job.raw["org_id"] == "o1"  # envelope-only fields preserved
+
+
+def test_normalize_parse_job_preserves_epoch_zero_created_at() -> None:
+    # created_at == 0 (epoch) is falsy but must NOT be treated as missing;
+    # it must not fall back to received_at. received_at=123 is also within
+    # 1970, so we assert the exact instant (not just the year) to ensure the
+    # received_at fallback (00:02:03) wasn't used instead of epoch (00:00:00).
+    raw = {"job_id": "p", "status": "pending", "created_at": 0, "received_at": 123}
+    job = normalize_parse_job(raw)
+    assert job.created_at is not None
+    assert job.created_at.year == 1970
+    assert job.created_at == datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def test_normalize_parse_job_failure_reason() -> None:

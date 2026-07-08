@@ -275,3 +275,17 @@ def test_joblist_build_ignores_wrong_typed_envelope_values() -> None:
     assert result.org_id is None
     assert result.page is None
     assert result.page_size is None
+
+
+def test_joblist_build_has_more_rejects_truthy_string() -> None:
+    # A wrong-typed (but truthy) string must not be coerced via bool(); only a
+    # real bool should ever set has_more to True.
+    result = JobList.build([], has_more="false")
+
+    assert result.has_more is False
+
+
+def test_joblist_build_has_more_accepts_real_bool() -> None:
+    result = JobList.build([], has_more=True)
+
+    assert result.has_more is True
