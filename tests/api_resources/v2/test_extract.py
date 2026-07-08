@@ -105,3 +105,31 @@ def test_extract_job_wait_raise_on_failure() -> None:
     with pytest.raises(JobFailedError):
         client.v2.extract_jobs.wait("e3", timeout=5, poll_interval=0.01, raise_on_failure=True,
                                     _monotonic=lambda: 0.0)
+
+
+@respx.mock
+def test_extract_job_get_empty_job_id_raises() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    with pytest.raises(ValueError):
+        client.v2.extract_jobs.get("")
+
+
+@respx.mock
+def test_extract_job_list_carries_envelope() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://aide.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [{"job_id": "e1", "status": "completed"}],
+                "page": 0,
+                "page_size": 10,
+                "has_more": True,
+            },
+        )
+    )
+    jobs = client.v2.extract_jobs.list()
+    assert len(jobs) == 1 and jobs[0].job_id == "e1" and jobs[0].status is JobStatus.COMPLETED
+    assert jobs.has_more is True
+    assert jobs.page == 0
+    assert jobs.page_size == 10
