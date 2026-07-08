@@ -27,7 +27,7 @@ def _progress(value: object) -> Optional[float]:
 
 
 def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
-    status = JobStatus(raw["status"])
+    status = JobStatus(raw.get("status") or "pending")
     data = raw.get("data")
     result = V2ParseResponse(**cast(Dict[str, Any], data)) if isinstance(data, Mapping) else None
 
@@ -52,7 +52,7 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
 
 
 def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
-    status = JobStatus(raw["status"])
+    status = JobStatus(raw.get("status") or "pending")
     payload = raw.get("result")
     result = V2ExtractResult(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
 

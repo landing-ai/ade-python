@@ -75,3 +75,22 @@ def test_normalize_extract_job_error_object() -> None:
     job = normalize_extract_job(raw)
     assert job.status is JobStatus.FAILED
     assert job.error is not None and job.error.code == "internal_error"
+
+
+def test_normalize_parse_job_minimal_create_envelope_defaults_to_pending() -> None:
+    # Live /v2/parse/jobs create (202) response is minimal: only job_id, no status.
+    raw = {"job_id": "parse-api-x"}
+    job = normalize_parse_job(raw)
+    assert job.job_id == "parse-api-x"
+    assert job.status is JobStatus.PENDING
+    assert job.result is None
+    assert job.error is None
+
+
+def test_normalize_extract_job_minimal_create_envelope_defaults_to_pending() -> None:
+    raw = {"job_id": "v2-extract-x"}
+    job = normalize_extract_job(raw)
+    assert job.job_id == "v2-extract-x"
+    assert job.status is JobStatus.PENDING
+    assert job.result is None
+    assert job.error is None
