@@ -9,7 +9,7 @@ import respx
 import pytest
 
 from landingai_ade import LandingAIADE
-from landingai_ade.types.v2 import V2ParseResponse
+from landingai_ade.types.v2 import Job, JobStatus, V2ParseResponse
 from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 APIKEY = "My Apikey"
@@ -91,3 +91,100 @@ async def test_async_parse_sync_ok() -> None:
     result = await client.v2.parse(document=b"pdf")
     assert isinstance(result, V2ParseResponse)
     assert result.markdown == "# Hello"
+
+
+@respx.mock
+def test_parse_job_create_normalizes_envelope() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending", "received_at": 1700000000})
+    )
+    job = client.v2.parse_jobs.create(document=b"pdf", priority="priority")
+    assert isinstance(job, Job)
+    assert job.job_id == "p1" and job.status is JobStatus.PENDING
+
+
+@respx.mock
+def test_parse_job_get_completed_has_typed_result() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(
+        return_value=httpx.Response(
+            200,
+            json={"job_id": "p1", "status": "completed", "created_at": 1700000000, "data": PARSE_BODY},
+        )
+    )
+    job = client.v2.parse_jobs.get("p1")
+    assert job.status is JobStatus.COMPLETED
+    assert isinstance(job.result, V2ParseResponse)
+    assert job.result.markdown == "# Hello"
+
+
+@respx.mock
+def test_parse_job_get_empty_job_id_raises() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    with pytest.raises(ValueError):
+        client.v2.parse_jobs.get("")
+
+
+@respx.mock
+def test_parse_job_list_carries_envelope() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={"jobs": [{"job_id": "p1", "status": "completed"}], "org_id": "o1", "has_more": True},
+        )
+    )
+    jobs = client.v2.parse_jobs.list(page=0)
+    assert len(jobs) == 1 and jobs[0].job_id == "p1"
+    assert jobs.has_more is True and jobs.org_id == "o1"
+
+
+@respx.mock
+def test_parse_job_wait_polls_until_completed() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    responses = [
+        httpx.Response(200, json={"job_id": "p1", "status": "processing", "progress": 0.5}),
+        httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY}),
+    ]
+    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
+    # inject fake clock so no real time passes
+    ticks = iter([0.0, 0.0, 0.1, 0.2, 0.3])
+    job = client.v2.parse_jobs.wait("p1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
+    assert job.status is JobStatus.COMPLETED
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_parse_job_create_and_get() -> None:
+    from landingai_ade import AsyncLandingAIADE
+
+    client = AsyncLandingAIADE(apikey=APIKEY)
+    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending"})
+    )
+    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(
+        return_value=httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY})
+    )
+    created = await client.v2.parse_jobs.create(document=b"pdf")
+    assert created.status is JobStatus.PENDING
+    fetched = await client.v2.parse_jobs.get("p1")
+    assert fetched.status is JobStatus.COMPLETED
+    assert isinstance(fetched.result, V2ParseResponse)
+    assert fetched.result.markdown == "# Hello"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_parse_job_wait_polls_until_completed() -> None:
+    from landingai_ade import AsyncLandingAIADE
+
+    client = AsyncLandingAIADE(apikey=APIKEY)
+    responses = [
+        httpx.Response(200, json={"job_id": "p1", "status": "processing", "progress": 0.5}),
+        httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY}),
+    ]
+    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
+    ticks = iter([0.0, 0.0, 0.1, 0.2, 0.3])
+    job = await client.v2.parse_jobs.wait("p1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
+    assert job.status is JobStatus.COMPLETED
