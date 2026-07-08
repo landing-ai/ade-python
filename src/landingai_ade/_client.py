@@ -87,6 +87,15 @@ __all__ = [
 ENVIRONMENTS: Dict[str, str] = {
     "production": "https://api.va.landing.ai",
     "eu": "https://api.va.eu-west-1.landing.ai",
+    "staging": "https://api.va.staging.landing.ai",
+    "dev": "https://api.va.dev.landing.ai",
+}
+
+V2_ENVIRONMENTS: Dict[str, str] = {
+    "production": "https://aide.landing.ai",
+    "eu": "https://aide.eu-west-1.landing.ai",
+    "staging": "https://aide.staging.landing.ai",
+    "dev": "https://aide.dev.landing.ai",
 }
 
 
@@ -148,18 +157,51 @@ def _save_response(
         raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
 
 
+def _resolve_v2_base_url(
+    environment: str | NotGiven,
+    v2_base_url: str | None | NotGiven,
+    resolved_v1_base_url: str | httpx.URL,
+    v1_base_url_was_explicit: bool,
+) -> str:
+    """Resolve the V2/ADE host, no trailing slash.
+
+    Precedence: explicit v2_base_url param > LANDINGAI_ADE_V2_BASE_URL env >
+    environment map > (if only V1 base_url was set explicitly) follow it >
+    production default.
+    """
+    if is_given(v2_base_url) and v2_base_url is not None:
+        return str(v2_base_url).rstrip("/")
+
+    env_override = os.environ.get("LANDINGAI_ADE_V2_BASE_URL")
+    if env_override:
+        return env_override.rstrip("/")
+
+    if is_given(environment):
+        try:
+            return V2_ENVIRONMENTS[environment]
+        except KeyError as exc:
+            raise ValueError(f"Unknown environment: {environment}") from exc
+
+    if v1_base_url_was_explicit:
+        # Only a V1 base_url was provided (mock/proxy) — route V2 to it too.
+        return str(resolved_v1_base_url).rstrip("/")
+
+    return V2_ENVIRONMENTS["production"]
+
+
 class LandingAIADE(SyncAPIClient):
     # client options
     apikey: str
 
-    _environment: Literal["production", "eu"] | NotGiven
+    _environment: Literal["production", "eu", "staging", "dev"] | NotGiven
 
     def __init__(
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | NotGiven = not_given,
+        environment: Literal["production", "eu", "staging", "dev"] | NotGiven = not_given,
         base_url: str | httpx.URL | None | NotGiven = not_given,
+        v2_base_url: str | None | NotGiven = not_given,
         timeout: float | Timeout | None | NotGiven = not_given,
         max_retries: int = DEFAULT_MAX_RETRIES,
         default_headers: Mapping[str, str] | None = None,
@@ -190,9 +232,15 @@ class LandingAIADE(SyncAPIClient):
             )
         self.apikey = apikey
 
-        self._environment = environment
+        if not is_given(environment):
+            env_name = os.environ.get("LANDINGAI_ADE_ENVIRONMENT")
+            if env_name:
+                environment = cast(Any, env_name)
+
+        self._environment = environment  # type: ignore[assignment]
 
         base_url_env = os.environ.get("LANDINGAI_ADE_BASE_URL")
+        v1_base_url_was_explicit = is_given(base_url) and base_url is not None
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
             base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
@@ -215,6 +263,11 @@ class LandingAIADE(SyncAPIClient):
                 base_url = ENVIRONMENTS[environment]
             except KeyError as exc:
                 raise ValueError(f"Unknown environment: {environment}") from exc
+
+        v1_base_url_was_explicit = v1_base_url_was_explicit or (
+            base_url_env is not None and not is_given(environment)
+        )
+        self._v2_base_url = _resolve_v2_base_url(environment, v2_base_url, base_url, v1_base_url_was_explicit)
 
         super().__init__(
             version=__version__,
@@ -271,8 +324,9 @@ class LandingAIADE(SyncAPIClient):
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | None = None,
+        environment: Literal["production", "eu", "staging", "dev"] | None = None,
         base_url: str | httpx.URL | None = None,
+        v2_base_url: str | None = None,
         timeout: float | Timeout | None | NotGiven = not_given,
         http_client: httpx.Client | None = None,
         max_retries: int | NotGiven = not_given,
@@ -307,6 +361,7 @@ class LandingAIADE(SyncAPIClient):
         return self.__class__(
             apikey=apikey or self.apikey,
             base_url=base_url or self.base_url,
+            v2_base_url=v2_base_url or self._v2_base_url,
             environment=environment or self._environment,
             timeout=self.timeout if isinstance(timeout, NotGiven) else timeout,
             http_client=http_client,
@@ -848,14 +903,15 @@ class AsyncLandingAIADE(AsyncAPIClient):
     # client options
     apikey: str
 
-    _environment: Literal["production", "eu"] | NotGiven
+    _environment: Literal["production", "eu", "staging", "dev"] | NotGiven
 
     def __init__(
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | NotGiven = not_given,
+        environment: Literal["production", "eu", "staging", "dev"] | NotGiven = not_given,
         base_url: str | httpx.URL | None | NotGiven = not_given,
+        v2_base_url: str | None | NotGiven = not_given,
         timeout: float | Timeout | None | NotGiven = not_given,
         max_retries: int = DEFAULT_MAX_RETRIES,
         default_headers: Mapping[str, str] | None = None,
@@ -886,9 +942,15 @@ class AsyncLandingAIADE(AsyncAPIClient):
             )
         self.apikey = apikey
 
-        self._environment = environment
+        if not is_given(environment):
+            env_name = os.environ.get("LANDINGAI_ADE_ENVIRONMENT")
+            if env_name:
+                environment = cast(Any, env_name)
+
+        self._environment = environment  # type: ignore[assignment]
 
         base_url_env = os.environ.get("LANDINGAI_ADE_BASE_URL")
+        v1_base_url_was_explicit = is_given(base_url) and base_url is not None
         if is_given(base_url) and base_url is not None:
             # cast required because mypy doesn't understand the type narrowing
             base_url = cast("str | httpx.URL", base_url)  # pyright: ignore[reportUnnecessaryCast]
@@ -911,6 +973,11 @@ class AsyncLandingAIADE(AsyncAPIClient):
                 base_url = ENVIRONMENTS[environment]
             except KeyError as exc:
                 raise ValueError(f"Unknown environment: {environment}") from exc
+
+        v1_base_url_was_explicit = v1_base_url_was_explicit or (
+            base_url_env is not None and not is_given(environment)
+        )
+        self._v2_base_url = _resolve_v2_base_url(environment, v2_base_url, base_url, v1_base_url_was_explicit)
 
         super().__init__(
             version=__version__,
@@ -967,8 +1034,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
         self,
         *,
         apikey: str | None = None,
-        environment: Literal["production", "eu"] | None = None,
+        environment: Literal["production", "eu", "staging", "dev"] | None = None,
         base_url: str | httpx.URL | None = None,
+        v2_base_url: str | None = None,
         timeout: float | Timeout | None | NotGiven = not_given,
         http_client: httpx.AsyncClient | None = None,
         max_retries: int | NotGiven = not_given,
@@ -1003,6 +1071,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
         return self.__class__(
             apikey=apikey or self.apikey,
             base_url=base_url or self.base_url,
+            v2_base_url=v2_base_url or self._v2_base_url,
             environment=environment or self._environment,
             timeout=self.timeout if isinstance(timeout, NotGiven) else timeout,
             http_client=http_client,
