@@ -30,6 +30,6 @@ def raise_if_sync_timeout(exc: APIStatusError) -> None:
     if exc.response.status_code == 504:
         raise V2SyncTimeoutError(
             "The synchronous request timed out (HTTP 504). The server cancels the work on "
-            "timeout — use the async jobs route (`.jobs.create(...)` then `.jobs.wait(...)`) "
-            "for long-running documents."
+            "timeout — use the async jobs routes (`.parse_jobs.create(...)` / `.extract_jobs.create(...)` "
+            "then `.wait(...)`) for long-running documents."
         ) from exc
