@@ -221,6 +221,105 @@ for job in response.jobs:
     print(f"Job {job.job_id}: {job.status}")
 ```
 
+## V2 API
+
+`client.v2` is a new, **additive** sub-client for LandingAI's next-generation ADE gateway. It does not replace or change anything about the V1 usage above -- `client.parse`, `client.extract`, `client.parse_jobs`, `client.extract_jobs`, etc. all keep working exactly as documented. Use `client.v2.*` when you want the newer parse/extract surface.
+
+The V2 gateway lives on its own host (`aide.[env].landing.ai`), separate from the V1 host (`api.va.[env].landing.ai`). Select the environment the same way as V1, via the `environment` argument or the `LANDINGAI_ADE_ENVIRONMENT` env var:
+
+```python
+import os
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE(
+    apikey=os.environ.get("VISION_AGENT_API_KEY"),
+    # one of "production" (default), "eu", "staging", "dev"
+    # can also be set via the LANDINGAI_ADE_ENVIRONMENT env var instead of passing it here
+    environment="staging",
+)
+```
+
+### Sync parse and extract
+
+```python
+from pathlib import Path
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE()
+
+parse_result = client.v2.parse(
+    document=Path("path/to/file.pdf"),
+    save_to="./output_folder",  # optional: saves as {input_file}_parse_output.json
+)
+print(parse_result.markdown)
+
+extract_result = client.v2.extract(
+    schema='{"type": "object", "properties": {"total": {"type": "string"}}}',
+    markdown=parse_result.markdown,
+    strict=False,  # prune unsupported schema fields instead of raising a 422
+)
+print(extract_result.extraction)
+```
+
+### Passing a pydantic model as the extract schema
+
+`schema` accepts a pydantic `BaseModel` subclass directly -- no need to convert it yourself:
+
+```python
+from pydantic import BaseModel, Field
+from landingai_ade import LandingAIADE
+
+
+class Invoice(BaseModel):
+    total: str = Field(description="Invoice grand total")
+
+
+client = LandingAIADE()
+result = client.v2.extract(schema=Invoice, markdown_url="https://example.com/doc.md")
+print(result.extraction)
+```
+
+### Async jobs and `wait()`
+
+For large documents, create a job and poll it, or block until it finishes with `.wait()`:
+
+```python
+from pathlib import Path
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE()
+
+job = client.v2.parse_jobs.create(document=Path("path/to/large_file.pdf"), priority="priority")
+print(job.job_id, job.status)
+
+# Block until the job is terminal (raises JobWaitTimeoutError / JobFailedError on failure paths)
+done = client.v2.parse_jobs.wait(job.job_id, timeout=600, raise_on_failure=True)
+if done.result is not None:
+    print(done.result.markdown[:200])
+
+# client.v2.extract_jobs.{create,get,list,wait} mirror the same shape for extract jobs.
+```
+
+`parse_jobs.create` and `extract_jobs.create` both return a normalized `Job` -- one shape shared by parse and extract jobs, even though their upstream envelopes differ. Use `job.raw` to reach any field not surfaced on the typed model.
+
+### Uploading a file for `markdown_ref`
+
+`client.v2.files.upload` stages bytes on the ADE data plane and returns a `file_ref` you can pass as `markdown_ref` to extract:
+
+```python
+from pathlib import Path
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE()
+
+file_ref = client.v2.files.upload(file=Path("path/to/file.md"))
+result = client.v2.extract(schema={"type": "object", "properties": {}}, markdown_ref=file_ref)
+```
+
+`client.v2.parse`, `client.v2.extract`, and their async counterparts also accept `save_to`, with the same auto-naming behavior as the V1 methods above.
+
+The async client mirrors this entire surface: `AsyncLandingAIADE().v2.parse(...)`, `await client.v2.parse_jobs.wait(...)`, etc.
+
 ## Async usage
 
 Simply import `AsyncLandingAIADE` instead of `LandingAIADE` and use `await` with each API call:
