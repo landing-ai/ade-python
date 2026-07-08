@@ -91,9 +91,16 @@ def field_is_required(field: FieldInfo) -> bool:
 
 
 def field_get_default(field: FieldInfo) -> Any:
-    value = field.get_default()
     if PYDANTIC_V1:
-        return value
+        return field.get_default()
+
+    # call_default_factory=True: this is used on the construct()/model_construct()
+    # fast path, which is exactly when pydantic v2 says the factory should be
+    # invoked (see FieldInfo.get_default's docstring). Without it, fields declared
+    # with `default_factory=...` (e.g. `Field(default_factory=dict)`) resolve to
+    # None instead of a fresh value, which both breaks the field's type and can
+    # share mutable state across instances if callers work around the `None`.
+    value = field.get_default(call_default_factory=True)
     from pydantic_core import PydanticUndefined
 
     if value == PydanticUndefined:

@@ -94,3 +94,19 @@ def test_normalize_extract_job_minimal_create_envelope_defaults_to_pending() -> 
     assert job.status is JobStatus.PENDING
     assert job.result is None
     assert job.error is None
+
+
+def test_normalize_parse_job_unknown_status_defaults_to_pending() -> None:
+    # A new/renamed status from the gateway must not crash the normalizer;
+    # the original raw status is preserved in job.raw for inspection.
+    raw = {"job_id": "p", "status": "some_brand_new_status"}
+    job = normalize_parse_job(raw)
+    assert job.status is JobStatus.PENDING
+    assert job.raw["status"] == "some_brand_new_status"
+
+
+def test_normalize_extract_job_unknown_status_defaults_to_pending() -> None:
+    raw = {"job_id": "e", "status": "some_brand_new_status"}
+    job = normalize_extract_job(raw)
+    assert job.status is JobStatus.PENDING
+    assert job.raw["status"] == "some_brand_new_status"

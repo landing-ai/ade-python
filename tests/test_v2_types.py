@@ -53,6 +53,18 @@ def test_job_raw_default_is_independent_per_instance() -> None:
     assert job_a.raw is not job_b.raw
 
 
+def test_job_raw_default_is_independent_per_instance_via_construct() -> None:
+    # BaseModel.construct()/model_construct() fills in missing fields via
+    # field_get_default() without deep-copying. Prove that the raw dict's
+    # default_factory=dict still produces a fresh, independent dict per
+    # instance on this fast/unvalidated construction path too.
+    job_a = Job.construct(job_id="j1", status=JobStatus.PENDING)
+    job_b = Job.construct(job_id="j2", status=JobStatus.PENDING)
+    job_a.raw["org_id"] = "o1"
+    assert job_b.raw == {}
+    assert job_a.raw is not job_b.raw
+
+
 def test_extract_result_parses_nested_metadata() -> None:
     r = V2ExtractResult(
         extraction={"revenue": "1M"},
