@@ -112,7 +112,7 @@ jobs:
             The previous commit updated specs/v1-ade.json and regenerated reference models in
             specs/_generated/v1_models.py. Wire the SDK to match the spec diff.
 
-            First inspect `git diff` of the previous commit and read
+            First inspect the mechanical commit diff (`git diff HEAD~1..HEAD`) and read
             src/landingai_ade/resources/parse_jobs.py — mirror its structure exactly for any
             new resource (sync + async classes, the raw/streaming response wrappers, param
             TypedDicts under src/landingai_ade/types/, response models, and registration in
