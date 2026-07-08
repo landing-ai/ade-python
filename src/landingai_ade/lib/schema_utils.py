@@ -23,11 +23,18 @@ def _model_json_schema(model: Type[BaseModel]) -> Dict[str, Any]:
     know which pydantic major produced the schema.
     """
     if PYDANTIC_V1:
-        schema = model.schema()  # type: ignore[attr-defined]
+        # pydantic v1 memoizes `.schema()` per class (`cls.__schema_cache__`) and
+        # returns the SAME shared mutable dict on every call. Callers of this
+        # function mutate the returned schema (e.g. popping "$defs"), so we must
+        # deep-copy before any mutation to avoid corrupting the class-level cache.
+        schema = copy.deepcopy(model.schema())  # type: ignore[attr-defined]
         if "definitions" in schema:
             schema["$defs"] = schema.pop("definitions")
         return schema
-    return model.model_json_schema()
+    # pydantic v2's `model_json_schema()` returns a fresh dict per call, but we
+    # deep-copy unconditionally to be defensive/future-proof and keep both code
+    # paths behaving identically.
+    return copy.deepcopy(model.model_json_schema())
 
 
 def _resolve_refs(obj: Any, defs: Dict[str, Any]) -> Any:
