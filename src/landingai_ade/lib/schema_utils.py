@@ -7,9 +7,34 @@ that can be used with the ADE API endpoints.
 
 import copy
 import json
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, Union, Mapping, cast
 
 from pydantic import BaseModel
+
+from .._compat import PYDANTIC_V1
+
+
+def _model_json_schema(model: Type[BaseModel]) -> Dict[str, Any]:
+    """Return a model's JSON schema, keyed the same way regardless of pydantic major.
+
+    Pydantic v2 exposes `model_json_schema()` and nests shared definitions under
+    `$defs`; pydantic v1 only has `.schema()` and nests them under `definitions`.
+    We normalize to `$defs` here so callers (and `_resolve_refs`) don't need to
+    know which pydantic major produced the schema.
+    """
+    if PYDANTIC_V1:
+        # pydantic v1 memoizes `.schema()` per class (`cls.__schema_cache__`) and
+        # returns the SAME shared mutable dict on every call. Callers of this
+        # function mutate the returned schema (e.g. popping "$defs"), so we must
+        # deep-copy before any mutation to avoid corrupting the class-level cache.
+        schema = copy.deepcopy(model.schema())  # type: ignore[attr-defined]
+        if "definitions" in schema:
+            schema["$defs"] = schema.pop("definitions")
+        return schema
+    # pydantic v2's `model_json_schema()` returns a fresh dict per call, but we
+    # deep-copy unconditionally to be defensive/future-proof and keep both code
+    # paths behaving identically.
+    return copy.deepcopy(model.model_json_schema())
 
 
 def _resolve_refs(obj: Any, defs: Dict[str, Any]) -> Any:
@@ -65,10 +90,42 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
     """
     # The type annotation already ensures model is Type[BaseModel]
     # but we'll do a runtime check for safety
-    if not hasattr(model, "model_json_schema"):
+    if not (
+        isinstance(model, type)  # pyright: ignore[reportUnnecessaryIsInstance]
+        and issubclass(model, BaseModel)  # pyright: ignore[reportUnnecessaryIsInstance]
+    ):
         raise TypeError("model must be a Pydantic BaseModel subclass")
 
-    schema = model.model_json_schema()
+    schema = _model_json_schema(model)
     defs = schema.pop("$defs", {})
     schema = _resolve_refs(schema, defs)
     return json.dumps(schema)
+
+
+def pydantic_to_schema_dict(model: Type[BaseModel]) -> Dict[str, Any]:
+    """Like `pydantic_to_json_schema` but returns a dict with $refs resolved."""
+    if not (
+        isinstance(model, type)  # pyright: ignore[reportUnnecessaryIsInstance]
+        and issubclass(model, BaseModel)  # pyright: ignore[reportUnnecessaryIsInstance]
+    ):
+        raise TypeError("model must be a Pydantic BaseModel subclass")
+    schema = _model_json_schema(model)
+    defs = schema.pop("$defs", {})
+    return cast(Dict[str, Any], _resolve_refs(schema, defs))
+
+
+def coerce_schema_to_dict(schema: Union[str, Mapping[str, Any], Type[BaseModel]]) -> Dict[str, Any]:
+    """Accept a pydantic model class, a dict, or a JSON string; return a JSON-Schema dict.
+
+    The V2 extract endpoint takes `schema` as a JSON object in the request body.
+    """
+    if isinstance(schema, type) and issubclass(schema, BaseModel):  # pyright: ignore[reportUnnecessaryIsInstance]
+        return pydantic_to_schema_dict(schema)
+    if isinstance(schema, Mapping):
+        return dict(schema)
+    if isinstance(schema, str):  # pyright: ignore[reportUnnecessaryIsInstance]
+        parsed: Any = json.loads(schema)  # raises ValueError on bad JSON
+        if not isinstance(parsed, dict):
+            raise TypeError("schema JSON string must decode to an object")
+        return cast(Dict[str, Any], parsed)
+    raise TypeError(f"Unsupported schema type: {type(schema)!r}")
