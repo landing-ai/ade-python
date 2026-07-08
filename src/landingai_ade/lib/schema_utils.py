@@ -7,7 +7,7 @@ that can be used with the ADE API endpoints.
 
 import copy
 import json
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, Union, Mapping, cast
 
 from pydantic import BaseModel
 
@@ -72,3 +72,29 @@ def pydantic_to_json_schema(model: Type[BaseModel]) -> str:
     defs = schema.pop("$defs", {})
     schema = _resolve_refs(schema, defs)
     return json.dumps(schema)
+
+
+def pydantic_to_schema_dict(model: Type[BaseModel]) -> Dict[str, Any]:
+    """Like `pydantic_to_json_schema` but returns a dict with $refs resolved."""
+    if not hasattr(model, "model_json_schema"):
+        raise TypeError("model must be a Pydantic BaseModel subclass")
+    schema = model.model_json_schema()
+    defs = schema.pop("$defs", {})
+    return cast(Dict[str, Any], _resolve_refs(schema, defs))
+
+
+def coerce_schema_to_dict(schema: Union[str, Mapping[str, Any], Type[BaseModel]]) -> Dict[str, Any]:
+    """Accept a pydantic model class, a dict, or a JSON string; return a JSON-Schema dict.
+
+    The V2 extract endpoint takes `schema` as a JSON object in the request body.
+    """
+    if isinstance(schema, type) and issubclass(schema, BaseModel):  # pyright: ignore[reportUnnecessaryIsInstance]
+        return pydantic_to_schema_dict(schema)
+    if isinstance(schema, Mapping):
+        return dict(schema)
+    if isinstance(schema, str):  # pyright: ignore[reportUnnecessaryIsInstance]
+        parsed: Any = json.loads(schema)  # raises ValueError on bad JSON
+        if not isinstance(parsed, dict):
+            raise TypeError("schema JSON string must decode to an object")
+        return cast(Dict[str, Any], parsed)
+    raise TypeError(f"Unsupported schema type: {type(schema)!r}")
