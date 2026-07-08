@@ -23,12 +23,12 @@ EXTRACT_BODY: Dict[str, Any] = {
 @pytest.mark.asyncio
 async def test_async_parse_and_jobs() -> None:
     client = AsyncLandingAIADE(apikey=APIKEY)
-    respx.post("https://aide.landing.ai/v2/parse").mock(
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(
         return_value=httpx.Response(200, json={"markdown": "# a", "metadata": {"job_id": "j"}})
     )
     assert isinstance(await client.v2.parse(document=b"x"), V2ParseResponse)
 
-    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
+    respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending"})
     )
     job = await client.v2.parse_jobs.create(document=b"x")
@@ -39,7 +39,7 @@ async def test_async_parse_and_jobs() -> None:
 @pytest.mark.asyncio
 async def test_async_extract() -> None:
     client = AsyncLandingAIADE(apikey=APIKEY)
-    respx.post("https://aide.landing.ai/v2/extract").mock(return_value=httpx.Response(200, json=EXTRACT_BODY))
+    respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(200, json=EXTRACT_BODY))
     r = await client.v2.extract(schema={"type": "object"}, markdown="m")
     assert isinstance(r, V2ExtractResult)
 
@@ -52,7 +52,7 @@ async def test_async_extract_jobs_create_get_and_wait() -> None:
     time passes while polling."""
     client = AsyncLandingAIADE(apikey=APIKEY)
 
-    respx.post("https://aide.landing.ai/v2/extract/jobs").mock(
+    respx.post("https://api.ade.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "e1", "status": "pending"})
     )
     created = await client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x")
@@ -63,7 +63,7 @@ async def test_async_extract_jobs_create_get_and_wait() -> None:
         httpx.Response(200, json={"job_id": "e1", "status": "processing", "progress": 0.5}),
         httpx.Response(200, json={"job_id": "e1", "status": "completed", "result": EXTRACT_BODY}),
     ]
-    respx.get("https://aide.landing.ai/v2/extract/jobs/e1").mock(side_effect=responses)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e1").mock(side_effect=responses)
 
     fetched = await client.v2.extract_jobs.get("e1")
     assert fetched.status is JobStatus.PROCESSING

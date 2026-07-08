@@ -12,7 +12,7 @@ APIKEY = "My Apikey"
 @respx.mock
 def test_files_upload_returns_ref_and_hits_v2_host() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://aide.landing.ai/v1/files").mock(
+    route = respx.post("https://api.ade.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "fr_1"})
     )
     ref = client.v2.files.upload(file=b"markdown bytes")
@@ -25,7 +25,7 @@ def test_files_upload_returns_ref_and_hits_v2_host() -> None:
 @pytest.mark.asyncio
 async def test_async_files_upload() -> None:
     client = AsyncLandingAIADE(apikey=APIKEY, environment="staging")
-    respx.post("https://aide.staging.landing.ai/v1/files").mock(
+    respx.post("https://api.ade.staging.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "fr_2"})
     )
     ref = await client.v2.files.upload(file=b"bytes")

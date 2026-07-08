@@ -225,7 +225,7 @@ for job in response.jobs:
 
 `client.v2` is a new, **additive** sub-client for LandingAI's next-generation ADE gateway. It does not replace or change anything about the V1 usage above -- `client.parse`, `client.extract`, `client.parse_jobs`, `client.extract_jobs`, etc. all keep working exactly as documented. Use `client.v2.*` when you want the newer parse/extract surface.
 
-The V2 gateway lives on its own host (`aide.[env].landing.ai`), separate from the V1 host (`api.va.[env].landing.ai`). Select the environment the same way as V1, via the `environment` argument or the `LANDINGAI_ADE_ENVIRONMENT` env var:
+The V2 gateway lives on its own host (`api.ade.[env].landing.ai`), separate from the V1 host (`api.va.[env].landing.ai`). Select the environment the same way as V1, via the `environment` argument or the `LANDINGAI_ADE_ENVIRONMENT` env var:
 
 ```python
 import os

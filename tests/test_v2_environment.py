@@ -15,16 +15,16 @@ APIKEY = "My Apikey"
 def test_default_production_pair() -> None:
     c = LandingAIADE(apikey=APIKEY)
     assert str(c.base_url).rstrip("/") == "https://api.va.landing.ai"
-    assert c._v2_base_url == "https://aide.landing.ai"
+    assert c._v2_base_url == "https://api.ade.landing.ai"
 
 
 @pytest.mark.parametrize(
     "env,v1,v2",
     [
-        ("production", "https://api.va.landing.ai", "https://aide.landing.ai"),
-        ("eu", "https://api.va.eu-west-1.landing.ai", "https://aide.eu-west-1.landing.ai"),
-        ("staging", "https://api.va.staging.landing.ai", "https://aide.staging.landing.ai"),
-        ("dev", "https://api.va.dev.landing.ai", "https://aide.dev.landing.ai"),
+        ("production", "https://api.va.landing.ai", "https://api.ade.landing.ai"),
+        ("eu", "https://api.va.eu-west-1.landing.ai", "https://api.ade.eu-west-1.landing.ai"),
+        ("staging", "https://api.va.staging.landing.ai", "https://api.ade.staging.landing.ai"),
+        ("dev", "https://api.va.dev.landing.ai", "https://api.ade.dev.landing.ai"),
     ],
 )
 def test_environment_pairs(env: Literal["production", "eu", "staging", "dev"], v1: str, v2: str) -> None:
@@ -36,7 +36,7 @@ def test_environment_pairs(env: Literal["production", "eu", "staging", "dev"], v
 def test_environment_from_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANDINGAI_ADE_ENVIRONMENT", "staging")
     c = LandingAIADE(apikey=APIKEY)
-    assert c._v2_base_url == "https://aide.staging.landing.ai"
+    assert c._v2_base_url == "https://api.ade.staging.landing.ai"
 
 
 def test_explicit_v2_base_url_wins() -> None:
@@ -67,7 +67,7 @@ def test_v2_attribute_exists() -> None:
 @respx.mock
 def test_v2_subclient_routes_to_v2_host() -> None:
     c = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://aide.landing.ai/v1/files").mock(
+    route = respx.post("https://api.ade.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "ref-123"})
     )
     ref = c.v2.files.upload(file=b"hello")

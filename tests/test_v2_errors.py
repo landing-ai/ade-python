@@ -14,7 +14,7 @@ from landingai_ade.lib.v2_errors import (
 
 
 def _status_error(code: int) -> APIStatusError:
-    request = httpx.Request("POST", "https://aide.landing.ai/v2/extract")
+    request = httpx.Request("POST", "https://api.ade.landing.ai/v2/extract")
     response = httpx.Response(code, request=request)
     return APIStatusError("err", response=response, body=None)
 

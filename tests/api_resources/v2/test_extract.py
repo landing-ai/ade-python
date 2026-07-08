@@ -28,7 +28,7 @@ class Invoice(BaseModel):
 @respx.mock
 def test_extract_sync_json_body_with_pydantic_schema() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.post("https://aide.landing.ai/v2/extract").mock(
+    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
     )
     result = client.v2.extract(schema=Invoice, markdown="# doc", idempotency_key="k1")
@@ -43,7 +43,7 @@ def test_extract_sync_json_body_with_pydantic_schema() -> None:
 @respx.mock
 def test_extract_sync_strict_option() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.post("https://aide.landing.ai/v2/extract").mock(
+    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
     )
     client.v2.extract(schema={"type": "object", "properties": {}}, markdown_url="https://x/y.md", strict=True)
@@ -55,7 +55,7 @@ def test_extract_sync_strict_option() -> None:
 @respx.mock
 def test_extract_sync_504() -> None:
     client = LandingAIADE(apikey=APIKEY, max_retries=0)
-    respx.post("https://aide.landing.ai/v2/extract").mock(return_value=httpx.Response(504, json={"detail": "x"}))
+    respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(504, json={"detail": "x"}))
     with pytest.raises(V2SyncTimeoutError):
         client.v2.extract(schema={"type": "object"}, markdown="x")
 
@@ -63,13 +63,13 @@ def test_extract_sync_504() -> None:
 @respx.mock
 def test_extract_job_create_and_get() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://aide.landing.ai/v2/extract/jobs").mock(
+    respx.post("https://api.ade.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "e1", "status": "pending", "created_at": "2026-01-01T00:00:00Z"})
     )
     job = client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", priority="priority")
     assert job.job_id == "e1" and job.status is JobStatus.PENDING
 
-    respx.get("https://aide.landing.ai/v2/extract/jobs/e1").mock(
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e1").mock(
         return_value=httpx.Response(
             200,
             json={"job_id": "e1", "status": "completed", "created_at": "2026-01-01T00:00:00Z",
@@ -85,7 +85,7 @@ def test_extract_job_create_and_get() -> None:
 @respx.mock
 def test_extract_job_get_failed_maps_error_object() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://aide.landing.ai/v2/extract/jobs/e2").mock(
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e2").mock(
         return_value=httpx.Response(
             200, json={"job_id": "e2", "status": "failed", "error": {"code": "internal_error", "message": "boom"}}
         )
@@ -99,7 +99,7 @@ def test_extract_job_wait_raise_on_failure() -> None:
     from landingai_ade.lib.v2_errors import JobFailedError
 
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://aide.landing.ai/v2/extract/jobs/e3").mock(
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e3").mock(
         return_value=httpx.Response(200, json={"job_id": "e3", "status": "failed", "error": {"code": "x", "message": "no"}})
     )
     with pytest.raises(JobFailedError):
@@ -117,7 +117,7 @@ def test_extract_job_get_empty_job_id_raises() -> None:
 @respx.mock
 def test_extract_job_list_status_none_omits_query_param() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.get("https://aide.landing.ai/v2/extract/jobs").mock(
+    route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
     )
     client.v2.extract_jobs.list(status=None)
@@ -149,7 +149,7 @@ def test_extract_job_list_status_none_excluded_from_query_dict(monkeypatch: pyte
 @respx.mock
 def test_extract_job_list_status_given_includes_query_param() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.get("https://aide.landing.ai/v2/extract/jobs").mock(
+    route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
     )
     client.v2.extract_jobs.list(status="completed")
@@ -159,7 +159,7 @@ def test_extract_job_list_status_given_includes_query_param() -> None:
 @respx.mock
 def test_extract_job_list_carries_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://aide.landing.ai/v2/extract/jobs").mock(
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(
             200,
             json={

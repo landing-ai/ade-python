@@ -1,7 +1,7 @@
 #!/usr/bin/env -S rye run python
 """Runnable example: parse a document with the V2 (client.v2) sub-client.
 
-This targets the ADE gateway host (aide.[env].landing.ai), separate from the
+This targets the ADE gateway host (api.ade.[env].landing.ai), separate from the
 V1 host used by client.parse(). It is purely additive -- V1 usage elsewhere in
 this SDK is unaffected.
 

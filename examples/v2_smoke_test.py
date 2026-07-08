@@ -15,7 +15,7 @@ Setup
 -----
     export VISION_AGENT_API_KEY=<your api key for the target environment>
     # optional: override the target environment (script default: staging).
-    # V2 lives on aide.<env>.landing.ai
+    # V2 lives on api.ade.<env>.landing.ai
     export LANDINGAI_ADE_ENVIRONMENT=staging
 
 Run

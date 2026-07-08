@@ -93,10 +93,10 @@ ENVIRONMENTS: Dict[str, str] = {
 }
 
 V2_ENVIRONMENTS: Dict[str, str] = {
-    "production": "https://aide.landing.ai",
-    "eu": "https://aide.eu-west-1.landing.ai",
-    "staging": "https://aide.staging.landing.ai",
-    "dev": "https://aide.dev.landing.ai",
+    "production": "https://api.ade.landing.ai",
+    "eu": "https://api.ade.eu-west-1.landing.ai",
+    "staging": "https://api.ade.staging.landing.ai",
+    "dev": "https://api.ade.dev.landing.ai",
 }
 
 

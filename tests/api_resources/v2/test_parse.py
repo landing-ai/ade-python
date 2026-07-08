@@ -23,7 +23,7 @@ PARSE_BODY: Dict[str, Any] = {
 @respx.mock
 def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://aide.landing.ai/v2/parse").mock(
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
         return_value=httpx.Response(200, json=PARSE_BODY)
     )
     result = client.v2.parse(document=b"pdf", model="dpt-3-latest", options={"foo": "bar"})
@@ -37,7 +37,7 @@ def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
 @respx.mock
 def test_parse_sync_omits_unset_fields_from_multipart_body() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://aide.landing.ai/v2/parse").mock(
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
         return_value=httpx.Response(200, json=PARSE_BODY)
     )
     client.v2.parse(document=b"pdf")
@@ -58,7 +58,7 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
     # so an explicit `None` for an optional field must be dropped by hand -- it
     # must never leak into the multipart body as a literal "None"/"null" field.
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://aide.landing.ai/v2/parse").mock(
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
         return_value=httpx.Response(200, json=PARSE_BODY)
     )
     client.v2.parse(document=b"x", document_url=None, model=None, options=None, password=None)
@@ -92,7 +92,7 @@ def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.M
 @respx.mock
 def test_parse_job_list_status_none_omits_query_param() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
     )
     client.v2.parse_jobs.list(status=None)
@@ -124,7 +124,7 @@ def test_parse_job_list_status_none_excluded_from_query_dict(monkeypatch: pytest
 @respx.mock
 def test_parse_job_list_status_given_includes_query_param() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    route = respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
     )
     client.v2.parse_jobs.list(status="completed")
@@ -138,7 +138,7 @@ def test_parse_sync_206_returns_response_with_failed_pages() -> None:
     metadata: Dict[str, Any] = dict(PARSE_BODY["metadata"])
     metadata["failed_pages"] = [3]
     body["metadata"] = metadata
-    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(206, json=body))
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(206, json=body))
     result = client.v2.parse(document=b"pdf")
     assert result.metadata is not None and result.metadata.failed_pages == [3]
 
@@ -146,7 +146,7 @@ def test_parse_sync_206_returns_response_with_failed_pages() -> None:
 @respx.mock
 def test_parse_sync_504_raises_v2_sync_timeout() -> None:
     client = LandingAIADE(apikey=APIKEY, max_retries=0)
-    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(504, json={"detail": "x"}))
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(504, json={"detail": "x"}))
     with pytest.raises(V2SyncTimeoutError):
         client.v2.parse(document=b"pdf")
 
@@ -154,7 +154,7 @@ def test_parse_sync_504_raises_v2_sync_timeout() -> None:
 @respx.mock
 def test_parse_save_to_writes_file(tmp_path: Path) -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     client.v2.parse(document=b"pdf", save_to=str(tmp_path))
     written = list(tmp_path.glob("*.json"))
     assert written and json.loads(written[0].read_text())["markdown"] == "# Hello"
@@ -166,7 +166,7 @@ async def test_async_parse_sync_ok() -> None:
     from landingai_ade import AsyncLandingAIADE
 
     client = AsyncLandingAIADE(apikey=APIKEY, environment="production")
-    respx.post("https://aide.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     result = await client.v2.parse(document=b"pdf")
     assert isinstance(result, V2ParseResponse)
     assert result.markdown == "# Hello"
@@ -175,7 +175,7 @@ async def test_async_parse_sync_ok() -> None:
 @respx.mock
 def test_parse_job_create_normalizes_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
+    respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending", "received_at": 1700000000})
     )
     job = client.v2.parse_jobs.create(document=b"pdf", priority="priority")
@@ -186,7 +186,7 @@ def test_parse_job_create_normalizes_envelope() -> None:
 @respx.mock
 def test_parse_job_get_completed_has_typed_result() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
         return_value=httpx.Response(
             200,
             json={"job_id": "p1", "status": "completed", "created_at": 1700000000, "data": PARSE_BODY},
@@ -208,7 +208,7 @@ def test_parse_job_get_empty_job_id_raises() -> None:
 @respx.mock
 def test_parse_job_list_carries_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
-    respx.get("https://aide.landing.ai/v2/parse/jobs").mock(
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(
             200,
             json={"jobs": [{"job_id": "p1", "status": "completed"}], "org_id": "o1", "has_more": True},
@@ -226,7 +226,7 @@ def test_parse_job_wait_polls_until_completed() -> None:
         httpx.Response(200, json={"job_id": "p1", "status": "processing", "progress": 0.5}),
         httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY}),
     ]
-    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
     # inject fake clock so no real time passes
     ticks = iter([0.0, 0.0, 0.1, 0.2, 0.3])
     job = client.v2.parse_jobs.wait("p1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
@@ -239,10 +239,10 @@ async def test_async_parse_job_create_and_get() -> None:
     from landingai_ade import AsyncLandingAIADE
 
     client = AsyncLandingAIADE(apikey=APIKEY)
-    respx.post("https://aide.landing.ai/v2/parse/jobs").mock(
+    respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending"})
     )
-    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
         return_value=httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY})
     )
     created = await client.v2.parse_jobs.create(document=b"pdf")
@@ -263,7 +263,7 @@ async def test_async_parse_job_wait_polls_until_completed() -> None:
         httpx.Response(200, json={"job_id": "p1", "status": "processing", "progress": 0.5}),
         httpx.Response(200, json={"job_id": "p1", "status": "completed", "data": PARSE_BODY}),
     ]
-    respx.get("https://aide.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(side_effect=responses)
     ticks = iter([0.0, 0.0, 0.1, 0.2, 0.3])
     job = await client.v2.parse_jobs.wait("p1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
     assert job.status is JobStatus.COMPLETED
