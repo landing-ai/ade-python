@@ -18,7 +18,7 @@ jobs:
     # secrets and would just produce noisy failing runs.
     if: github.repository == 'landing-ai/ade-python'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
       V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
@@ -110,16 +110,23 @@ jobs:
           github_token: ${{ secrets.SPEC_SYNC_TOKEN }}
           prompt: |
             The previous commit updated specs/v1-ade.json and regenerated reference models in
-            specs/_generated/v1_models.py. Edit the SDK to match the spec diff: add or adjust
-            resource classes, method signatures, param TypedDicts, response models, tests, api.md,
-            and README examples, mirroring the conventions in
-            src/landingai_ade/resources/parse_jobs.py. Then run `./scripts/format`.
+            specs/_generated/v1_models.py. Wire the SDK to match the spec diff.
+
+            First inspect the mechanical commit diff (`git diff HEAD~1..HEAD`) and read
+            src/landingai_ade/resources/parse_jobs.py — mirror its structure exactly for any
+            new resource (sync + async classes, the raw/streaming response wrappers, param
+            TypedDicts under src/landingai_ade/types/, response models, and registration in
+            src/landingai_ade/resources/__init__.py and the client). Add tests under
+            tests/api_resources/ and update api.md and the README examples. Then run
+            `./scripts/format` and `./scripts/lint` and fix anything they report.
+
             Rules: PURELY ADDITIVE — never modify or remove an existing public signature (the
-            surface-lock CI job will fail the PR). Do NOT run git or push; a later workflow step
-            commits and pushes your edits.
+            surface-lock CI job will fail the PR). `git diff` (read-only, to inspect the change)
+            is fine; do NOT stage, commit, push, or run any other git command — a later workflow
+            step commits and pushes your edits.
           claude_args: |
-            --max-turns 40
-            --allowedTools "Edit,Write,Read,Bash(rye *),Bash(./scripts/*)"
+            --max-turns 250
+            --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
 
       # Deterministic: commit whatever the AI edited and push to the sync branch. This guarantees
       # the AI changes actually reach the PR (the action's automation mode does not push), and it
