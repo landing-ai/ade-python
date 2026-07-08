@@ -18,7 +18,7 @@ jobs:
     # secrets and would just produce noisy failing runs.
     if: github.repository == 'landing-ai/ade-python'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
       V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
@@ -121,8 +121,9 @@ jobs:
             `./scripts/format` and `./scripts/lint` and fix anything they report.
 
             Rules: PURELY ADDITIVE — never modify or remove an existing public signature (the
-            surface-lock CI job will fail the PR). Do NOT run git or push; a later workflow step
-            commits and pushes your edits.
+            surface-lock CI job will fail the PR). `git diff` (read-only, to inspect the change)
+            is fine; do NOT stage, commit, push, or run any other git command — a later workflow
+            step commits and pushes your edits.
           claude_args: |
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
