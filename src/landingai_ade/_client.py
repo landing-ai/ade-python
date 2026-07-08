@@ -68,6 +68,7 @@ from .types.extract_build_schema_response import ExtractBuildSchemaResponse
 
 if TYPE_CHECKING:
     from .resources import parse_jobs, extract_jobs
+    from .resources.v2 import V2Resource, AsyncV2Resource
     from .resources.parse_jobs import ParseJobsResource, AsyncParseJobsResource
     from .resources.extract_jobs import ExtractJobsResource, AsyncExtractJobsResource
 _LIB_VERSION = importlib.metadata.version("landingai-ade")
@@ -291,6 +292,12 @@ class LandingAIADE(SyncAPIClient):
         from .resources.extract_jobs import ExtractJobsResource
 
         return ExtractJobsResource(self)
+
+    @cached_property
+    def v2(self) -> V2Resource:
+        from .resources.v2 import V2Resource
+
+        return V2Resource(self)
 
     @cached_property
     def with_raw_response(self) -> LandingAIADEWithRawResponse:
@@ -1001,6 +1008,12 @@ class AsyncLandingAIADE(AsyncAPIClient):
         from .resources.extract_jobs import AsyncExtractJobsResource
 
         return AsyncExtractJobsResource(self)
+
+    @cached_property
+    def v2(self) -> AsyncV2Resource:
+        from .resources.v2 import AsyncV2Resource
+
+        return AsyncV2Resource(self)
 
     @cached_property
     def with_raw_response(self) -> AsyncLandingAIADEWithRawResponse:

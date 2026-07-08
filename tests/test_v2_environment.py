@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing_extensions import Literal
 
+import httpx
+import respx
 import pytest
 
 from landingai_ade import LandingAIADE
+from landingai_ade.resources.v2 import V2Resource
 
 APIKEY = "My Apikey"
 
@@ -51,3 +54,23 @@ def test_v2_base_url_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANDINGAI_ADE_V2_BASE_URL", "https://v2.mock.local")
     c = LandingAIADE(apikey=APIKEY)
     assert c._v2_base_url == "https://v2.mock.local"
+
+
+def test_v2_attribute_exists() -> None:
+    # Only the `v2` container exists after this task -- sub-resources (`files`,
+    # `parse_jobs`, `extract_jobs`, ...) land in Tasks 7-11, so this must not touch them.
+    c = LandingAIADE(apikey=APIKEY)
+    assert c.v2 is not None
+    assert isinstance(c.v2, V2Resource)
+
+
+@pytest.mark.skip(reason="files.upload lands in Task 7")
+@respx.mock
+def test_v2_subclient_routes_to_v2_host() -> None:
+    c = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://aide.landing.ai/v1/files").mock(
+        return_value=httpx.Response(200, json={"file_ref": "ref-123"})
+    )
+    ref = c.v2.files.upload(file=b"hello")  # type: ignore[attr-defined]
+    assert route.called
+    assert ref == "ref-123"
