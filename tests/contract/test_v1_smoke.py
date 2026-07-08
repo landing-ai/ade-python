@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Iterator
 
 import pytest
 
@@ -15,10 +16,12 @@ STAGING_V1_BASE_URL = "https://api.va.staging.landing.ai"
 
 
 @pytest.fixture()
-def staging_client() -> LandingAIADE:
+def staging_client() -> Iterator[LandingAIADE]:
     if not STAGING_KEY:
         pytest.skip("LANDINGAI_ADE_STAGING_APIKEY not set")
-    return LandingAIADE(apikey=STAGING_KEY, base_url=STAGING_V1_BASE_URL)
+    # Context-managed so the underlying HTTP client is closed in teardown (no socket leak).
+    with LandingAIADE(apikey=STAGING_KEY, base_url=STAGING_V1_BASE_URL) as client:
+        yield client
 
 
 def test_parse_jobs_list_reachable(staging_client: LandingAIADE) -> None:

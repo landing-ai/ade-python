@@ -130,7 +130,7 @@ the environment.
 ## Spec-sync pipeline
 
 The SDK tracks the live ADE OpenAPI spec automatically via `.github/workflows/spec-sync.yml`
-(cron ~6h + manual `workflow_dispatch`). It is driven by the **staging** spec; releases gate on
+(hourly cron + manual `workflow_dispatch`). It is driven by the **staging** spec; releases gate on
 the **production** spec ("staging in, production out").
 
 On each run it fetches and normalizes the live spec (`scripts/spec-sync/fetch-normalize.sh`) and
