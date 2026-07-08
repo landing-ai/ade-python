@@ -16,7 +16,7 @@ from ..._resource import SyncAPIResource, AsyncAPIResource
 if TYPE_CHECKING:
     from .files import FilesResource, AsyncFilesResource
     from .parse import ParseResource, ParseJobsResource, AsyncParseResource, AsyncParseJobsResource
-    from .extract import ExtractResource, AsyncExtractResource
+    from .extract import ExtractResource, ExtractJobsResource, AsyncExtractResource, AsyncExtractJobsResource
 
 __all__ = ["V2Resource", "AsyncV2Resource"]
 
@@ -84,6 +84,12 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
         from .extract import ExtractResource
 
         return ExtractResource(self._client)
+
+    @cached_property
+    def extract_jobs(self) -> ExtractJobsResource:
+        from .extract import ExtractJobsResource
+
+        return ExtractJobsResource(self._client)
 
     def extract(
         self,
@@ -176,6 +182,12 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         from .extract import AsyncExtractResource
 
         return AsyncExtractResource(self._client)
+
+    @cached_property
+    def extract_jobs(self) -> AsyncExtractJobsResource:
+        from .extract import AsyncExtractJobsResource
+
+        return AsyncExtractJobsResource(self._client)
 
     async def extract(
         self,
