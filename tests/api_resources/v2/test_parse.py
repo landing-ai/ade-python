@@ -35,6 +35,24 @@ def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
 
 
 @respx.mock
+def test_parse_sync_omits_unset_fields_from_multipart_body() -> None:
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://aide.landing.ai/v2/parse").mock(
+        return_value=httpx.Response(200, json=PARSE_BODY)
+    )
+    client.v2.parse(document=b"pdf")
+    # Unset `Omit`/`NotGiven` sentinels must never leak into the multipart
+    # body as literal `"<...Omit object...>"` / `"NOT_GIVEN"` form fields.
+    sent = route.calls.last.request.content
+    assert b"Omit object" not in sent
+    assert b"NOT_GIVEN" not in sent
+    assert b"document_url" not in sent
+    assert b"model" not in sent
+    assert b"options" not in sent
+    assert b"password" not in sent
+
+
+@respx.mock
 def test_parse_sync_206_returns_response_with_failed_pages() -> None:
     client = LandingAIADE(apikey=APIKEY)
     body: Dict[str, Any] = dict(PARSE_BODY)

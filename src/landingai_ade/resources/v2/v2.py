@@ -22,10 +22,11 @@ __all__ = ["V2Resource", "AsyncV2Resource"]
 class V2Resource(SyncAPIResource, V2ResourceMixin):
     """Container for the V2 (ADE) surface: ``client.v2.<resource>``.
 
-    Sub-resources (``parse``, ``parse_jobs``, ``extract``, ``extract_jobs``) are
-    attached as cached properties by later tasks (8-11), each doing its own lazy
-    import inside the property body -- mirroring ``LandingAIADE.parse_jobs`` -- so that
-    this module keeps importing standalone regardless of which sub-resources exist yet.
+    ``files`` and ``parse`` are wired up; each sub-resource does its own lazy
+    import inside its cached property body -- mirroring ``LandingAIADE.parse_jobs``
+    -- so that this module keeps importing standalone regardless of which
+    sub-resources exist yet. ``extract`` and the job-polling resources are
+    attached by later tasks following the same pattern.
     """
 
     @cached_property
