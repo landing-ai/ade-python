@@ -28,7 +28,11 @@ def is_base64_file_input(obj: object) -> TypeGuard[Base64FileInput]:
 
 def is_file_content(obj: object) -> TypeGuard[FileContent]:
     return (
-        isinstance(obj, bytes) or isinstance(obj, str) or isinstance(obj, tuple) or isinstance(obj, io.IOBase) or isinstance(obj, os.PathLike)
+        isinstance(obj, bytes)
+        or isinstance(obj, str)
+        or isinstance(obj, tuple)
+        or isinstance(obj, io.IOBase)
+        or isinstance(obj, os.PathLike)
     )
 
 
@@ -69,7 +73,7 @@ def _transform_file(file: FileTypes) -> HttpxFileTypes:
             return (path.name, path.read_bytes())
 
         if isinstance(file, str):
-            return file.encode('utf-8')
+            return file.encode("utf-8")
 
         return file
 
@@ -83,7 +87,7 @@ def read_file_content(file: FileContent) -> HttpxFileContent:
     if isinstance(file, os.PathLike):
         return pathlib.Path(file).read_bytes()
     if isinstance(file, str):
-        return file.encode('utf-8')
+        return file.encode("utf-8")
     return file
 
 
@@ -116,7 +120,7 @@ async def _async_transform_file(file: FileTypes) -> HttpxFileTypes:
             return (path.name, await path.read_bytes())
 
         if isinstance(file, str):
-            return file.encode('utf-8')
+            return file.encode("utf-8")
 
         return file
 
@@ -131,7 +135,7 @@ async def async_read_file_content(file: FileContent) -> HttpxFileContent:
         return await anyio.Path(file).read_bytes()
 
     if isinstance(file, str):
-        return file.encode('utf-8')
+        return file.encode("utf-8")
 
     return file
 

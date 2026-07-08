@@ -95,29 +95,26 @@ from landingai_ade import LandingAIADE
 client = LandingAIADE()
 
 # Parse the document
-parse_response = client.parse(
-    document=Path("/path/to/document.pdf"),
-    model="dpt-2-latest"
-)
+parse_response = client.parse(document=Path("/path/to/document.pdf"), model="dpt-2-latest")
 
 # Define Split Rules
 split_class = [
     {
         "name": "Bank Statement",
-        "description": "Document from a bank that summarizes all account activity over a period of time."
+        "description": "Document from a bank that summarizes all account activity over a period of time.",
     },
     {
         "name": "Pay Stub",
         "description": "Document that details an employee's earnings, deductions, and net pay for a specific pay period.",
-        "identifier": "Pay Stub Date"
-    }
+        "identifier": "Pay Stub Date",
+    },
 ]
 
 # Split using the Markdown string from parse response
 split_response = client.split(
     split_class=json.dumps(split_class),
     markdown=parse_response.markdown,  # Pass Markdown string directly
-    model="split-latest"
+    model="split-latest",
 )
 
 # Access the splits
@@ -170,10 +167,12 @@ from landingai_ade import LandingAIADE
 from landingai_ade.lib import pydantic_to_json_schema
 from pydantic import BaseModel, Field
 
+
 # Define your schema
 class Person(BaseModel):
     name: str = Field(description="Person's name")
     age: int = Field(description="Person's age")
+
 
 # Convert to JSON schema
 schema = pydantic_to_json_schema(Person)
@@ -185,6 +184,41 @@ response = client.extract(
     markdown=Path("path/to/file.md"),
     save_to="./output_folder",  # optional: saves as {input_file}_extract_output.json
 )
+```
+
+### Extract Jobs
+
+For extracting structured data from large markdown documents asynchronously:
+
+```python
+import os
+from pathlib import Path
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE(
+    apikey=os.environ.get("VISION_AGENT_API_KEY"),
+)
+
+# Create an async extract job
+job = client.extract_jobs.create(
+    schema='{"type": "object", "properties": {"title": {"type": "string"}}}',
+    markdown=Path("path/to/large_file.md"),
+    model="extract-latest",
+)
+print(f"Job created with ID: {job.job_id}")
+
+# Get job status
+job_status = client.extract_jobs.get(job.job_id)
+print(f"Status: {job_status.status}")
+
+# List all jobs (with optional filtering)
+response = client.extract_jobs.list(
+    status="completed",
+    page=0,
+    page_size=10,
+)
+for job in response.jobs:
+    print(f"Job {job.job_id}: {job.status}")
 ```
 
 ## Async usage

@@ -6,6 +6,14 @@ from .parse_jobs import (
     ParseJobsResourceWithStreamingResponse,
     AsyncParseJobsResourceWithStreamingResponse,
 )
+from .extract_jobs import (
+    ExtractJobsResource,
+    AsyncExtractJobsResource,
+    ExtractJobsResourceWithRawResponse,
+    AsyncExtractJobsResourceWithRawResponse,
+    ExtractJobsResourceWithStreamingResponse,
+    AsyncExtractJobsResourceWithStreamingResponse,
+)
 
 __all__ = [
     "ParseJobsResource",
@@ -14,4 +22,10 @@ __all__ = [
     "AsyncParseJobsResourceWithRawResponse",
     "ParseJobsResourceWithStreamingResponse",
     "AsyncParseJobsResourceWithStreamingResponse",
+    "ExtractJobsResource",
+    "AsyncExtractJobsResource",
+    "ExtractJobsResourceWithRawResponse",
+    "AsyncExtractJobsResourceWithRawResponse",
+    "ExtractJobsResourceWithStreamingResponse",
+    "AsyncExtractJobsResourceWithStreamingResponse",
 ]
