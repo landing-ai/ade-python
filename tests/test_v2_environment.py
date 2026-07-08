@@ -64,13 +64,12 @@ def test_v2_attribute_exists() -> None:
     assert isinstance(c.v2, V2Resource)
 
 
-@pytest.mark.skip(reason="files.upload lands in Task 7")
 @respx.mock
 def test_v2_subclient_routes_to_v2_host() -> None:
     c = LandingAIADE(apikey=APIKEY, environment="production")
     route = respx.post("https://aide.landing.ai/v1/files").mock(
         return_value=httpx.Response(200, json={"file_ref": "ref-123"})
     )
-    ref = c.v2.files.upload(file=b"hello")  # type: ignore[attr-defined]
+    ref = c.v2.files.upload(file=b"hello")
     assert route.called
     assert ref == "ref-123"
