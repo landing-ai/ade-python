@@ -32,6 +32,22 @@ def _build_extract_body(
     idempotency_key: object,
     service_tier: object = omit,
 ) -> Dict[str, Any]:
+    provided = [
+        name
+        for name, value in (
+            ("markdown", markdown),
+            ("markdown_ref", markdown_ref),
+            ("markdown_url", markdown_url),
+        )
+        if value is not omit and value is not None
+    ]
+    if len(provided) != 1:
+        raise ValueError(
+            "extract requires exactly one markdown source: provide one of "
+            "`markdown`, `markdown_ref`, or `markdown_url`"
+            + (f" (received: {', '.join(provided)})" if provided else "")
+            + "."
+        )
     body: Dict[str, Any] = {"schema": coerce_schema_to_dict(schema)}
     for key, value in (
         ("markdown", markdown),

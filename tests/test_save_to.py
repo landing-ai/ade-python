@@ -206,6 +206,40 @@ class TestSaveResponse:
         assert Path(output_file).exists()
         assert Path(output_file).read_text() == '{"string": true}'
 
+    def test_writes_utf8_encoding_for_non_ascii(self, tmp_path: Path) -> None:
+        """Non-ASCII JSON must be written as UTF-8, not the platform default.
+
+        Without an explicit encoding, Path.write_text() uses the locale
+        encoding (cp1252 on Windows) and raises UnicodeEncodeError on CJK /
+        accented content. Assert the bytes on disk are exactly the UTF-8
+        encoding of the payload, independent of the host locale.
+        """
+        payload = '{"name": "太郎", "city": "München"}'
+        mock_result = MagicMock()
+        mock_result.to_json.return_value = payload
+
+        output_file = tmp_path / "unicode.json"
+        _save_response(output_file, "ignored", "extract", mock_result)
+
+        assert output_file.read_bytes() == payload.encode("utf-8")
+        assert output_file.read_text(encoding="utf-8") == payload
+
+    def test_write_text_called_with_utf8_encoding(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Guard the fix cross-platform: write_text must receive encoding='utf-8'."""
+        captured: dict[str, object] = {}
+        original = Path.write_text
+
+        def spy(self: Path, data: str, **kwargs: object) -> int:
+            captured["encoding"] = kwargs.get("encoding")
+            return original(self, data, encoding="utf-8")
+
+        monkeypatch.setattr(Path, "write_text", spy)
+        mock_result = MagicMock()
+        mock_result.to_json.return_value = "{}"
+
+        _save_response(tmp_path, "doc", "extract", mock_result)
+        assert captured["encoding"] == "utf-8"
+
 
 class TestAsyncSaveTo:
     """Tests that async client methods accept save_to and save correctly."""
