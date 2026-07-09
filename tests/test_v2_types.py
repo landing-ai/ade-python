@@ -76,10 +76,12 @@ def test_extract_result_parses_nested_metadata() -> None:
     assert r.metadata.credit_usage == 0.0  # default
 
 
-def test_parse_response_tolerates_loose_shape() -> None:
+def test_parse_response_builds_from_dicts() -> None:
+    # `structure`/`grounding` are typed trees; `metadata` (with nested `billing`)
+    # and the whole response build cleanly from plain dicts.
     r = V2ParseResponse(
         markdown="# hi",
-        structure=[{"type": "text"}],
+        structure={"type": "document", "children": [{"type": "page", "page": 0, "span": [0, 4]}]},  # type: ignore[arg-type]
         metadata={  # type: ignore[arg-type]
             "req_id": "r1",
             "job_id": "j1",
@@ -90,6 +92,7 @@ def test_parse_response_tolerates_loose_shape() -> None:
         },
     )
     assert r.markdown == "# hi"
+    assert r.structure is not None and r.structure.children[0].page == 0
     assert r.metadata is not None and r.metadata.billing is not None
     assert r.metadata.billing.total_credits == 3.0
 

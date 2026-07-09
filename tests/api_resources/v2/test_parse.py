@@ -15,8 +15,61 @@ from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 APIKEY = "My Apikey"
 PARSE_BODY: Dict[str, Any] = {
     "markdown": "# Hello",
-    "structure": [{"type": "text"}],
+    "structure": {"type": "document", "children": []},
+    "grounding": {"type": "document", "children": []},
     "metadata": {"req_id": "r1", "job_id": "j1", "model_version": "dpt-3", "page_count": 1, "failed_pages": []},
+}
+
+# A fully-populated ParseResponse mirroring the typed gateway schema: a document
+# with one page holding a text element and a table (with a table_cell child), plus
+# the parallel grounding tree carrying boxes/parts.
+RICH_PARSE_BODY: Dict[str, Any] = {
+    "markdown": "# Invoice",
+    "metadata": {"req_id": "r1", "job_id": "j1", "model_version": "dpt-3", "page_count": 1, "failed_pages": []},
+    "structure": {
+        "type": "document",
+        "children": [
+            {
+                "type": "page",
+                "page": 0,
+                "span": [0, 100],
+                "width": 800,
+                "height": 1000,
+                "dpi": 150,
+                "status": "ok",
+                "children": [
+                    {"type": "text", "id": "e1", "span": [0, 20]},
+                    {
+                        "type": "table",
+                        "id": "e2",
+                        "span": [20, 80],
+                        "children": [
+                            {"type": "table_cell", "id": "e3", "span": [25, 30],
+                             "row": 0, "col": 1, "colspan": 2, "rowspan": 1},
+                        ],
+                    },
+                ],
+            }
+        ],
+    },
+    "grounding": {
+        "type": "document",
+        "children": [
+            {
+                "type": "page",
+                "page": 0,
+                "span": [0, 100],
+                "children": [
+                    {"type": "text", "id": "e1", "span": [0, 20], "box": [10, 10, 200, 30],
+                     "parts": [{"span": [0, 20], "box": [10, 10, 200, 30]}]},
+                    {"type": "table", "id": "e2", "span": [20, 80], "box": [10, 40, 400, 300], "parts": [],
+                     "children": [
+                         {"type": "table_cell", "id": "e3", "span": [25, 30], "box": [12, 42, 100, 80], "parts": []},
+                     ]},
+                ],
+            }
+        ],
+    },
 }
 
 
@@ -157,6 +210,59 @@ def test_parse_sync_206_returns_response_with_failed_pages() -> None:
     respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(206, json=body))
     result = client.v2.parse(document=b"pdf")
     assert result.metadata is not None and result.metadata.failed_pages == [3]
+
+
+@respx.mock
+def test_parse_sync_typed_structure_and_grounding() -> None:
+    # The gateway now returns a typed ParseResponse; `structure` and `grounding`
+    # deserialize into typed models with attribute access, not raw dicts.
+    from landingai_ade.types.v2 import V2ParseGrounding, V2ParseStructure
+
+    client = LandingAIADE(apikey=APIKEY)
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(
+        return_value=httpx.Response(200, json=RICH_PARSE_BODY)
+    )
+    result = client.v2.parse(document=b"pdf")
+
+    assert isinstance(result.structure, V2ParseStructure)
+    page = result.structure.children[0]
+    assert page.page == 0 and page.width == 800 and page.dpi == 150 and page.status == "ok"
+    text, table = page.children[0], page.children[1]
+    assert text.type == "text" and text.id == "e1"
+    assert table.type == "table" and table.children is not None
+    cell = table.children[0]
+    assert cell.type == "table_cell" and cell.row == 0 and cell.col == 1 and cell.colspan == 2
+
+    assert isinstance(result.grounding, V2ParseGrounding)
+    g_text = result.grounding.children[0].children[0]
+    assert g_text.box == [10, 10, 200, 30]
+    assert g_text.parts[0].span == [0, 20] and g_text.parts[0].box == [10, 10, 200, 30]
+    g_table = result.grounding.children[0].children[1]
+    assert g_table.children is not None and g_table.children[0].box == [12, 42, 100, 80]
+
+
+@respx.mock
+def test_parse_sync_tolerates_unknown_element_type_and_extra_keys() -> None:
+    # Novel element `type` values and extra keys must not break deserialization
+    # (`type` is a permissive str; BaseModel retains extra keys).
+    client = LandingAIADE(apikey=APIKEY)
+    body: Dict[str, Any] = {
+        "markdown": "x",
+        "metadata": {"req_id": "r1", "job_id": "j1", "model_version": "m", "page_count": 1, "failed_pages": []},
+        "structure": {
+            "type": "document",
+            "children": [
+                {"type": "page", "page": 0, "span": [0, 5], "future_field": 7, "children": [
+                    {"type": "some_future_kind", "id": "e9", "span": [0, 5]},
+                ]},
+            ],
+        },
+        "grounding": {"type": "document", "children": []},
+    }
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=body))
+    result = client.v2.parse(document=b"pdf")
+    assert result.structure is not None
+    assert result.structure.children[0].children[0].type == "some_future_kind"
 
 
 @respx.mock
