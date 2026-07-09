@@ -74,7 +74,7 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
 def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     # Regression test at the body-dict level (before multipart encoding, which
     # happens to drop bare `None` values and would otherwise mask this bug):
-    # `output_save_url=None`/`priority=None` must not survive into the body
+    # `output_save_url=None`/`service_tier=None` must not survive into the body
     # dict handed to the request layer.
     client = LandingAIADE(apikey=APIKEY)
     captured: Dict[str, Any] = {}
@@ -84,8 +84,24 @@ def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.M
         return {"job_id": "p1", "status": "pending"}
 
     monkeypatch.setattr(client.v2.parse_jobs, "_post", fake_post)
-    client.v2.parse_jobs.create(document=b"x", output_save_url=None, priority=None)
+    client.v2.parse_jobs.create(document=b"x", output_save_url=None, service_tier=None)
     assert "output_save_url" not in captured["body"]
+    assert "service_tier" not in captured["body"]
+
+
+def test_parse_job_create_sends_service_tier(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The async job create body must carry `service_tier` (renamed from the
+    # old `priority` field per the V2 spec).
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_post(path: str, *, cast_to: Any, body: Any = None, files: Any = None, options: Any = None) -> Any:  # noqa: ARG001
+        captured["body"] = body
+        return {"job_id": "p1", "status": "pending"}
+
+    monkeypatch.setattr(client.v2.parse_jobs, "_post", fake_post)
+    client.v2.parse_jobs.create(document=b"x", service_tier="priority")
+    assert captured["body"]["service_tier"] == "priority"
     assert "priority" not in captured["body"]
 
 
@@ -178,7 +194,7 @@ def test_parse_job_create_normalizes_envelope() -> None:
     respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending", "received_at": 1700000000})
     )
-    job = client.v2.parse_jobs.create(document=b"pdf", priority="priority")
+    job = client.v2.parse_jobs.create(document=b"pdf", service_tier="priority")
     assert isinstance(job, Job)
     assert job.job_id == "p1" and job.status is JobStatus.PENDING
 
@@ -196,6 +212,37 @@ def test_parse_job_get_completed_has_typed_result() -> None:
     assert job.status is JobStatus.COMPLETED
     assert isinstance(job.result, V2ParseResponse)
     assert job.result.markdown == "# Hello"
+
+
+@respx.mock
+def test_parse_job_get_206_partial_returns_result() -> None:
+    # Per the V2 spec, GET /v2/parse/jobs/{id} can return 206 (partial success).
+    # 206 is a 2xx, so the base client treats it as success and the envelope is
+    # normalized like any completed job.
+    client = LandingAIADE(apikey=APIKEY)
+    body: Dict[str, Any] = dict(PARSE_BODY)
+    metadata: Dict[str, Any] = dict(PARSE_BODY["metadata"])
+    metadata["failed_pages"] = [2]
+    body["metadata"] = metadata
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
+        return_value=httpx.Response(206, json={"job_id": "p1", "status": "completed", "data": body})
+    )
+    job = client.v2.parse_jobs.get("p1")
+    assert job.status is JobStatus.COMPLETED
+    assert isinstance(job.result, V2ParseResponse)
+    assert job.result.metadata is not None and job.result.metadata.failed_pages == [2]
+
+
+@respx.mock
+def test_parse_job_get_404_raises_not_found() -> None:
+    from landingai_ade import NotFoundError
+
+    client = LandingAIADE(apikey=APIKEY, max_retries=0)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/missing").mock(
+        return_value=httpx.Response(404, json={"detail": "not found"})
+    )
+    with pytest.raises(NotFoundError):
+        client.v2.parse_jobs.get("missing")
 
 
 @respx.mock

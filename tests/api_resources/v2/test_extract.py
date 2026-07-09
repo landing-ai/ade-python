@@ -66,7 +66,7 @@ def test_extract_job_create_and_get() -> None:
     respx.post("https://api.ade.landing.ai/v2/extract/jobs").mock(
         return_value=httpx.Response(202, json={"job_id": "e1", "status": "pending", "created_at": "2026-01-01T00:00:00Z"})
     )
-    job = client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", priority="priority")
+    job = client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", service_tier="priority")
     assert job.job_id == "e1" and job.status is JobStatus.PENDING
 
     respx.get("https://api.ade.landing.ai/v2/extract/jobs/e1").mock(
@@ -80,6 +80,37 @@ def test_extract_job_create_and_get() -> None:
     assert done.status is JobStatus.COMPLETED
     assert isinstance(done.result, V2ExtractResult)
     assert done.result.metadata.version == "extract-1"
+
+
+def test_extract_job_create_sends_service_tier(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The async job create body must carry `service_tier` (renamed from the
+    # old `priority` field per the V2 spec).
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_post(path: str, *, cast_to: Any, body: Any = None, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["body"] = body
+        return {"job_id": "e1", "status": "pending"}
+
+    monkeypatch.setattr(client.v2.extract_jobs, "_post", fake_post)
+    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", service_tier="priority")
+    assert captured["body"]["service_tier"] == "priority"
+    assert "priority" not in captured["body"]
+
+
+@respx.mock
+def test_extract_sync_parses_billing_metadata() -> None:
+    # The V2 spec adds a `billing` object to the response metadata.
+    client = LandingAIADE(apikey=APIKEY)
+    body: Dict[str, Any] = dict(EXTRACT_BODY)
+    metadata: Dict[str, Any] = dict(EXTRACT_BODY["metadata"])
+    metadata["billing"] = {"service_tier": "priority", "total_credits": 12.5}
+    body["metadata"] = metadata
+    respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(200, json=body))
+    result = client.v2.extract(schema={"type": "object"}, markdown="x")
+    assert result.metadata.billing is not None
+    assert result.metadata.billing.service_tier == "priority"
+    assert result.metadata.billing.total_credits == 12.5
 
 
 @respx.mock

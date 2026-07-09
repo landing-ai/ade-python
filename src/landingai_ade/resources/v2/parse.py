@@ -190,7 +190,7 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         options: Optional[Mapping[str, object]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
-        priority: Optional[Literal["standard", "priority"]] | Omit = omit,
+        service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -220,7 +220,7 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
           output_save_url: If zero data retention (ZDR) is enabled, a URL the parsed output should be
               saved to instead of being returned in the job result.
 
-          priority: Processing priority for the job.
+          service_tier: Service tier for the job: ``standard`` or ``priority``.
 
           extra_headers: Send extra headers
 
@@ -233,8 +233,8 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         body = _build_parse_body(document, document_url, model, options, password)
         if is_given(output_save_url) and output_save_url is not None:
             body["output_save_url"] = output_save_url
-        if is_given(priority) and priority is not None:
-            body["priority"] = priority
+        if is_given(service_tier) and service_tier is not None:
+            body["service_tier"] = service_tier
         body = deepcopy_with_paths(body, [["document"]])
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
@@ -340,7 +340,7 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         options: Optional[Mapping[str, object]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
-        priority: Optional[Literal["standard", "priority"]] | Omit = omit,
+        service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -352,8 +352,8 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         body = _build_parse_body(document, document_url, model, options, password)
         if is_given(output_save_url) and output_save_url is not None:
             body["output_save_url"] = output_save_url
-        if is_given(priority) and priority is not None:
-            body["priority"] = priority
+        if is_given(service_tier) and service_tier is not None:
+            body["service_tier"] = service_tier
         body = deepcopy_with_paths(body, [["document"]])
         files = extract_files(cast(Mapping[str, object], body), paths=[["document"]])
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}

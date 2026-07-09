@@ -4,7 +4,14 @@ from typing import Dict, Optional
 
 from ..._models import BaseModel
 
-__all__ = ["V2ExtractMetadata", "V2ExtractResult"]
+__all__ = ["V2ExtractBilling", "V2ExtractMetadata", "V2ExtractResult"]
+
+
+class V2ExtractBilling(BaseModel):
+    """Billing summary: the service tier the request ran in and the credits charged."""
+
+    service_tier: Optional[str] = None
+    total_credits: Optional[float] = None
 
 
 class V2ExtractMetadata(BaseModel):
@@ -13,6 +20,7 @@ class V2ExtractMetadata(BaseModel):
     duration_ms: int
     doc_id: Optional[str] = None
     credit_usage: float = 0.0
+    billing: Optional[V2ExtractBilling] = None
 
 
 class V2ExtractResult(BaseModel):

@@ -30,7 +30,7 @@ def _build_extract_body(
     model: object,
     strict: object,
     idempotency_key: object,
-    priority: object = omit,
+    service_tier: object = omit,
 ) -> Dict[str, Any]:
     body: Dict[str, Any] = {"schema": coerce_schema_to_dict(schema)}
     for key, value in (
@@ -39,7 +39,7 @@ def _build_extract_body(
         ("markdown_url", markdown_url),
         ("model", model),
         ("idempotency_key", idempotency_key),
-        ("priority", priority),
+        ("service_tier", service_tier),
     ):
         if value is not omit and value is not None:
             body[key] = value
@@ -180,7 +180,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
         idempotency_key: Optional[str] | Omit = omit,
-        priority: Optional[Literal["standard", "priority"]] | Omit = omit,
+        service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -214,7 +214,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
           idempotency_key: An idempotency key for the request.
 
-          priority: Processing priority for the job.
+          service_tier: Service tier for the job: ``standard`` or ``priority``.
 
           extra_headers: Send extra headers
 
@@ -225,7 +225,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         body = _build_extract_body(
-            schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key, priority
+            schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key, service_tier
         )
         raw = self._post(
             self._v2_url("/v2/extract/jobs"),
@@ -330,7 +330,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
         idempotency_key: Optional[str] | Omit = omit,
-        priority: Optional[Literal["standard", "priority"]] | Omit = omit,
+        service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -340,7 +340,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
     ) -> Job:
         """Async mirror of `ExtractJobsResource.create`. See there for full documentation."""
         body = _build_extract_body(
-            schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key, priority
+            schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key, service_tier
         )
         raw = await self._post(
             self._v2_url("/v2/extract/jobs"),
