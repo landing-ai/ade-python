@@ -73,6 +73,7 @@ from landingai_ade.types.v2 import (
     Job,
     JobError,
     JobStatus,
+    V2ExtractBilling,
     V2ExtractMetadata,
     V2ExtractResult,
     V2FileUploadResponse,
@@ -84,7 +85,7 @@ from landingai_ade.types.v2 import (
 
 - <code><a href="./src/landingai_ade/types/v2/job.py">Job</a></code> -- unified job shape: `job_id`, `status` (<code><a href="./src/landingai_ade/types/v2/job.py">JobStatus</a></code>: `pending` / `processing` / `completed` / `failed` / `cancelled`), `created_at`, `completed_at`, `progress`, `result` (a `V2ParseResponse` for parse jobs, a `V2ExtractResult` for extract jobs, or `None` until completion), `error` (<code><a href="./src/landingai_ade/types/v2/job.py">JobError</a></code>), `raw` (the full original envelope as a `dict`), and the `.is_terminal` property.
 - <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseResponse</a></code> -- `markdown`, `structure`, `grounding`, `metadata` (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseMetadata</a></code>, which nests <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseBilling</a></code>). Loosely typed pending a published gateway schema; unknown fields are retained.
-- <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code> -- `extraction`, `extraction_metadata`, `markdown`, `metadata` (<code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractMetadata</a></code>).
+- <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code> -- `extraction`, `extraction_metadata`, `markdown`, `metadata` (<code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractMetadata</a></code>, which nests <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractBilling</a></code>).
 - <code><a href="./src/landingai_ade/types/v2/file_upload_response.py">V2FileUploadResponse</a></code> -- `file_ref`.
 
 Methods:
@@ -93,7 +94,7 @@ Methods:
 
   Synchronous parse. Provide exactly one of `document` (file) or `document_url`. Returns a `V2ParseResponse` on both full success (HTTP 200) and partial success (HTTP 206, where `result.metadata.failed_pages` lists unparsed pages). Raises `V2SyncTimeoutError` (from `landingai_ade.lib.v2_errors`) on a 504; use `parse_jobs` for long-running documents.
 
-- <code title="post /v2/parse/jobs">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">create</a>(\*, document=..., document_url=..., model=..., options=..., password=..., output_save_url=..., priority=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
+- <code title="post /v2/parse/jobs">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">create</a>(\*, document=..., document_url=..., model=..., options=..., password=..., output_save_url=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/parse/jobs/{job_id}">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/parse/jobs">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
@@ -104,7 +105,7 @@ Methods:
 
   Synchronous extract. `schema` accepts a pydantic `BaseModel` subclass, a `dict`, or a JSON-encoded string -- all are coerced to a JSON Schema object. Provide exactly one of `markdown`, `markdown_ref` (e.g. from `client.v2.files.upload`), or `markdown_url`. `strict=True` rejects schemas with unsupported fields (HTTP 422) instead of silently pruning them. Raises `V2SyncTimeoutError` on a 504; use `extract_jobs` for long-running documents.
 
-- <code title="post /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">create</a>(\*, schema, markdown=..., markdown_ref=..., markdown_url=..., model=..., strict=..., idempotency_key=..., priority=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
+- <code title="post /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">create</a>(\*, schema, markdown=..., markdown_ref=..., markdown_url=..., model=..., strict=..., idempotency_key=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/extract/jobs/{job_id}">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>

@@ -26,7 +26,7 @@ client = LandingAIADE()
 document_path = Path(__file__).parent / "sample.pdf"
 
 # Create an async parse job for a (potentially large) document.
-job = client.v2.parse_jobs.create(document=document_path, priority="priority")
+job = client.v2.parse_jobs.create(document=document_path, service_tier="priority")
 print(f"Created parse job {job.job_id} (status={job.status})")
 
 # Block until the job reaches a terminal state.
