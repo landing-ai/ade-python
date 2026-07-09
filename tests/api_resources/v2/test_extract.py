@@ -52,6 +52,27 @@ def test_extract_sync_strict_option() -> None:
     assert req["markdown_url"] == "https://x/y.md"
 
 
+def test_extract_requires_a_markdown_source() -> None:
+    # api.md documents the contract: provide exactly one of markdown /
+    # markdown_ref / markdown_url. Omitting all three used to send a sourceless
+    # body and surface an opaque server 500; the SDK now fails fast client-side.
+    client = LandingAIADE(apikey=APIKEY)
+    with pytest.raises(ValueError, match="exactly one"):
+        client.v2.extract(schema={"type": "object"})
+
+
+def test_extract_rejects_multiple_markdown_sources() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    with pytest.raises(ValueError, match="exactly one"):
+        client.v2.extract(schema={"type": "object"}, markdown="x", markdown_url="https://x/y.md")
+
+
+def test_extract_job_create_requires_a_markdown_source() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    with pytest.raises(ValueError, match="exactly one"):
+        client.v2.extract_jobs.create(schema={"type": "object"})
+
+
 @respx.mock
 def test_extract_sync_504() -> None:
     client = LandingAIADE(apikey=APIKEY, max_retries=0)

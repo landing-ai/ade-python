@@ -146,14 +146,14 @@ def _save_response(
         save_path = Path(save_to)
         if save_path.suffix.lower() == ".json":
             save_path.parent.mkdir(parents=True, exist_ok=True)
-            save_path.write_text(result.to_json())
+            save_path.write_text(result.to_json(), encoding="utf-8")
         else:
             save_path.mkdir(parents=True, exist_ok=True)
             if filename == "output":
                 output_path = save_path / f"{method_name}_output.json"
             else:
                 output_path = save_path / f"{filename}_{method_name}_output.json"
-            output_path.write_text(result.to_json())
+            output_path.write_text(result.to_json(), encoding="utf-8")
     except OSError as exc:
         raise LandingAiadeError(f"Failed to save {method_name} response to {save_to}: {exc}") from exc
 
