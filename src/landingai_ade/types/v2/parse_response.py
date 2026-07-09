@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from pydantic import Field
+
 from ..._models import BaseModel
 
 __all__ = [
@@ -68,14 +70,14 @@ class V2ParsePage(BaseModel):
     dpi: Optional[int] = None
     status: str = "ok"
     reason: Optional[str] = None
-    children: List[V2ParseElement] = []
+    children: List[V2ParseElement] = Field(default_factory=list)
 
 
 class V2ParseStructure(BaseModel):
     """Root of the `structure` tree (`document -> page -> element`)."""
 
     type: str = "document"
-    children: List[V2ParsePage] = []
+    children: List[V2ParsePage] = Field(default_factory=list)
 
 
 # --- `grounding`: mirrors `structure`, carrying the spatial data ---------------
@@ -94,7 +96,7 @@ class V2ParseGroundingElement(BaseModel):
     id: str
     span: List[int]
     box: List[int]
-    parts: List[V2ParseGroundingEntry] = []
+    parts: List[V2ParseGroundingEntry] = Field(default_factory=list)
     # The cells of a `table` element; only set for tables.
     children: Optional[List["V2ParseGroundingElement"]] = None
 
@@ -103,14 +105,14 @@ class V2ParseGroundingPage(BaseModel):
     type: str = "page"
     page: int
     span: List[int]
-    children: List[V2ParseGroundingElement] = []
+    children: List[V2ParseGroundingElement] = Field(default_factory=list)
 
 
 class V2ParseGrounding(BaseModel):
     """Root of the `grounding` tree, mirroring `structure` with spatial data."""
 
     type: str = "document"
-    children: List[V2ParseGroundingPage] = []
+    children: List[V2ParseGroundingPage] = Field(default_factory=list)
 
 
 class V2ParseResponse(BaseModel):
