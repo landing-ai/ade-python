@@ -262,7 +262,10 @@ def test_parse_sync_tolerates_unknown_element_type_and_extra_keys() -> None:
     respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=body))
     result = client.v2.parse(document=b"pdf")
     assert result.structure is not None
-    assert result.structure.children[0].children[0].type == "some_future_kind"
+    page = result.structure.children[0]
+    assert page.children[0].type == "some_future_kind"
+    # the unknown `future_field` key must survive deserialization (extra="allow")
+    assert page.to_dict()["future_field"] == 7
 
 
 @respx.mock
