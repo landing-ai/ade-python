@@ -68,3 +68,8 @@ def test_parse_jobs(staging_client: LandingAIADE) -> None:
     job = staging_client.v2.parse_jobs.create(document=pdf)
     done = staging_client.v2.parse_jobs.wait(job.job_id, timeout=300)
     assert done.status is JobStatus.COMPLETED
+    # Assert the normalized job result, not just the terminal status, so this test
+    # actually covers the parse-job response contract (data -> V2ParseResponse).
+    assert isinstance(done.result, V2ParseResponse)
+    assert isinstance(done.result.markdown, str)
+    assert done.result.markdown
