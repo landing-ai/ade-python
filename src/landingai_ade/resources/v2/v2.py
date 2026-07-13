@@ -96,11 +96,9 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
         *,
         schema: Union[str, Mapping[str, object], Type[BaseModel]],
         markdown: Optional[str] | Omit = omit,
-        markdown_ref: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
-        idempotency_key: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -113,11 +111,9 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
         return self._extract.run(
             schema=schema,
             markdown=markdown,
-            markdown_ref=markdown_ref,
             markdown_url=markdown_url,
             model=model,
             strict=strict,
-            idempotency_key=idempotency_key,
             save_to=save_to,
             extra_headers=extra_headers,
             extra_query=extra_query,
@@ -194,11 +190,9 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         *,
         schema: Union[str, Mapping[str, object], Type[BaseModel]],
         markdown: Optional[str] | Omit = omit,
-        markdown_ref: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
-        idempotency_key: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -211,11 +205,9 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         return await self._extract.run(
             schema=schema,
             markdown=markdown,
-            markdown_ref=markdown_ref,
             markdown_url=markdown_url,
             model=model,
             strict=strict,
-            idempotency_key=idempotency_key,
             save_to=save_to,
             extra_headers=extra_headers,
             extra_query=extra_query,

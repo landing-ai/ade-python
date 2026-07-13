@@ -25,18 +25,15 @@ __all__ = ["ExtractResource", "AsyncExtractResource", "ExtractJobsResource", "As
 def _build_extract_body(
     schema: Union[str, Mapping[str, object], Type[BaseModel]],
     markdown: object,
-    markdown_ref: object,
     markdown_url: object,
     model: object,
     strict: object,
-    idempotency_key: object,
     service_tier: object = omit,
 ) -> Dict[str, Any]:
     provided = [
         name
         for name, value in (
             ("markdown", markdown),
-            ("markdown_ref", markdown_ref),
             ("markdown_url", markdown_url),
         )
         if value is not omit and value is not None
@@ -44,17 +41,15 @@ def _build_extract_body(
     if len(provided) != 1:
         raise ValueError(
             "extract requires exactly one markdown source: provide one of "
-            "`markdown`, `markdown_ref`, or `markdown_url`"
+            "`markdown` or `markdown_url`"
             + (f" (received: {', '.join(provided)})" if provided else "")
             + "."
         )
     body: Dict[str, Any] = {"schema": coerce_schema_to_dict(schema)}
     for key, value in (
         ("markdown", markdown),
-        ("markdown_ref", markdown_ref),
         ("markdown_url", markdown_url),
         ("model", model),
-        ("idempotency_key", idempotency_key),
         ("service_tier", service_tier),
     ):
         if value is not omit and value is not None:
@@ -70,11 +65,9 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
         *,
         schema: Union[str, Mapping[str, object], Type[BaseModel]],
         markdown: Optional[str] | Omit = omit,
-        markdown_ref: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
-        idempotency_key: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -97,9 +90,6 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
 
           markdown: Markdown content to extract data from.
 
-          markdown_ref: A reference (e.g. from a prior parse) to markdown content to
-              extract data from.
-
           markdown_url: The URL to the markdown file to extract data from.
 
           model: The version of the model to use for extraction.
@@ -107,8 +97,6 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
           strict: If True, reject schemas with unsupported fields (HTTP 422). If
               False, prune unsupported fields and continue. Sent as
               `options.strict`.
-
-          idempotency_key: An idempotency key for the request.
 
           save_to: Optional output path. If a directory, auto-generates the filename
               (e.g. {input_file}_extract_output.json, or extract_output.json when no
@@ -123,7 +111,7 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = _build_extract_body(schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key)
+        body = _build_extract_body(schema, markdown, markdown_url, model, strict)
         try:
             result = self._post(
                 self._v2_url("/v2/extract"),
@@ -150,11 +138,9 @@ class AsyncExtractResource(V2ResourceMixin, AsyncAPIResource):
         *,
         schema: Union[str, Mapping[str, object], Type[BaseModel]],
         markdown: Optional[str] | Omit = omit,
-        markdown_ref: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
-        idempotency_key: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -164,7 +150,7 @@ class AsyncExtractResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> V2ExtractResult:
         """Async mirror of `ExtractResource.run`. See there for full documentation."""
-        body = _build_extract_body(schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key)
+        body = _build_extract_body(schema, markdown, markdown_url, model, strict)
         try:
             result = await self._post(
                 self._v2_url("/v2/extract"),
@@ -191,11 +177,9 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         *,
         schema: Union[str, Mapping[str, object], Type[BaseModel]],
         markdown: Optional[str] | Omit = omit,
-        markdown_ref: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
-        idempotency_key: Optional[str] | Omit = omit,
         service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -217,9 +201,6 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
           markdown: Markdown content to extract data from.
 
-          markdown_ref: A reference (e.g. from a prior parse) to markdown content to
-              extract data from.
-
           markdown_url: The URL to the markdown file to extract data from.
 
           model: The version of the model to use for extraction.
@@ -227,8 +208,6 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
           strict: If True, reject schemas with unsupported fields (HTTP 422). If
               False, prune unsupported fields and continue. Sent as
               `options.strict`.
-
-          idempotency_key: An idempotency key for the request.
 
           service_tier: Service tier for the job: ``standard`` or ``priority``.
 
@@ -240,9 +219,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = _build_extract_body(
-            schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key, service_tier
-        )
+        body = _build_extract_body(schema, markdown, markdown_url, model, strict, service_tier)
         raw = self._post(
             self._v2_url("/v2/extract/jobs"),
             body=body,
@@ -341,11 +318,9 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         *,
         schema: Union[str, Mapping[str, object], Type[BaseModel]],
         markdown: Optional[str] | Omit = omit,
-        markdown_ref: Optional[str] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
-        idempotency_key: Optional[str] | Omit = omit,
         service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -355,9 +330,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Job:
         """Async mirror of `ExtractJobsResource.create`. See there for full documentation."""
-        body = _build_extract_body(
-            schema, markdown, markdown_ref, markdown_url, model, strict, idempotency_key, service_tier
-        )
+        body = _build_extract_body(schema, markdown, markdown_url, model, strict, service_tier)
         raw = await self._post(
             self._v2_url("/v2/extract/jobs"),
             body=body,

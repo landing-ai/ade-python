@@ -289,7 +289,7 @@ from landingai_ade import LandingAIADE
 
 client = LandingAIADE()
 
-job = client.v2.parse_jobs.create(document=Path("path/to/large_file.pdf"), priority="priority")
+job = client.v2.parse_jobs.create(document=Path("path/to/large_file.pdf"), service_tier="priority")
 print(job.job_id, job.status)
 
 # Block until the job is terminal (raises JobWaitTimeoutError / JobFailedError on failure paths)
@@ -301,20 +301,6 @@ if done.result is not None:
 ```
 
 `parse_jobs.create` and `extract_jobs.create` both return a normalized `Job` -- one shape shared by parse and extract jobs, even though their upstream envelopes differ. Use `job.raw` to reach any field not surfaced on the typed model.
-
-### Uploading a file for `markdown_ref`
-
-`client.v2.files.upload` stages bytes on the ADE data plane and returns a `file_ref` you can pass as `markdown_ref` to extract:
-
-```python
-from pathlib import Path
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-
-file_ref = client.v2.files.upload(file=Path("path/to/file.md"))
-result = client.v2.extract(schema={"type": "object", "properties": {}}, markdown_ref=file_ref)
-```
 
 `client.v2.parse`, `client.v2.extract`, and their async counterparts also accept `save_to`, with the same auto-naming behavior as the V1 methods above.
 

@@ -108,11 +108,11 @@ Methods:
 
   Blocks, polling `.get(job_id)` with exponential backoff, until the job reaches a terminal status. Raises `JobWaitTimeoutError` if `timeout` seconds elapse first, and `JobFailedError` if `raise_on_failure=True` and the terminal job carries an `error` (not simply every `failed`/`cancelled` status).
 
-- <code title="post /v2/extract">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">extract</a>(\*, schema, markdown=..., markdown_ref=..., markdown_url=..., model=..., strict=..., idempotency_key=..., save_to=...) -> <a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code>
+- <code title="post /v2/extract">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">extract</a>(\*, schema, markdown=..., markdown_url=..., model=..., strict=..., save_to=...) -> <a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code>
 
-  Synchronous extract. `schema` accepts a pydantic `BaseModel` subclass, a `dict`, or a JSON-encoded string -- all are coerced to a JSON Schema object. Provide exactly one of `markdown`, `markdown_ref` (e.g. from `client.v2.files.upload`), or `markdown_url`. `strict=True` rejects schemas with unsupported fields (HTTP 422) instead of silently pruning them. Raises `V2SyncTimeoutError` on a 504; use `extract_jobs` for long-running documents.
+  Synchronous extract. `schema` accepts a pydantic `BaseModel` subclass, a `dict`, or a JSON-encoded string -- all are coerced to a JSON Schema object. Provide exactly one of `markdown` or `markdown_url`. `strict=True` rejects schemas with unsupported fields (HTTP 422) instead of silently pruning them. Raises `V2SyncTimeoutError` on a 504; use `extract_jobs` for long-running documents.
 
-- <code title="post /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">create</a>(\*, schema, markdown=..., markdown_ref=..., markdown_url=..., model=..., strict=..., idempotency_key=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
+- <code title="post /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">create</a>(\*, schema, markdown=..., markdown_url=..., model=..., strict=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/extract/jobs/{job_id}">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
@@ -121,7 +121,7 @@ Methods:
 
 - <code title="post /v1/files">client.v2.files.<a href="./src/landingai_ade/resources/v2/files.py">upload</a>(\*, file) -> str</code>
 
-  Stages a file's bytes on the ADE data plane and returns a `file_ref` string, which can be passed as `markdown_ref` to `client.v2.extract`/`client.v2.extract_jobs.create`. Served on the ADE host under `/v1/files` (not `/v2/...`). Raises `LandingAiadeError` if the response has no `file_ref`.
+  Stages a file's bytes on the ADE data plane and returns a `file_ref` string for use in job inputs. Served on the ADE host under `/v1/files` (not `/v2/...`). Raises `LandingAiadeError` if the response has no `file_ref`.
 
 Notes:
 
