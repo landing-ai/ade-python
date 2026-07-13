@@ -81,8 +81,12 @@ non-workflow V2 drift.
   branch** (live), lint/test/typecheck. **Human review required.**
 - **Security posture** (hardened after Copilot review): the agent's `allowedTools` is
   `Edit,Write,Read,Glob,Grep,Bash(git diff:*)` — no `rye`/`./scripts/*` shell — so a prompt-
-  injected spec cannot execute code with the persisted push PAT. A fixed step discards any agent
-  edit to `scripts/`/`.github/`/`specs/` before running the trusted `./scripts/format`.
+  injected spec cannot execute code with the persisted push PAT. A fixed step enforces a
+  product-code allowlist (`src/`/`tests/`/`docs/`/`api.md`) — reverting/deleting everything else —
+  before running the trusted `./scripts/format` and before staging. Because the AI-authored commit's
+  code is later run *with the staging key* by the `contract-tests` gate (the test imports `src/`),
+  that gate is placed behind the protected `spec-sync-contract` environment (required reviewer) so
+  the key is exposed only after a human inspects the diff.
   *Follow-up (applies to the V1 job too):* set `persist-credentials: false` on checkout and pass
   the action a read-only token, exposing the PAT only to the deterministic push steps.
 - **Honest caveat**: the V2 ergonomic layer (Job normalization, envelope divergence, `wait`

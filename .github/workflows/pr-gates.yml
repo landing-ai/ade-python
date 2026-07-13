@@ -33,6 +33,15 @@ jobs:
     if: startsWith(github.head_ref, 'spec-sync/')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # This job runs AI-authored code (the spec-sync AI commit edits src/ + tests/, and the contract
+    # test imports the SDK) WITH the staging key in env. A prompt injected via the fetched spec could
+    # therefore try to exfiltrate the key when the gate runs — before human review of the PR. Gating
+    # the job on a protected Environment pauses it for a required reviewer, so the key is only exposed
+    # after a human has inspected the diff. REQUIRED SETUP: in repo Settings -> Environments, create
+    # `spec-sync-contract` with required reviewers; the key should live as an environment secret (or
+    # be a short-lived/least-privilege staging credential). Until that protection is configured this
+    # line is a no-op and the job runs unprotected.
+    environment: spec-sync-contract
     steps:
       - uses: actions/checkout@v6
       - name: Install Rye
