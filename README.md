@@ -110,6 +110,7 @@ If some pages cannot be parsed, the request still succeeds (HTTP 206) and `metad
 Use `client.v2.extract` to pull structured fields out of Markdown (typically from a parse response) using a schema. The `schema` parameter accepts a Pydantic `BaseModel` subclass, a `dict`, or a JSON string. Provide exactly one Markdown source: `markdown` or `markdown_url`.
 
 ```python
+from pathlib import Path
 from pydantic import BaseModel, Field
 from landingai_ade import LandingAIADE
 
@@ -118,6 +119,7 @@ class Person(BaseModel):
     age: int = Field(description="Person's age")
 
 client = LandingAIADE()
+parsed = client.v2.parse(document=Path("path/to/file.pdf"))
 
 result = client.v2.extract(
     schema=Person,                       # Pydantic model, dict, or JSON string
@@ -137,7 +139,7 @@ The response is a `V2ExtractResult`:
 | `extraction_metadata` | Mirrors `extraction`; each field carries the character spans in the Markdown that the value came from. |
 | `metadata` | Processing details, including credits used. |
 
-By default, unsupported schema fields are pruned and reported. Pass `strict=True` to reject such schemas with an error (HTTP 422) instead.
+By default, unsupported schema fields are skipped and extraction continues. Pass `strict=True` to reject such schemas with an error (HTTP 422) instead.
 
 ## Process Large Documents Asynchronously (Jobs)
 
@@ -166,7 +168,7 @@ except JobFailedError as e:
     print(f"Job failed: {e}")
 ```
 
-Every job method returns a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model).
+The `create`, `get`, and `wait` methods return a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model). The `list` method returns a `JobList`, a list of `Job` items that also carries pagination metadata (`has_more`, `page`, `page_size`).
 
 ```python
 # Poll manually instead of blocking
@@ -179,7 +181,7 @@ for job in jobs:
 print(jobs.has_more)
 ```
 
-Extract jobs work the same way: `client.v2.extract_jobs` accepts the same arguments as `client.v2.extract`.
+Extract jobs work the same way. The `create` method takes the same schema and Markdown arguments as `client.v2.extract`, plus `service_tier`; it does not accept `save_to`.
 
 ## Async Client
 
@@ -205,10 +207,14 @@ pip install landingai-ade[aiohttp]
 ```
 
 ```python
+import asyncio
 from landingai_ade import AsyncLandingAIADE, DefaultAioHttpClient
 
-async with AsyncLandingAIADE(http_client=DefaultAioHttpClient()) as client:
-    ...
+async def main() -> None:
+    async with AsyncLandingAIADE(http_client=DefaultAioHttpClient()) as client:
+        ...  # same usage as the example above
+
+asyncio.run(main())
 ```
 
 ## Environments
@@ -260,10 +266,12 @@ for s in split.splits:
 
 ## Handling Errors
 
-All errors inherit from `landingai_ade.APIError`.
+All HTTP errors inherit from `landingai_ade.APIError`.
 
 - Connection problems raise a subclass of `landingai_ade.APIConnectionError`.
 - Non-success HTTP status codes (4xx, 5xx) raise a subclass of `landingai_ade.APIStatusError` with `status_code` and `response` properties.
+
+The v2 helper exceptions are separate: `V2SyncTimeoutError`, `JobWaitTimeoutError`, and `JobFailedError` (importable from `landingai_ade.lib.v2_errors`) inherit from `LandingAiadeError` rather than `APIError`, so catch them explicitly as shown in the [jobs example](#process-large-documents-asynchronously-jobs).
 
 ```python
 import landingai_ade
@@ -318,7 +326,7 @@ On timeout, an `APITimeoutError` is raised. Timed-out requests are retried twice
 
 ### Accessing raw response data (e.g. headers)
 
-Prefix any method call with `.with_raw_response.` to get the raw HTTP response:
+Prefix any v1 method call with `.with_raw_response.` to get the raw HTTP response (these wrappers cover the v1 methods only, not `client.v2`):
 
 ```python
 response = client.with_raw_response.parse(document=Path("file.pdf"), model="dpt-2-latest")
@@ -326,7 +334,7 @@ print(response.headers.get("X-My-Header"))
 parsed = response.parse()  # the object the method would have returned
 ```
 
-Use `.with_streaming_response` instead to stream the body rather than reading it eagerly; it requires a context manager and reads the body only when you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()`, or `.parse()`. These return [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/landingai_ade/_response.py) (or `AsyncAPIResponse`) objects.
+Use `.with_streaming_response` instead (also v1 methods only) to stream the body rather than reading it eagerly; it requires a context manager and reads the body only when you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()`, or `.parse()`. These return [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/landingai_ade/_response.py) (or `AsyncAPIResponse`) objects.
 
 ### Nested params and file uploads
 
