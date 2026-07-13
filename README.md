@@ -170,7 +170,7 @@ except JobFailedError as e:
     print(f"Job failed: {e}")
 ```
 
-The `create`, `get`, and `wait` methods return a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model). The `list` method returns a `JobList`, a list of `Job` items that also carries pagination metadata (`has_more`, `page`, `page_size`).
+The `create`, `get`, and `wait` methods return a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model). The `list` method returns a `JobList`, a list of `Job` items that also carries pagination metadata: `has_more` on both endpoints, plus `page` and `page_size` on extract job lists only.
 
 ```python
 # Poll manually instead of blocking
@@ -278,6 +278,7 @@ The v2 helper exceptions are separate: `V2SyncTimeoutError`, `JobWaitTimeoutErro
 ```python
 import landingai_ade
 from landingai_ade import LandingAIADE
+from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 client = LandingAIADE()
 
@@ -286,6 +287,8 @@ try:
 except landingai_ade.APIConnectionError as e:
     print("The server could not be reached")
     print(e.__cause__)
+except V2SyncTimeoutError:
+    print("The synchronous request timed out; use parse_jobs for this document.")
 except landingai_ade.RateLimitError:
     print("A 429 status code was received; back off and retry.")
 except landingai_ade.APIStatusError as e:
