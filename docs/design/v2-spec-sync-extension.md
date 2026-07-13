@@ -60,25 +60,34 @@ non-workflow V2 drift.
 > The design is retained for that eventuality.
 
 
-- A V2-tailored `claude-code-action` step (edits-only, no git — same anti-injection posture as
-  V1), prompted to:
-  - Inspect the mechanical diff (mechanical commit adds the `/v2/workflow*` paths + regenerated
-    models) and **mirror `src/landingai_ade/resources/v2/extract.py` + `parse.py`**, not the V1
-    `parse_jobs.py`.
-  - Add `resources/v2/workflow.py`: sync `run()` + `WorkflowJobsResource` (create/get/wait/list),
-    dual-host via `_v2_url` (automatic), the **unified `Job`** via a new
-    `normalize_workflow_job` in `_normalize.py`, a response type under `types/v2/`, schema
-    coercion if the run takes a schema.
-  - Register in the `resources/v2/v2.py` container (`workflow`, `workflow_jobs` cached
-    properties) + `resources/v2/__init__.py` + the top-level explicit-signature delegators.
-  - Add a workflow check to `tests/contract/test_v2_smoke.py` and `tests/api_resources/` tests;
-    update `docs/v2-testing.md` + `api.md`.
-  - Rules: purely additive; run `./scripts/format` + `./scripts/lint`.
+- A V2-tailored `claude-code-action` step (edits-only; the agent has **no shell** beyond
+  `git diff` and no push credentials — see the security note below), prompted to wire whatever the
+  next real V2 drift is:
+  - Inspect the mechanical diff (`git diff HEAD~1..HEAD`) for **every changed operation backing
+    `client.v2`** — new `/v2` routes, field/schema changes on existing operations, and changes to
+    `/v1/files` (which backs `client.v2.files`). Workflow is explicitly excluded.
+  - For a **field change on an existing operation**, wire it into the existing resource/method
+    (adding a new *optional* keyword parameter is permitted — surface-lock allows backward-
+    compatible additions). For a **new route**, mirror `resources/v2/extract.py` + `parse.py`:
+    a resource module with sync `run()` (+ a `*JobsResource` create/get/wait/list for an async
+    route), the **unified `Job`** via a new `normalize_*` in `_normalize.py`, a response type
+    under `types/v2/`, `coerce_schema_to_dict` if the run takes a schema, dual-host via `_v2_url`.
+  - Register a new resource on the `resources/v2/v2.py` container (lazy `cached_property` +
+    explicit-signature top-level delegator). **`resources/v2/__init__.py` stays unchanged** — it
+    exports only `V2Resource`/`AsyncV2Resource`; sub-resources are not re-exported there.
+  - Add a `tests/contract/test_v2_smoke.py` check + `tests/api_resources/` tests; update
+    `docs/v2-testing.md` + `api.md`. Formatting runs in a fixed step; lint/test in CI.
 - **Guardrails**: surface-lock (additive-only), **V2 contract tests on the `spec-sync/v2`
   branch** (live), lint/test/typecheck. **Human review required.**
+- **Security posture** (hardened after Copilot review): the agent's `allowedTools` is
+  `Edit,Write,Read,Glob,Grep,Bash(git diff:*)` — no `rye`/`./scripts/*` shell — so a prompt-
+  injected spec cannot execute code with the persisted push PAT. A fixed step discards any agent
+  edit to `scripts/`/`.github/`/`specs/` before running the trusted `./scripts/format`.
+  *Follow-up (applies to the V1 job too):* set `persist-credentials: false` on checkout and pass
+  the action a read-only token, exposing the PAT only to the deterministic push steps.
 - **Honest caveat**: the V2 ergonomic layer (Job normalization, envelope divergence, `wait`
   semantics, schema coercion) is *not expressed in the spec*, so the AI output is a **reviewed
-  draft a human finishes** — heavier finishing than V1. That's expected, not a failure of the loop.
+  draft a human finishes**. That's expected, not a failure of the loop.
 
 ### Phase 3 — V2 release-gate (deferred; NOT in PR 1)
 

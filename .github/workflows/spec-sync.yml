@@ -246,10 +246,14 @@ jobs:
             even though it appears in the spec and reference models. If the spec diff touches only
             workflow, make no changes.
 
-            First inspect the mechanical commit diff (`git diff HEAD~1..HEAD`) to see which /v2
-            routes were added, then read src/landingai_ade/resources/v2/extract.py and
-            src/landingai_ade/resources/v2/parse.py and mirror their structure exactly for any
-            new route:
+            First inspect the mechanical commit diff (`git diff HEAD~1..HEAD`) to find EVERY changed
+            operation that backs client.v2 — not only newly added /v2 routes, but also field/schema
+            changes on existing operations (e.g. a new optional field on /v2/parse or /v2/extract),
+            and changes to /v1/files, which backs client.v2.files (src/landingai_ade/resources/v2/
+            files.py). For a field change on an existing operation, wire the field into the existing
+            resource/method (see the additive-changes rule below). For a genuinely new route, read
+            src/landingai_ade/resources/v2/extract.py and src/landingai_ade/resources/v2/parse.py
+            and mirror their structure:
 
             - Add a resource module under src/landingai_ade/resources/v2/ with a sync run()
               (multipart or JSON per the spec; route a 504 through
@@ -272,16 +276,34 @@ jobs:
 
             Add a live check to tests/contract/test_v2_smoke.py (marked `contract`) and unit tests
             under tests/api_resources/. Update api.md, and create or update docs/v2-testing.md
-            (the V2 QA guide) with the new surface. Then run `./scripts/format` and
-            `./scripts/lint` and fix anything they report.
+            (the V2 QA guide) with the new surface. Write clean, import-sorted code matching the
+            style of the files you mirror — a later fixed step runs `./scripts/format`, and the PR's
+            lint/test CI reports anything else for a human to resolve.
 
-            Rules: PURELY ADDITIVE — never modify or remove an existing public signature (the
-            surface-lock CI job will fail the PR). `git diff` (read-only, to inspect the change)
-            is fine; do NOT stage, commit, push, or run any other git command — a later workflow
-            step commits and pushes your edits.
+            You may only edit product code: src/, tests/, docs/, and api.md. Do NOT edit scripts/,
+            .github/, specs/, or any dotfile.
+
+            Additive-changes rule: BACKWARD-COMPATIBLE ADDITIONS ONLY. You MAY add a new optional
+            keyword parameter (with a default) to an existing parse/extract method to wire an
+            additive request field — surface-lock permits that. You must NOT remove or rename a
+            public symbol or parameter, change a type, or make an existing parameter required;
+            surface-lock will fail the PR on any of those. `git diff` (read-only, to inspect the
+            change) is fine; do NOT stage, commit, push, or run any other git command — a later
+            workflow step commits and pushes your edits.
           claude_args: |
             --max-turns 250
-            --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
+            --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git diff:*)"
+
+      # The AI step has NO shell (only git diff), so it cannot execute anything with the checkout's
+      # push credentials. This step defends the trusted formatter too: discard any edit the agent
+      # made outside product code (scripts/, .github/, specs/, dotfiles) before running
+      # ./scripts/format, so a prompt-injected write to a script can't run in the step below.
+      - name: Sanitize + format AI edits
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        run: |
+          git checkout -- scripts .github specs || true
+          git clean -fd scripts .github specs || true
+          ./scripts/format
 
       - name: Commit + push AI wiring
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
