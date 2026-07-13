@@ -27,7 +27,7 @@ class FilesResource(V2ResourceMixin, SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> str:
-        """Stage bytes on the data plane; returns a `file_ref` for use as extract `markdown_ref`."""
+        """Stage bytes on the data plane; returns a `file_ref` for use in job inputs."""
         body = deepcopy_with_paths({"file": file}, [["file"]])
         files = extract_files(cast(Mapping[str, object], body), paths=[["file"]])
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
@@ -55,7 +55,7 @@ class AsyncFilesResource(V2ResourceMixin, AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> str:
-        """Stage bytes on the data plane; returns a `file_ref` for use as extract `markdown_ref`."""
+        """Stage bytes on the data plane; returns a `file_ref` for use in job inputs."""
         body = deepcopy_with_paths({"file": file}, [["file"]])
         files = extract_files(cast(Mapping[str, object], body), paths=[["file"]])
         extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}

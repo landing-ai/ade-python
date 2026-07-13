@@ -31,12 +31,11 @@ def test_extract_sync_json_body_with_pydantic_schema() -> None:
     route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
     )
-    result = client.v2.extract(schema=Invoice, markdown="# doc", idempotency_key="k1")
+    result = client.v2.extract(schema=Invoice, markdown="# doc")
     assert isinstance(result, V2ExtractResult) and result.metadata.version == "extract-1"
     req = json.loads(route.calls.last.request.content)
     assert req["schema"]["type"] == "object" and "revenue" in req["schema"]["properties"]
     assert req["markdown"] == "# doc"
-    assert req["idempotency_key"] == "k1"
     assert route.calls.last.request.headers["content-type"].startswith("application/json")
 
 
@@ -55,7 +54,7 @@ def test_extract_sync_strict_option() -> None:
 @respx.mock
 def test_extract_requires_a_markdown_source() -> None:
     # api.md documents the contract: provide exactly one of markdown /
-    # markdown_ref / markdown_url. Omitting all three used to send a sourceless
+    # markdown_url. Omitting both used to send a sourceless
     # body and surface an opaque server 500; the SDK now fails fast client-side.
     # No route is registered: @respx.mock keeps this hermetic, so a regression in
     # the guard fails loudly on an unmocked request instead of hitting the network.
