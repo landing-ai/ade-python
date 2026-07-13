@@ -137,6 +137,7 @@ The response is a `V2ExtractResult`:
 | --- | --- |
 | `extraction` | The extracted values, matching your schema. |
 | `extraction_metadata` | Mirrors `extraction`; each field carries the character spans in the Markdown that the value came from. |
+| `markdown` | The Markdown the extraction ran against, echoed back. |
 | `metadata` | Processing details, including credits used. |
 
 By default, unsupported schema fields are skipped and extraction continues. Pass `strict=True` to reject such schemas with an error (HTTP 422) instead.
@@ -161,7 +162,8 @@ print(job.job_id, job.status)
 # Block until the job finishes (polls with backoff)
 try:
     done = client.v2.parse_jobs.wait(job.job_id, timeout=600, raise_on_failure=True)
-    print(done.result.markdown[:200])
+    if done.result is not None:  # a cancelled job can be terminal with no result
+        print(done.result.markdown[:200])
 except JobWaitTimeoutError:
     print("Job did not finish in time; it is still running server-side.")
 except JobFailedError as e:
@@ -320,7 +322,7 @@ client = LandingAIADE(timeout=20.0)                  # seconds
 client.with_options(timeout=5.0).v2.parse(...)       # per-request
 ```
 
-On timeout, an `APITimeoutError` is raised. Timed-out requests are retried twice by default.
+On a client-side transport timeout, an `APITimeoutError` is raised, and the request is retried twice by default. The v2 synchronous endpoints also have a server-side wait window: exceeding it returns HTTP 504 and raises `V2SyncTimeoutError` instead; switch to [jobs](#process-large-documents-asynchronously-jobs) for those documents.
 
 ## Advanced Usage
 
