@@ -1,0 +1,3021 @@
+{
+  "components": {
+    "schemas": {
+      "BaseElementOptions": {
+        "properties": {
+          "caption": {
+            "default": true,
+            "title": "Caption",
+            "type": "boolean"
+          }
+        },
+        "title": "BaseElementOptions",
+        "type": "object"
+      },
+      "BlocksOptions": {
+        "properties": {
+          "attestation": {
+            "$ref": "#/components/schemas/BaseElementOptions"
+          },
+          "card": {
+            "$ref": "#/components/schemas/BaseElementOptions"
+          },
+          "figure": {
+            "$ref": "#/components/schemas/FigureOptions"
+          },
+          "logo": {
+            "$ref": "#/components/schemas/BaseElementOptions"
+          },
+          "marginalia": {
+            "$ref": "#/components/schemas/BaseElementOptions"
+          },
+          "scan_code": {
+            "$ref": "#/components/schemas/BaseElementOptions"
+          },
+          "table": {
+            "$ref": "#/components/schemas/TableOptions"
+          },
+          "text": {
+            "$ref": "#/components/schemas/BaseElementOptions"
+          }
+        },
+        "title": "BlocksOptions",
+        "type": "object"
+      },
+      "Body_stage_file_v1_files_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_stage_file_v1_files_post",
+        "type": "object"
+      },
+      "Document": {
+        "properties": {
+          "children": {
+            "description": "The pages of the document, in source order.",
+            "items": {
+              "$ref": "#/components/schemas/Page"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "type": {
+            "const": "document",
+            "default": "document",
+            "description": "The node type. Identifies this node as the root of the structure tree.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "Document",
+        "type": "object"
+      },
+      "Element": {
+        "description": "Hierarchical document element. All non-page elements share this shape.\n\nKeys off `type`; optional fields are excluded from the serialized JSON\nvia ``exclude_none=True`` when not set.",
+        "properties": {
+          "children": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Element"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The cells (`table_cell` elements) of a `table` element. Present only when `type` is `table`.",
+            "title": "Children"
+          },
+          "col": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "0-indexed column position of this cell within its parent `table`. Present only on `table_cell` elements.",
+            "title": "Col"
+          },
+          "colspan": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Number of columns this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.",
+            "title": "Colspan"
+          },
+          "id": {
+            "description": "A unique identifier for this element within the document. Use it to look up the element's entry in the top-level `grounding` map; treat the value as opaque.",
+            "title": "Id",
+            "type": "string"
+          },
+          "row": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "0-indexed row position of this cell within its parent `table`. Present only on `table_cell` elements.",
+            "title": "Row"
+          },
+          "rowspan": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Number of rows this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.",
+            "title": "Rowspan"
+          },
+          "span": {
+            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this element.",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          },
+          "type": {
+            "description": "The element type. Determines which optional fields appear on this element.",
+            "enum": [
+              "text",
+              "table",
+              "table_cell",
+              "figure",
+              "marginalia",
+              "attestation",
+              "logo",
+              "card",
+              "scan_code"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "span"
+        ],
+        "title": "Element",
+        "type": "object"
+      },
+      "FigureOptions": {
+        "properties": {
+          "caption": {
+            "default": true,
+            "title": "Caption",
+            "type": "boolean"
+          }
+        },
+        "title": "FigureOptions",
+        "type": "object"
+      },
+      "GroundingDocument": {
+        "description": "Root of the `grounding` tree. Mirrors the hierarchy of `structure`\n(`document → page → element → table_cell`), carrying the spatial data\n(`box`, `parts`) that `structure` deliberately omits.",
+        "properties": {
+          "children": {
+            "description": "The pages of the document, in source order — the same order as `structure.children`.",
+            "items": {
+              "$ref": "#/components/schemas/GroundingPage"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "type": {
+            "const": "document",
+            "default": "document",
+            "description": "The node type. Identifies this node as the root of the grounding tree.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "GroundingDocument",
+        "type": "object"
+      },
+      "GroundingElement": {
+        "description": "Spatial grounding for one document element.\n\nMirrors the element's node in the `structure` tree (same `id`, same `span`)\nand layers the spatial data on top: the element-level bounding box, its\nfine-grained `parts`, and — for a `table` — its cells nested as `children`.",
+        "properties": {
+          "box": {
+            "description": "Bounding box `[left, top, right, bottom]` for the full element on the source page, in pixels.",
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Box",
+            "type": "array"
+          },
+          "children": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GroundingElement"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The cells (`table_cell` grounding nodes) of a `table` element, mirroring the table's `children` in the `structure` tree. Present only when `type` is `table`.",
+            "title": "Children"
+          },
+          "id": {
+            "description": "The element's unique identifier within the document. Matches the same element's `id` in the `structure` tree.",
+            "title": "Id",
+            "type": "string"
+          },
+          "parts": {
+            "description": "Finer-grained grounding segments within the element. Per visual line for `text` and `marginalia`; empty for other element types or when `options.grounding.parts` is `false`.",
+            "items": {
+              "$ref": "#/components/schemas/GroundingEntry"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
+          "span": {
+            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this element. Matches the element's `span` in the `structure` tree.",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          },
+          "type": {
+            "description": "The element type. Matches the same element's `type` in the `structure` tree.",
+            "enum": [
+              "text",
+              "table",
+              "table_cell",
+              "figure",
+              "marginalia",
+              "attestation",
+              "logo",
+              "card",
+              "scan_code"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "span",
+          "box"
+        ],
+        "title": "GroundingElement",
+        "type": "object"
+      },
+      "GroundingEntry": {
+        "description": "One fine-grained grounding segment (line-level or finer).",
+        "properties": {
+          "box": {
+            "description": "Bounding box `[left, top, right, bottom]` for this part on the source page, in pixels.",
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Box",
+            "type": "array"
+          },
+          "span": {
+            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this part.",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          }
+        },
+        "required": [
+          "span",
+          "box"
+        ],
+        "title": "GroundingEntry",
+        "type": "object"
+      },
+      "GroundingOptions": {
+        "properties": {
+          "parts": {
+            "default": true,
+            "title": "Parts",
+            "type": "boolean"
+          }
+        },
+        "title": "GroundingOptions",
+        "type": "object"
+      },
+      "GroundingPage": {
+        "description": "A page node in the `grounding` tree, mirroring the page in `structure`.",
+        "properties": {
+          "children": {
+            "description": "Grounding for the elements on this page, in reading order — the same order and `id`s as the page's `children` in the `structure` tree. Empty for failed pages.",
+            "items": {
+              "$ref": "#/components/schemas/GroundingElement"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "page": {
+            "description": "The 0-indexed page number in the source document. Matches the page's `page` in the `structure` tree.",
+            "title": "Page",
+            "type": "integer"
+          },
+          "span": {
+            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this page. Zero-length `[n, n]` for failed pages.",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          },
+          "type": {
+            "const": "page",
+            "default": "page",
+            "description": "The node type. Identifies this node as a page in the grounding tree.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "span"
+        ],
+        "title": "GroundingPage",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Page": {
+        "properties": {
+          "children": {
+            "description": "The elements detected on this page, in reading order.",
+            "items": {
+              "$ref": "#/components/schemas/Element"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "dpi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "DPI used to scale this page's PDF coordinates to pixels (pixels = PDF_points × dpi / 72). Present only for pages that originated from a PDF; omitted for image-input pages (which have no DPI concept — their coordinates are already pixels relative to the original upload) and for pages with `status` `failed`.",
+            "title": "Dpi"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Page height in pixels. Omitted when `status` is `failed`.",
+            "title": "Height"
+          },
+          "page": {
+            "description": "The 0-indexed page number in the source document. Not contiguous when `options.pages` filters out some pages.",
+            "title": "Page",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Failure reason. Present only when `status` is `failed`.",
+            "title": "Reason"
+          },
+          "span": {
+            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this page. Zero-length `[n, n]` for failed pages.",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Span",
+            "type": "array"
+          },
+          "status": {
+            "default": "ok",
+            "description": "Whether this page was parsed successfully (`ok`) or failed (`failed`).",
+            "enum": [
+              "ok",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "type": {
+            "const": "page",
+            "default": "page",
+            "description": "The node type. Identifies this node as a page in the structure tree.",
+            "title": "Type",
+            "type": "string"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Page width in pixels. Omitted when `status` is `failed`.",
+            "title": "Width"
+          }
+        },
+        "required": [
+          "page",
+          "span"
+        ],
+        "title": "Page",
+        "type": "object"
+      },
+      "ParseBilling": {
+        "description": "Billing summary for one parse request.",
+        "properties": {
+          "service_tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "priority"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The service tier the request ran in: `standard` or `priority`. A sync request reports `priority` (same lane, same price).",
+            "title": "Service Tier"
+          },
+          "total_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Credits charged for this request.",
+            "title": "Total Credits"
+          }
+        },
+        "required": [
+          "service_tier",
+          "total_credits"
+        ],
+        "title": "ParseBilling",
+        "type": "object"
+      },
+      "ParseMetadata": {
+        "description": "Information about a parse request. This is the customer-facing shape —\nthe internal billing-canonical metadata (``aide_common.parse_schema.ParseMetadata``)\nis projected into it at the render boundary (``project_customer_metadata``).",
+        "properties": {
+          "billing": {
+            "$ref": "#/components/schemas/ParseBilling",
+            "description": "Billing summary: the service tier and the credits charged."
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total processing time in milliseconds.",
+            "title": "Duration Ms"
+          },
+          "failed_pages": {
+            "description": "0-indexed page numbers that failed to parse. Empty when all pages succeed; failed pages also appear in `structure.children` with `status: failed`.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Failed Pages",
+            "type": "array"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The parse job identifier — always server-minted and unique per submit. On the async `/jobs` route this is the id the caller polls. Correlates with the job's entry in your billing dashboard.",
+            "title": "Job Id"
+          },
+          "markdown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of Unicode code points in the returned `markdown` string.",
+            "title": "Markdown Chars"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The exact model snapshot that parsed the document, e.g. `dpt-3-pro-20260710`.",
+            "title": "Model Version"
+          },
+          "page_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Total number of pages in the source document. Includes pages filtered out by `options.pages`; the actual returned pages are in `structure.children`.",
+            "title": "Page Count"
+          }
+        },
+        "required": [
+          "job_id",
+          "model_version",
+          "page_count",
+          "markdown_chars",
+          "failed_pages",
+          "duration_ms",
+          "billing"
+        ],
+        "title": "ParseMetadata",
+        "type": "object"
+      },
+      "ParseResponse": {
+        "description": "The parse result: the full document as `markdown`, its hierarchical\n`structure`, per-element spatial `grounding`, and request `metadata`.",
+        "properties": {
+          "grounding": {
+            "$ref": "#/components/schemas/GroundingDocument",
+            "description": "The document's spatial grounding, as a tree mirroring `structure` (`document → page → element → table_cell`). Each element node carries the same `id` and `span` as in `structure`, plus its bounding box and finer-grained parts."
+          },
+          "markdown": {
+            "description": "The full document as a single Markdown string, in reading order.",
+            "title": "Markdown",
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/ParseMetadata",
+            "description": "Information about the request: model version, page count, duration, billing, and more."
+          },
+          "structure": {
+            "$ref": "#/components/schemas/Document",
+            "description": "The document's hierarchical structure: pages and the elements detected on each page. Spatial information for each element is in `grounding`."
+          }
+        },
+        "required": [
+          "markdown",
+          "metadata",
+          "structure",
+          "grounding"
+        ],
+        "title": "ParseResponse",
+        "type": "object"
+      },
+      "PrebuiltWorkflowStep": {
+        "description": "A Phase 1 step: references a server-defined pipeline by name.\n\nThe ``name`` identifies the prebuilt pipeline to run AND becomes the key\nunder which this step's result appears in the response ``output`` map.\nThe ``document`` field is a reference into the ``inputs`` namespace\n(``\"$inputs.<logical-name>\"``).",
+        "properties": {
+          "document": {
+            "description": "Reference into the ``inputs`` namespace, e.g. ``\"$inputs.report\"``. The referenced input must be declared in the ``inputs`` form field.",
+            "title": "Document",
+            "type": "string"
+          },
+          "name": {
+            "const": "parse-extract",
+            "description": "Workflow to run — doubles as the result key in ``output``. v1 only: ``\"parse-extract\"``.",
+            "title": "Name",
+            "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowStepOptions"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Parse + extract options for this step. Omit for defaults."
+          },
+          "schema": {
+            "additionalProperties": true,
+            "description": "JSON Schema for fields to extract.",
+            "example": {
+              "properties": {
+                "revenue": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "title": "Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "document",
+          "schema"
+        ],
+        "title": "PrebuiltWorkflowStep",
+        "type": "object"
+      },
+      "TableOptions": {
+        "properties": {
+          "caption": {
+            "default": true,
+            "title": "Caption",
+            "type": "boolean"
+          },
+          "format": {
+            "default": "html",
+            "enum": [
+              "markdown",
+              "html"
+            ],
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "title": "TableOptions",
+        "type": "object"
+      },
+      "V2Billing": {
+        "description": "Billing summary: the service tier the request ran in and the credits\ncharged.",
+        "properties": {
+          "service_tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "priority"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The service tier the request ran in: `standard` or `priority`. A sync request reports `priority` (same lane, same price).",
+            "title": "Service Tier"
+          },
+          "total_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Credits charged for this request.",
+            "title": "Total Credits"
+          }
+        },
+        "title": "V2Billing",
+        "type": "object"
+      },
+      "V2ExtractMetadata": {
+        "description": "Response metadata for a v2 extract call.",
+        "properties": {
+          "billing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2Billing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Billing summary: the service tier the request ran in and the credits charged."
+          },
+          "credit_usage": {
+            "default": 0.0,
+            "description": "Credits billed for this request.",
+            "title": "Credit Usage",
+            "type": "number"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Present when the input markdown contained a ``<!-- doc_id=<id> -->`` comment (embedded by ``POST /v2/parse``). Links this extract call to the originating parse job.",
+            "title": "Doc Id"
+          },
+          "duration_ms": {
+            "description": "End-to-end request duration in milliseconds.",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "job_id": {
+            "description": "Gateway job id (workflow id). Matches the ``x-request-id`` the gateway minted for this request and the billing row id in vision-agent.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "version": {
+            "description": "Resolved model version.",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "version",
+          "duration_ms"
+        ],
+        "title": "V2ExtractMetadata",
+        "type": "object"
+      },
+      "V2ExtractOptions": {
+        "description": "Extraction options (``docs/extract-v2-proposal.md`` → Options).",
+        "properties": {
+          "strict": {
+            "default": false,
+            "description": "When ``true``, returns HTTP 422 if the schema contains fields the model cannot extract. When ``false`` (default), unsupported fields are skipped and extraction continues.",
+            "title": "Strict",
+            "type": "boolean"
+          }
+        },
+        "title": "V2ExtractOptions",
+        "type": "object"
+      },
+      "V2WorkflowMetadata": {
+        "description": "Response metadata for a v2 workflow call\n(``docs/pipeline-v2-proposal.md`` → Top-level metadata).",
+        "properties": {
+          "billing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2Billing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Billing summary: the service tier the request ran in and the credits charged."
+          },
+          "credit_usage": {
+            "default": 0.0,
+            "description": "Combined credits billed for this request (parse + extract).",
+            "title": "Credit Usage",
+            "type": "number"
+          },
+          "duration_ms": {
+            "description": "Total end-to-end duration across all stages in milliseconds.",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "job_id": {
+            "description": "Gateway job id (workflow id).",
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "duration_ms"
+        ],
+        "title": "V2WorkflowMetadata",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WorkflowDocumentInput": {
+        "description": "One declared document input in the ``inputs`` map.\n\nA caller supplies exactly one of ``document`` or ``document_url``:\n\n* ``document`` — name of a multipart form part carrying the raw bytes. The\n  gateway stages those bytes internally before the workflow runs.\n* ``document_url`` — public URL (SSRF-validated at submit; fetched and staged\n  by the gateway before the workflow starts).",
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Name of the multipart form part carrying the document bytes. The gateway resolves this to an internal ref before validation; it is not stored in the final request object.",
+            "example": "report_pdf",
+            "title": "Document"
+          },
+          "document_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "URL to fetch the document from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.",
+            "title": "Document Url"
+          }
+        },
+        "title": "WorkflowDocumentInput",
+        "type": "object"
+      },
+      "WorkflowStepOptions": {
+        "description": "Unified options for the ``parse-extract`` prebuilt step.\n\n``pages`` applies to the parse stage; ``strict`` applies to the extract\nstage. Omit entirely to use each stage's defaults.",
+        "properties": {
+          "pages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "0-indexed page indices to process. ``null`` = all pages. Negative indices are rejected; indices ≥ page_count are silently ignored.",
+            "title": "Pages"
+          },
+          "strict": {
+            "default": false,
+            "description": "When ``true``, returns 422 if the schema contains fields the model cannot extract. When ``false``, unsupported fields are skipped.",
+            "title": "Strict",
+            "type": "boolean"
+          }
+        },
+        "title": "WorkflowStepOptions",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "AIDE Gateway — proxy surface + Temporal job surface.",
+    "title": "AIDE Gateway",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/files": {
+      "post": {
+        "description": "Stage bytes on the data plane; pass the returned ``file_ref`` in\njob inputs (the contract request types take ``*_ref`` fields).",
+        "operationId": "stage_file_v1_files_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_stage_file_v1_files_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Stage File V1 Files Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stage an input file",
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/v2/extract": {
+      "post": {
+        "description": "Extract structured data from a Markdown document according to a JSON schema, with character-span grounding into the source Markdown. Runs synchronously and returns the result inline.",
+        "operationId": "v2-extract_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2ExtractOperationWorkflow.\n\nProvide the markdown as an inline ``markdown`` string, as a multipart file\npart named ``markdown`` (for large inputs — the gateway stages the upload\ninternally), or via a public ``markdown_url``. Exactly one source must be\nsupplied.",
+                "properties": {
+                  "markdown": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Markdown string to extract from, or a multipart FILE part carrying the markdown (large inputs — uploads are staged by the gateway). Can come from any source — LandingAI parse output, a third-party parser, or hand-authored text. When the markdown was produced by ``POST /v2/parse``, it ends with a ``<!-- doc_id=<id> -->`` comment that the service reads automatically and echoes as ``metadata.doc_id``.",
+                    "title": "Markdown"
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.",
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The version of the model to use for extraction. Use ``extract-latest`` to use the latest version.",
+                    "title": "Model"
+                  },
+                  "options": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/V2ExtractOptions"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Extraction options (``strict``). Omit for defaults."
+                  },
+                  "schema": {
+                    "additionalProperties": true,
+                    "description": "JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions.",
+                    "example": {
+                      "properties": {
+                        "revenue": {
+                          "description": "Q1 revenue figure",
+                          "type": "string"
+                        },
+                        "summary": {
+                          "description": "Executive summary",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "title": "Schema",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "schema"
+                ],
+                "title": "V2ExtractRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown": {
+                    "anyOf": [
+                      {
+                        "description": "Markdown string to extract from, or a multipart FILE part carrying the markdown (large inputs — uploads are staged by the gateway). Can come from any source — LandingAI parse output, a third-party parser, or hand-authored text. When the markdown was produced by ``POST /v2/parse``, it ends with a ``<!-- doc_id=<id> -->`` comment that the service reads automatically and echoes as ``metadata.doc_id``.",
+                        "type": "string"
+                      },
+                      {
+                        "description": "File upload.",
+                        "format": "binary",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.",
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The version of the model to use for extraction. Use ``extract-latest`` to use the latest version. JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "options": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/V2ExtractOptions"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data."
+                  },
+                  "schema": {
+                    "additionalProperties": true,
+                    "description": "JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions. JSON-serialized string in form data.",
+                    "example": {
+                      "properties": {
+                        "revenue": {
+                          "description": "Q1 revenue figure",
+                          "type": "string"
+                        },
+                        "summary": {
+                          "description": "Executive summary",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "title": "Schema",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "schema"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``\nresponse body (``docs/extract-v2-proposal.md`` → Response).\n\n``extraction`` and ``extraction_metadata`` mirror each other structurally:\nleaf values in ``extraction`` are replaced by ``ExtractionFieldMetadata``\nobjects in ``extraction_metadata``.",
+                  "properties": {
+                    "extraction": {
+                      "additionalProperties": true,
+                      "description": "Extracted values conforming to the request ``schema``.",
+                      "title": "Extraction",
+                      "type": "object"
+                    },
+                    "extraction_metadata": {
+                      "additionalProperties": true,
+                      "description": "Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, spans}`` objects.",
+                      "title": "Extraction Metadata",
+                      "type": "object"
+                    },
+                    "markdown": {
+                      "description": "Echoed input markdown.",
+                      "title": "Markdown",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "$ref": "#/components/schemas/V2ExtractMetadata",
+                      "description": "Request metadata (job_id, version, duration_ms, doc_id, credit_usage)."
+                    }
+                  },
+                  "required": [
+                    "extraction",
+                    "extraction_metadata",
+                    "markdown",
+                    "metadata"
+                  ],
+                  "title": "V2ExtractResult",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v2-extract result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ADE Extract",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/extract/jobs": {
+      "get": {
+        "description": "List your Extract jobs, newest first.",
+        "operationId": "v2-extract_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ADE List Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      },
+      "post": {
+        "description": "Extract structured data from a Markdown document according to a JSON schema, with character-span grounding into the source Markdown. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "v2-extract_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2ExtractOperationWorkflow.\n\nProvide the markdown as an inline ``markdown`` string, as a multipart file\npart named ``markdown`` (for large inputs — the gateway stages the upload\ninternally), or via a public ``markdown_url``. Exactly one source must be\nsupplied.",
+                "properties": {
+                  "markdown": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Markdown string to extract from, or a multipart FILE part carrying the markdown (large inputs — uploads are staged by the gateway). Can come from any source — LandingAI parse output, a third-party parser, or hand-authored text. When the markdown was produced by ``POST /v2/parse``, it ends with a ``<!-- doc_id=<id> -->`` comment that the service reads automatically and echoes as ``metadata.doc_id``.",
+                    "title": "Markdown"
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.",
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The version of the model to use for extraction. Use ``extract-latest`` to use the latest version.",
+                    "title": "Model"
+                  },
+                  "options": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/V2ExtractOptions"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Extraction options (``strict``). Omit for defaults."
+                  },
+                  "schema": {
+                    "additionalProperties": true,
+                    "description": "JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions.",
+                    "example": {
+                      "properties": {
+                        "revenue": {
+                          "description": "Q1 revenue figure",
+                          "type": "string"
+                        },
+                        "summary": {
+                          "description": "Executive summary",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "title": "Schema",
+                    "type": "object"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "required": [
+                  "schema"
+                ],
+                "title": "V2ExtractRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown": {
+                    "anyOf": [
+                      {
+                        "description": "Markdown string to extract from, or a multipart FILE part carrying the markdown (large inputs — uploads are staged by the gateway). Can come from any source — LandingAI parse output, a third-party parser, or hand-authored text. When the markdown was produced by ``POST /v2/parse``, it ends with a ``<!-- doc_id=<id> -->`` comment that the service reads automatically and echoes as ``metadata.doc_id``.",
+                        "type": "string"
+                      },
+                      {
+                        "description": "File upload.",
+                        "format": "binary",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.",
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "The version of the model to use for extraction. Use ``extract-latest`` to use the latest version. JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "options": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/V2ExtractOptions"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data."
+                  },
+                  "schema": {
+                    "additionalProperties": true,
+                    "description": "JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions. JSON-serialized string in form data.",
+                    "example": {
+                      "properties": {
+                        "revenue": {
+                          "description": "Q1 revenue figure",
+                          "type": "string"
+                        },
+                        "summary": {
+                          "description": "Executive summary",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "title": "Schema",
+                    "type": "object"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "required": [
+                  "schema"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          }
+        },
+        "summary": "ADE Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/extract/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Extract job, including its result once the job has completed.",
+        "operationId": "v2-extract_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Best-effort progress, present while processing only for jobs that report it."
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``\nresponse body (``docs/extract-v2-proposal.md`` → Response).\n\n``extraction`` and ``extraction_metadata`` mirror each other structurally:\nleaf values in ``extraction`` are replaced by ``ExtractionFieldMetadata``\nobjects in ``extraction_metadata``.",
+                          "properties": {
+                            "extraction": {
+                              "additionalProperties": true,
+                              "description": "Extracted values conforming to the request ``schema``.",
+                              "title": "Extraction",
+                              "type": "object"
+                            },
+                            "extraction_metadata": {
+                              "additionalProperties": true,
+                              "description": "Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, spans}`` objects.",
+                              "title": "Extraction Metadata",
+                              "type": "object"
+                            },
+                            "markdown": {
+                              "description": "Echoed input markdown.",
+                              "title": "Markdown",
+                              "type": "string"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V2ExtractMetadata",
+                              "description": "Request metadata (job_id, version, duration_ms, doc_id, credit_usage)."
+                            }
+                          },
+                          "required": [
+                            "extraction",
+                            "extraction_metadata",
+                            "markdown",
+                            "metadata"
+                          ],
+                          "title": "V2ExtractResult",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ADE Get Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/parse": {
+      "post": {
+        "description": "Parse a document and return the parse response inline.",
+        "operationId": "parse_run_sync",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "document": {
+                    "description": "The file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.",
+                    "type": "string"
+                  },
+                  "model": {
+                    "description": "The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.",
+                    "type": "string"
+                  },
+                  "options": {
+                    "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
+                    "properties": {
+                      "blocks": {
+                        "$ref": "#/components/schemas/BlocksOptions"
+                      },
+                      "dpi": {
+                        "default": 200,
+                        "description": "Resolution for PDF coordinate scaling. Bounding box coordinates and page dimensions are returned in pixels at this DPI (pixels = PDF_points × dpi / 72). Allowed range: 72–300. Has no effect for image inputs.",
+                        "maximum": 300,
+                        "minimum": 72,
+                        "title": "Dpi",
+                        "type": "integer"
+                      },
+                      "grounding": {
+                        "$ref": "#/components/schemas/GroundingOptions"
+                      },
+                      "pages": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Pages"
+                      }
+                    },
+                    "title": "ParseOptions",
+                    "type": "object"
+                  },
+                  "password": {
+                    "description": "Encrypted PDFs are not currently supported. Providing a password returns a 422 error; decrypt the file before uploading.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            },
+            "description": "The parse response"
+          },
+          "206": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            },
+            "description": "Partial success (some pages failed to parse)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ADE Parse",
+        "tags": [
+          "Parse"
+        ]
+      }
+    },
+    "/v2/parse/jobs": {
+      "get": {
+        "operationId": "parse_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "description": "Whether more jobs exist beyond this page; request the next ``page`` to fetch them.",
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "description": "The caller's parse jobs for this page, newest first.",
+                      "items": {
+                        "properties": {
+                          "created_at": {
+                            "description": "Unix timestamp (seconds) for when the job was created. Mirrors ``received_at``; exposed so clients have an explicit creation time.",
+                            "type": "integer"
+                          },
+                          "failure_reason": {
+                            "description": "The reason the job failed. Present only when ``status`` is ``failed``.",
+                            "type": "string"
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for the parse job.",
+                            "type": "string"
+                          },
+                          "progress": {
+                            "description": "Job completion as a decimal from 0 (not started) to 1 (complete).",
+                            "type": "number"
+                          },
+                          "received_at": {
+                            "description": "Unix timestamp (seconds) for when the job was received.",
+                            "type": "integer"
+                          },
+                          "status": {
+                            "description": "The job's current status: ``pending``, ``processing``, ``completed``, ``failed``, or ``cancelled``.",
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed",
+                              "cancelled"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "org_id": {
+                      "description": "The organization that owns these jobs.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ADE List Parse Jobs",
+        "tags": [
+          "Parse"
+        ]
+      },
+      "post": {
+        "description": "Parse a document asynchronously. Returns a job ID; use it to poll for the job's status and retrieve the parse result once processing completes.",
+        "operationId": "parse_create_job",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "document": {
+                    "description": "The file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.",
+                    "type": "string"
+                  },
+                  "model": {
+                    "description": "The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.",
+                    "type": "string"
+                  },
+                  "options": {
+                    "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
+                    "properties": {
+                      "blocks": {
+                        "$ref": "#/components/schemas/BlocksOptions"
+                      },
+                      "dpi": {
+                        "default": 200,
+                        "description": "Resolution for PDF coordinate scaling. Bounding box coordinates and page dimensions are returned in pixels at this DPI (pixels = PDF_points × dpi / 72). Allowed range: 72–300. Has no effect for image inputs.",
+                        "maximum": 300,
+                        "minimum": 72,
+                        "title": "Dpi",
+                        "type": "integer"
+                      },
+                      "grounding": {
+                        "$ref": "#/components/schemas/GroundingOptions"
+                      },
+                      "pages": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "title": "Pages"
+                      }
+                    },
+                    "title": "ParseOptions",
+                    "type": "object"
+                  },
+                  "output_save_url": {
+                    "description": "Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data.",
+                    "type": "string"
+                  },
+                  "password": {
+                    "description": "Encrypted PDFs are not currently supported. Providing a password returns a 422 error; decrypt the file before uploading.",
+                    "type": "string"
+                  },
+                  "service_tier": {
+                    "description": "Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.",
+                    "enum": [
+                      "standard",
+                      "priority"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "job_id": {
+                      "description": "The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "job_id"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          }
+        },
+        "summary": "ADE Parse Jobs",
+        "tags": [
+          "Parse"
+        ]
+      }
+    },
+    "/v2/parse/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async parse job. Once the job has ``completed``, ``data`` carries the parse result (or ``output_url`` when ``output_save_url`` was set).",
+        "operationId": "parse_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "description": "Unix timestamp (seconds) for when the job was created. Mirrors ``received_at``; exposed so clients have an explicit creation time.",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ParseResponse"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The parse result, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
+                    },
+                    "failure_reason": {
+                      "description": "The reason the job failed. Present only when ``status`` is ``failed``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this parse job.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ParseMetadata"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The result's ``metadata`` (model version, page count, billing, and more). Present once the job has ``completed``."
+                    },
+                    "org_id": {
+                      "description": "The organization that owns this job.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set; the result is delivered there instead of inline ``data``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "progress": {
+                      "description": "Job completion progress as a decimal from 0 to 1, where 0 is not started, 1 is finished, and values between 0 and 1 indicate work in progress.",
+                      "type": "number"
+                    },
+                    "received_at": {
+                      "description": "Unix timestamp (seconds) for when the job was received.",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "description": "The job's current status: ``pending``, ``processing``, ``completed``, ``failed``, or ``cancelled``.",
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ],
+                      "type": "string"
+                    },
+                    "version": {
+                      "description": "The model snapshot used to parse the document.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "206": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "description": "Unix timestamp (seconds) for when the job was created. Mirrors ``received_at``; exposed so clients have an explicit creation time.",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ParseResponse"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The parse result, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
+                    },
+                    "failure_reason": {
+                      "description": "The reason the job failed. Present only when ``status`` is ``failed``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this parse job.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ParseMetadata"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The result's ``metadata`` (model version, page count, billing, and more). Present once the job has ``completed``."
+                    },
+                    "org_id": {
+                      "description": "The organization that owns this job.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set; the result is delivered there instead of inline ``data``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "progress": {
+                      "description": "Job completion progress as a decimal from 0 to 1, where 0 is not started, 1 is finished, and values between 0 and 1 indicate work in progress.",
+                      "type": "number"
+                    },
+                    "received_at": {
+                      "description": "Unix timestamp (seconds) for when the job was received.",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "description": "The job's current status: ``pending``, ``processing``, ``completed``, ``failed``, or ``cancelled``.",
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                      ],
+                      "type": "string"
+                    },
+                    "version": {
+                      "description": "The model snapshot used to parse the document.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Partial success (some pages failed to parse)"
+          },
+          "404": {
+            "description": "Job not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ADE Get Parse Jobs",
+        "tags": [
+          "Parse"
+        ]
+      }
+    },
+    "/v2/workflow": {
+      "post": {
+        "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body) or\n``multipart/form-data`` (file fields are staged automatically).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
+        "operationId": "v2-workflow_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2WorkflowOperationWorkflow.\n\nPhase 1 API design (``docs/pipeline-v2-proposal.md``):\n\n``inputs`` declares named document sources. Each entry binds a logical name\nto a binary upload (via ``document``, the multipart field name) or a URL\n(via ``document_url``). The gateway stages uploads internally before the\nworkflow runs.\n\n``steps`` is a one-element array containing a prebuilt step. Its ``document``\nfield references an entry from ``inputs`` (``\"$inputs.<name>\"``). The ``schema``\nfield carries the JSON Schema for the extract stage.\n\n``output`` is an optional projection map. Each key maps to a ``$output.``\nreference into the step results. Omitted → the full results tree is returned\nunder ``output``.\n\nExample — minimal request (parse-extract, default options)::\n\n    inputs = {\"report\": {\"document\": \"report_pdf\"}}\n    steps  = [{\"name\": \"parse-extract\", \"document\": \"$inputs.report\",\n               \"schema\": {\"type\": \"object\", \"properties\": {\"revenue\": {\"type\": \"string\"}}}}]\n    report_pdf = [binary]",
+                "properties": {
+                  "inputs": {
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDocumentInput"
+                    },
+                    "description": "Named document sources. Each key is a logical name referenced from steps as ``\"$inputs.<name>\"``. The gateway stages binary multipart uploads internally before the workflow runs.",
+                    "example": {
+                      "report": {
+                        "document": "report_pdf"
+                      }
+                    },
+                    "title": "Inputs",
+                    "type": "object"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``.",
+                    "example": {
+                      "revenue": "$output.parse-extract.extract.extraction.revenue",
+                      "revenue_box": "$output.parse-extract.ground.revenue"
+                    },
+                    "title": "Output"
+                  },
+                  "steps": {
+                    "description": "Phase 1: a single prebuilt-pipeline step (name must be ``\"parse-extract\"``). Its result appears in ``output`` under the step's name.",
+                    "example": [
+                      {
+                        "document": "$inputs.report",
+                        "name": "parse-extract",
+                        "schema": {
+                          "properties": {
+                            "revenue": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      }
+                    ],
+                    "items": {
+                      "$ref": "#/components/schemas/PrebuiltWorkflowStep"
+                    },
+                    "title": "Steps",
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "inputs",
+                  "steps"
+                ],
+                "title": "V2WorkflowRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "inputs": {
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDocumentInput"
+                    },
+                    "description": "Named document sources. Each key is a logical name referenced from steps as ``\"$inputs.<name>\"``. The gateway stages binary multipart uploads internally before the workflow runs. JSON-serialized string in form data.",
+                    "example": {
+                      "report": {
+                        "document": "report_pdf"
+                      }
+                    },
+                    "title": "Inputs",
+                    "type": "object"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``. JSON-serialized string in form data.",
+                    "example": {
+                      "revenue": "$output.parse-extract.extract.extraction.revenue",
+                      "revenue_box": "$output.parse-extract.ground.revenue"
+                    },
+                    "title": "Output"
+                  },
+                  "steps": {
+                    "description": "Phase 1: a single prebuilt-pipeline step (name must be ``\"parse-extract\"``). Its result appears in ``output`` under the step's name. JSON-serialized string in form data.",
+                    "example": [
+                      {
+                        "document": "$inputs.report",
+                        "name": "parse-extract",
+                        "schema": {
+                          "properties": {
+                            "revenue": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      }
+                    ],
+                    "items": {
+                      "$ref": "#/components/schemas/PrebuiltWorkflowStep"
+                    },
+                    "title": "Steps",
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "inputs",
+                  "steps"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure, grounding, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, spans}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, spans}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
+                  "properties": {
+                    "metadata": {
+                      "$ref": "#/components/schemas/V2WorkflowMetadata",
+                      "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                    },
+                    "output": {
+                      "additionalProperties": true,
+                      "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
+                      "title": "Output",
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "output",
+                    "metadata"
+                  ],
+                  "title": "V2WorkflowResult",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v2-workflow result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run v2-workflow (sync)",
+        "tags": [
+          "v2-workflow"
+        ]
+      }
+    },
+    "/v2/workflow/jobs": {
+      "get": {
+        "operationId": "v2-workflow_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List v2-workflow jobs",
+        "tags": [
+          "v2-workflow"
+        ]
+      },
+      "post": {
+        "operationId": "v2-workflow_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2WorkflowOperationWorkflow.\n\nPhase 1 API design (``docs/pipeline-v2-proposal.md``):\n\n``inputs`` declares named document sources. Each entry binds a logical name\nto a binary upload (via ``document``, the multipart field name) or a URL\n(via ``document_url``). The gateway stages uploads internally before the\nworkflow runs.\n\n``steps`` is a one-element array containing a prebuilt step. Its ``document``\nfield references an entry from ``inputs`` (``\"$inputs.<name>\"``). The ``schema``\nfield carries the JSON Schema for the extract stage.\n\n``output`` is an optional projection map. Each key maps to a ``$output.``\nreference into the step results. Omitted → the full results tree is returned\nunder ``output``.\n\nExample — minimal request (parse-extract, default options)::\n\n    inputs = {\"report\": {\"document\": \"report_pdf\"}}\n    steps  = [{\"name\": \"parse-extract\", \"document\": \"$inputs.report\",\n               \"schema\": {\"type\": \"object\", \"properties\": {\"revenue\": {\"type\": \"string\"}}}}]\n    report_pdf = [binary]",
+                "properties": {
+                  "inputs": {
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDocumentInput"
+                    },
+                    "description": "Named document sources. Each key is a logical name referenced from steps as ``\"$inputs.<name>\"``. The gateway stages binary multipart uploads internally before the workflow runs.",
+                    "example": {
+                      "report": {
+                        "document": "report_pdf"
+                      }
+                    },
+                    "title": "Inputs",
+                    "type": "object"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``.",
+                    "example": {
+                      "revenue": "$output.parse-extract.extract.extraction.revenue",
+                      "revenue_box": "$output.parse-extract.ground.revenue"
+                    },
+                    "title": "Output"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "steps": {
+                    "description": "Phase 1: a single prebuilt-pipeline step (name must be ``\"parse-extract\"``). Its result appears in ``output`` under the step's name.",
+                    "example": [
+                      {
+                        "document": "$inputs.report",
+                        "name": "parse-extract",
+                        "schema": {
+                          "properties": {
+                            "revenue": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      }
+                    ],
+                    "items": {
+                      "$ref": "#/components/schemas/PrebuiltWorkflowStep"
+                    },
+                    "title": "Steps",
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "inputs",
+                  "steps"
+                ],
+                "title": "V2WorkflowRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "inputs": {
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/WorkflowDocumentInput"
+                    },
+                    "description": "Named document sources. Each key is a logical name referenced from steps as ``\"$inputs.<name>\"``. The gateway stages binary multipart uploads internally before the workflow runs. JSON-serialized string in form data.",
+                    "example": {
+                      "report": {
+                        "document": "report_pdf"
+                      }
+                    },
+                    "title": "Inputs",
+                    "type": "object"
+                  },
+                  "output": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``. JSON-serialized string in form data.",
+                    "example": {
+                      "revenue": "$output.parse-extract.extract.extraction.revenue",
+                      "revenue_box": "$output.parse-extract.ground.revenue"
+                    },
+                    "title": "Output"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "steps": {
+                    "description": "Phase 1: a single prebuilt-pipeline step (name must be ``\"parse-extract\"``). Its result appears in ``output`` under the step's name. JSON-serialized string in form data.",
+                    "example": [
+                      {
+                        "document": "$inputs.report",
+                        "name": "parse-extract",
+                        "schema": {
+                          "properties": {
+                            "revenue": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      }
+                    ],
+                    "items": {
+                      "$ref": "#/components/schemas/PrebuiltWorkflowStep"
+                    },
+                    "title": "Steps",
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "inputs",
+                  "steps"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          }
+        },
+        "summary": "Create v2-workflow job",
+        "tags": [
+          "v2-workflow"
+        ]
+      }
+    },
+    "/v2/workflow/jobs/{job_id}": {
+      "get": {
+        "description": "Poll a job.\n\nReturns ``{job_id, status, created_at}`` plus ``completed_at`` and\n``result`` (on ``completed``) or ``error: {code, message}`` (on\n``failed``). Statuses: ``pending`` → ``processing`` →\n``completed`` | ``failed``.",
+        "operationId": "v2-workflow_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Best-effort progress, present while processing only for jobs that report it."
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure, grounding, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, spans}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, spans}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
+                          "properties": {
+                            "metadata": {
+                              "$ref": "#/components/schemas/V2WorkflowMetadata",
+                              "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                            },
+                            "output": {
+                              "additionalProperties": true,
+                              "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
+                              "title": "Output",
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "output",
+                            "metadata"
+                          ],
+                          "title": "V2WorkflowResult",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get v2-workflow job",
+        "tags": [
+          "v2-workflow"
+        ]
+      }
+    }
+  }
+}

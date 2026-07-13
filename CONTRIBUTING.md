@@ -133,9 +133,16 @@ The SDK tracks the live ADE OpenAPI spec automatically via `.github/workflows/sp
 (hourly cron + manual `workflow_dispatch`). It is driven by the **staging** spec; releases gate on
 the **production** spec ("staging in, production out").
 
-On each run it fetches and normalizes the live spec (`scripts/spec-sync/fetch-normalize.sh`) and
-diffs it against the committed snapshot `specs/v1-ade.json` (`scripts/spec-sync/check-drift.sh`).
-On drift it opens one PR with two attributed commits:
+It runs **two independent loops** (one job each): the **V1** loop tracks the V1 spec against
+`specs/v1-ade.json`, and the **V2** loop tracks the V2 spec on the AIDE gateway
+(`aide.[env]/openapi.json`) against `specs/v2-aide.json` on a separate `spec-sync/v2` branch. Both
+reuse the same scripts. (Note the host split: the V2 *spec* is published at `aide.[env]`, but the
+V2 *API* the SDK calls is `api.ade.[env]`.)
+
+On each run a loop fetches and normalizes its live spec (`scripts/spec-sync/fetch-normalize.sh`) and
+diffs it against its committed snapshot (`scripts/spec-sync/check-drift.sh`). On drift it opens one
+PR with two attributed commits (paths shown for V1; the V2 loop uses the `v2-aide`/`v2_models`
+equivalents):
 
 1. **Mechanical** — updated `specs/v1-ade.json` snapshot plus regenerated *reference* models in
    `specs/_generated/v1_models.py` (`scripts/spec-sync/gen-models.sh`, `datamodel-code-generator`).
@@ -150,7 +157,10 @@ Every spec-sync PR (and any PR to `main`) must pass `.github/workflows/pr-gates.
   tag**, so any change to *released* public surface fails mechanically. Merged-but-unreleased surface
   stays mutable.
 - **contract-tests** — `tests/contract` (marker `contract`) run against staging when
-  `LANDINGAI_ADE_STAGING_APIKEY` is set; skipped otherwise.
+  `LANDINGAI_ADE_STAGING_APIKEY` is set; skipped otherwise. Because this job executes the
+  AI-authored commit's code with the staging key in env, it is gated behind the protected
+  `spec-sync-contract` environment (required reviewer) so the key is only exposed after a human has
+  inspected the diff — configure required reviewers on that environment in repo Settings.
 
 Spec-sync PRs are AI-drafted and **require human review** before merge.
 
@@ -162,8 +172,11 @@ anti-recursion), so the gates would never run on the sync PR. A GitHub App insta
 (org-owned) is the cleaner long-term choice and can replace the PAT without other workflow
 changes.
 
-**V2:** once the aide gateway serves its curated spec unauthenticated, add `specs/v2-aide.json` and
-its URL as a second drift-check in the workflow; the two-phase machinery is unchanged.
+**V2 status:** the V2 loop is **implemented** (the `spec-sync-v2` job + `specs/v2-aide.json` +
+`specs/_generated/v2_models.py`). Its baseline is the full current spec, so it ships live but quiet
+and fires only on a future real change; `/v2/workflow` is intentionally deferred (kept in the
+baseline and excluded in the AI prompt). Its AI step is hardened beyond V1's — no shell, and a
+product-code allowlist enforced before formatting/staging (see `.github/workflows/spec-sync.yml`).
 
 The same pipeline shape ports to `ade-typescript` with `openapi-typescript` (mechanical) and
 `api-extractor` (surface-lock), tracked separately.
