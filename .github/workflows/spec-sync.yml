@@ -198,7 +198,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: |
-          if gh pr list --state open --head "$SYNC_BRANCH" --json number --jq '.[0].number' | grep -q .; then
+          # Fail CLOSED: capture the query result separately so a transient gh/API failure aborts
+          # the job (default bash is `set -eo pipefail`, but a failure inside an `if` condition is
+          # exempt from set -e — which would silently become open=false and force-push over an
+          # existing human-reviewed PR's branch).
+          count="$(gh pr list --state open --head "$SYNC_BRANCH" --json number --jq 'length')"
+          if [ "$count" -gt 0 ]; then
             echo "open=true" >> "$GITHUB_OUTPUT"
           else
             echo "open=false" >> "$GITHUB_OUTPUT"
@@ -227,7 +232,7 @@ jobs:
         run: |
           gh pr create --base main --head "$SYNC_BRANCH" \
             --title "spec-sync: track V2 spec drift" \
-            --body $'Automated V2 spec-sync PR (`client.v2`).\n\n- **Commit 1 (mechanical):** normalized V2 spec snapshot + regenerated reference models.\n- **Commit 2 (AI):** client.v2 resources/methods/tests/docs wired from the spec diff (added after this PR opened).\n\nGates (surface-lock, V2 contract tests, lint/test/typecheck) must pass. The V2 ergonomic layer (unified Job, dual-host, schema coercion) is not in the spec, so the AI commit is a **draft a human finishes**. **Human review required before merge.**'
+            --body $'Automated V2 spec-sync PR (`client.v2`).\n\n- **Commit 1 (mechanical):** normalized V2 spec snapshot + regenerated reference models.\n- **Commit 2 (AI, only if the spec diff needs SDK changes):** client.v2 resources/methods/tests/docs wired from the diff, added after this PR opened. Workflow-only drift is excluded and an AI no-op is skipped, so some drifts produce a **mechanical-only PR with no second commit**.\n\nGates (surface-lock, V2 contract tests, lint/test/typecheck) must pass. When present, the AI commit is a **draft a human finishes** (the V2 ergonomic layer — unified Job, dual-host, schema coercion — is not in the spec). **Human review required before merge.**'
 
       # ---- Phase 2: AI wiring — edits ONLY (no git/push; a later step commits). ----
       - name: AI wiring (edits only)
@@ -294,15 +299,18 @@ jobs:
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git diff:*)"
 
-      # The AI step has NO shell (only git diff), so it cannot execute anything with the checkout's
-      # push credentials. This step defends the trusted formatter too: discard any edit the agent
-      # made outside product code (scripts/, .github/, specs/, dotfiles) before running
-      # ./scripts/format, so a prompt-injected write to a script can't run in the step below.
-      - name: Sanitize + format AI edits
+      # The AI step has NO shell (only git diff), so it cannot itself execute anything with the
+      # checkout's push credentials. But its Write tool is repo-wide, so before running the trusted
+      # formatter — and before the `git add -A` below — we enforce the product-code ALLOWLIST:
+      # revert every tracked edit and delete every untracked file OUTSIDE src/ tests/ docs/ api.md.
+      # This stops an injected edit to e.g. pyproject.toml (which defines what `rye run format`
+      # runs) from executing here, and stops any out-of-scope edit from reaching the commit.
+      # (`git clean` has no -x, so gitignored paths like .venv are untouched.)
+      - name: Restrict AI edits to product code, then format
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         run: |
-          git checkout -- scripts .github specs || true
-          git clean -fd scripts .github specs || true
+          git checkout -- . ':(exclude)src' ':(exclude)tests' ':(exclude)docs' ':(exclude)api.md'
+          git clean -fd -e /src -e /tests -e /docs
           ./scripts/format
 
       - name: Commit + push AI wiring
