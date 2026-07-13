@@ -251,14 +251,20 @@ jobs:
             even though it appears in the spec and reference models. If the spec diff touches only
             workflow, make no changes.
 
-            First inspect the mechanical commit diff (`git diff HEAD~1..HEAD`) to find EVERY changed
-            operation that backs client.v2 — not only newly added /v2 routes, but also field/schema
-            changes on existing operations (e.g. a new optional field on /v2/parse or /v2/extract),
-            and changes to /v1/files, which backs client.v2.files (src/landingai_ade/resources/v2/
-            files.py). For a field change on an existing operation, wire the field into the existing
-            resource/method (see the additive-changes rule below). For a genuinely new route, read
-            src/landingai_ade/resources/v2/extract.py and src/landingai_ade/resources/v2/parse.py
-            and mirror their structure:
+            First inspect the ENTIRE mechanical commit diff (`git diff HEAD~1..HEAD`) — the
+            operation/path hunks AND changed entries under `components.schemas` — to find every
+            change backing client.v2. A response-field addition often changes ONLY a component
+            schema (e.g. /v2/parse references #/components/schemas/ParseResponse) and its generated
+            model, not the operation hunk, so for every changed schema trace its `$ref` consumers to
+            the non-workflow operations that use it. Cover: (a) newly added /v2 routes; (b) field or
+            schema changes on existing operations, INCLUDING component-only changes; (c) changes to
+            /v1/files, which backs client.v2.files (src/landingai_ade/resources/v2/files.py).
+
+            Distinguish REQUEST fields — wire as a new optional keyword parameter on the existing
+            method (see the additive-changes rule below) — from RESPONSE-model fields — add the
+            field to the corresponding response model under src/landingai_ade/types/v2/. For a
+            genuinely new route, read src/landingai_ade/resources/v2/extract.py and
+            src/landingai_ade/resources/v2/parse.py and mirror their structure:
 
             - Add a resource module under src/landingai_ade/resources/v2/ with a sync run()
               (multipart or JSON per the spec; route a 504 through
