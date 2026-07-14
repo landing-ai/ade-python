@@ -14,78 +14,236 @@
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
 [![License](https://img.shields.io/pypi/l/landingai-ade)](https://pypi.org/project/landingai-ade/)
 
-
-**[Playground](https://va.landing.ai) · [Discord](https://discord.com/invite/RVcW3j9RgR) · [Blog](https://landing.ai/blog) · [Docs](https://docs.landing.ai)**
+**[Docs](https://docs.landing.ai) · [Playground](https://ade.landing.ai) · [LandingAI](https://landing.ai)**
 
 </div>
 
+The official Python library for the [LandingAI Agentic Document Extraction (ADE) API](https://ade.landing.ai). Parse PDFs and images into structured, grounded Markdown, then extract typed fields with a JSON Schema or Pydantic model.
 
-A Python library for interacting with the **LandingAI Agentic Document Extraction REST API**, designed for flexibility, reliability, clarity, and performance. Built for Python 3.9+.
-
-
-## ✨ Features
-
-* ✅ Fully-typed SDK with Pydantic response models
-* ⚡️ Sync & Async clients
-* 📄 Large document processing via async jobs
-* 🔁 Built-in retries with exponential backoff
-* 🔐 Secure API key handling
-* 📦 Seamless file uploads
-* 🧩 Schema-based data extraction
-* 🔌 Pluggable HTTP backends (`httpx` or `aiohttp`)
-* 💾 Optional `save_to` parameter to save responses to a folder with auto-generated filenames
-
-## MCP Server
-
-Use the LandingAI ADE MCP Server to enable AI assistants to interact with this API, allowing them to explore endpoints, make test requests, and use documentation to help integrate this SDK into your application.
-
-[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en-US/install-mcp?name=landingai-ade-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImxhbmRpbmdhaS1hZGUtbWNwIl0sImVudiI6eyJWSVNJT05fQUdFTlRfQVBJX0tFWSI6Ik15IEFwaWtleSJ9fQ)
-
-> Note: You may need to set environment variables in your MCP client.
-
-## Documentation
-
-The REST API documentation can be found on [docs.landing.ai](https://docs.landing.ai/). The full API of this library can be found in [api.md](api.md).
+- Fully typed requests and Pydantic response models
+- Sync and async clients with identical surfaces
+- Async jobs with a built-in `wait()` helper for large documents
+- Automatic retries with exponential backoff
+- Optional `save_to` parameter to write responses to disk
 
 ## Installation
 
 ```sh
-# install from PyPI
 pip install landingai-ade
 ```
 
-## Usage
+## Set Your API Key
 
-The full API of this library can be found in [api.md](api.md).
+[Generate an API key](https://ade.landing.ai/settings/api-key), then export it as an environment variable. The client reads it automatically.
 
-### Parse
+```sh
+export VISION_AGENT_API_KEY=<your-api-key>
+```
+
+You can also pass the key directly with `LandingAIADE(apikey=...)`. To keep keys out of source control, use a tool like [python-dotenv](https://pypi.org/project/python-dotenv/).
+
+## Quickstart
+
+Parse a document, then extract structured data from it:
 
 ```python
-import os
+from pathlib import Path
+from pydantic import BaseModel, Field
+from landingai_ade import LandingAIADE
+
+class Invoice(BaseModel):
+    invoice_number: str = Field(description="The invoice number")
+    total: str = Field(description="Invoice grand total")
+
+client = LandingAIADE()  # reads VISION_AGENT_API_KEY
+
+# 1. Parse: convert the document to structured Markdown
+parsed = client.v2.parse(document=Path("invoice.pdf"))
+print(parsed.markdown)
+
+# 2. Extract: pull typed fields out of the Markdown
+result = client.v2.extract(schema=Invoice, markdown=parsed.markdown)
+print(result.extraction)
+```
+
+Use `client.v2` for new projects. It is the current API, powered by the DPT-3 model family. The earlier v1 methods (`client.parse`, `client.extract`, `client.split`, and others) remain fully supported; see [v1 API](#v1-api).
+
+The full method reference for both APIs is in [api.md](api.md); usage guides are at [docs.landing.ai](https://docs.landing.ai).
+
+## Parse
+
+Use `client.v2.parse` to convert a document into Markdown plus a structure tree and grounding (pixel-coordinate bounding boxes for every element). Provide exactly one of `document` (a local file) or `document_url`.
+
+```python
 from pathlib import Path
 from landingai_ade import LandingAIADE
 
-client = LandingAIADE(
-    apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
-    # defaults to "production".
-    environment="eu",
+client = LandingAIADE()
+
+# Parse a local file
+parsed = client.v2.parse(
+    document=Path("path/to/file.pdf"),
+    model="dpt-3-pro-latest",       # optional; defaults to the latest DPT-3 Pro model
+    save_to="./output",             # optional; saves as {input_file}_parse_output.json
 )
 
-response = client.parse(
-    # use document= for local files, document_url= for remote URLs
-    document=Path("path/to/file"),
-    model="dpt-2-latest",
-    save_to="./output_folder",  # optional: saves as {input_file}_parse_output.json
-)
-print(response.chunks)
+# Or parse a file at a URL
+parsed = client.v2.parse(document_url="https://example.com/file.pdf")
+
+print(parsed.markdown)              # full document as Markdown
+print(parsed.metadata.page_count)   # pages processed
 ```
 
-While you can provide a `apikey` keyword argument,
-we recommend using [python-dotenv](https://pypi.org/project/python-dotenv/)
-to add `VISION_AGENT_API_KEY="My Apikey"` to your `.env` file
-so that your Apikey is not stored in source control.
+The response is a `V2ParseResponse`:
 
-### Split
+| Field | Description |
+| --- | --- |
+| `markdown` | The full document as one Markdown string, in reading order. |
+| `structure` | A typed tree (`document` → pages → elements) with element types and character spans into `markdown`. |
+| `grounding` | A tree mirroring `structure` that adds pixel-coordinate bounding boxes for each element. |
+| `metadata` | Processing details: `page_count`, `failed_pages`, `duration_ms`, and `billing` (credits used). |
+
+If some pages cannot be parsed, the request still succeeds (HTTP 206) and `metadata.failed_pages` lists the pages that failed. If a synchronous parse times out, the client raises `V2SyncTimeoutError`; use [jobs](#process-large-documents-asynchronously-jobs) instead.
+
+## Extract
+
+Use `client.v2.extract` to pull structured fields out of Markdown (typically from a parse response) using a schema. The `schema` parameter accepts a Pydantic `BaseModel` subclass, a `dict`, or a JSON string. Provide exactly one Markdown source: `markdown` or `markdown_url`.
+
+```python
+from pathlib import Path
+from pydantic import BaseModel, Field
+from landingai_ade import LandingAIADE
+
+class Person(BaseModel):
+    name: str = Field(description="Person's full name")
+    age: int = Field(description="Person's age")
+
+client = LandingAIADE()
+parsed = client.v2.parse(document=Path("path/to/file.pdf"))
+
+result = client.v2.extract(
+    schema=Person,                       # Pydantic model, dict, or JSON string
+    markdown=parsed.markdown,            # or markdown_url="https://example.com/doc.md"
+    save_to="./output",                  # optional
+)
+
+print(result.extraction)                 # {"name": "...", "age": ...}
+print(result.extraction_metadata)        # per-field source spans in the Markdown
+```
+
+The response is a `V2ExtractResult`:
+
+| Field | Description |
+| --- | --- |
+| `extraction` | The extracted values, matching your schema. |
+| `extraction_metadata` | Mirrors `extraction`; each field carries the character spans in the Markdown that the value came from. |
+| `markdown` | The Markdown the extraction ran against, echoed back. |
+| `metadata` | Processing details, including credits used. |
+
+By default, unsupported schema fields are skipped and extraction continues. Pass `strict=True` to reject such schemas with an error (HTTP 422) instead.
+
+## Process Large Documents Asynchronously (Jobs)
+
+For documents that take longer than a synchronous request allows, create a job and wait for it. `client.v2.parse_jobs` and `client.v2.extract_jobs` share the same shape: `create`, `get`, `list`, and `wait`.
+
+```python
+from pathlib import Path
+from landingai_ade import LandingAIADE
+from landingai_ade.lib.v2_errors import JobFailedError, JobWaitTimeoutError
+
+client = LandingAIADE()
+
+job = client.v2.parse_jobs.create(
+    document=Path("path/to/large_file.pdf"),
+    service_tier="standard",   # "standard" (default, lower cost) or "priority" (faster)
+)
+print(job.job_id, job.status)
+
+# Block until the job finishes (polls with backoff)
+try:
+    done = client.v2.parse_jobs.wait(job.job_id, timeout=600, raise_on_failure=True)
+    if done.result is not None:  # a cancelled job can be terminal with no result
+        print(done.result.markdown[:200])
+except JobWaitTimeoutError:
+    print("Job did not finish in time; it is still running server-side.")
+except JobFailedError as e:
+    print(f"Job failed: {e}")
+```
+
+The `create`, `get`, and `wait` methods return a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model). The `list` method returns a `JobList`, a list of `Job` items that also carries pagination metadata: `has_more` on both endpoints, plus `page` and `page_size` on extract job lists only.
+
+```python
+# Poll manually instead of blocking
+job = client.v2.parse_jobs.get(job.job_id)
+
+# List jobs, with optional filtering
+jobs = client.v2.parse_jobs.list(status="completed", page=0, page_size=10)
+for job in jobs:
+    print(job.job_id, job.status)
+print(jobs.has_more)
+```
+
+Extract jobs work the same way. The `create` method takes the same schema and Markdown arguments as `client.v2.extract`, plus `service_tier`; it does not accept `save_to`.
+
+## Async Client
+
+Import `AsyncLandingAIADE` and `await` each call. The async client mirrors the entire sync surface, including `client.v2`.
+
+```python
+import asyncio
+from pathlib import Path
+from landingai_ade import AsyncLandingAIADE
+
+async def main() -> None:
+    async with AsyncLandingAIADE() as client:
+        parsed = await client.v2.parse(document=Path("path/to/file.pdf"))
+        print(parsed.markdown)
+
+asyncio.run(main())
+```
+
+For higher concurrency, you can use `aiohttp` as the HTTP backend instead of the default `httpx`:
+
+```sh
+pip install landingai-ade[aiohttp]
+```
+
+```python
+import asyncio
+from landingai_ade import AsyncLandingAIADE, DefaultAioHttpClient
+
+async def main() -> None:
+    async with AsyncLandingAIADE(http_client=DefaultAioHttpClient()) as client:
+        ...  # same usage as the example above
+
+asyncio.run(main())
+```
+
+## Environments
+
+The `environment` argument selects the region. Set it in code or with the `LANDINGAI_ADE_ENVIRONMENT` environment variable.
+
+```python
+from landingai_ade import LandingAIADE
+
+client = LandingAIADE(environment="eu")  # "production" (default) or "eu"
+```
+
+API keys are per-environment: an EU key works only with `environment="eu"`. To point the client at a mock server or proxy, pass `base_url` (and `v2_base_url` if v2 traffic needs a separate target) or set the `LANDINGAI_ADE_BASE_URL` environment variable.
+
+## v1 API
+
+The v1 methods sit directly on the client.
+
+| Method | What it does |
+| --- | --- |
+| `client.parse(...)` | Parse a document with the DPT-2 model family. |
+| `client.extract(...)` | Extract fields from Markdown. |
+| `client.split(...)` | Split a multi-document file into sub-documents by classification. |
+| `client.classify(...)` | Classify each page of a document. |
+| `client.section(...)` | Generate a hierarchical table of contents. |
+| `client.extract_build_schema(...)` | Generate an extraction schema from sample documents. |
+| `client.parse_jobs`, `client.extract_jobs` | Async jobs (`create`, `get`, `list`). |
 
 ```python
 import json
@@ -94,354 +252,49 @@ from landingai_ade import LandingAIADE
 
 client = LandingAIADE()
 
-# Parse the document
-parse_response = client.parse(document=Path("/path/to/document.pdf"), model="dpt-2-latest")
-
-# Define Split Rules
-split_class = [
-    {
-        "name": "Bank Statement",
-        "description": "Document from a bank that summarizes all account activity over a period of time.",
-    },
-    {
-        "name": "Pay Stub",
-        "description": "Document that details an employee's earnings, deductions, and net pay for a specific pay period.",
-        "identifier": "Pay Stub Date",
-    },
-]
-
-# Split using the Markdown string from parse response
-split_response = client.split(
-    split_class=json.dumps(split_class),
-    markdown=parse_response.markdown,  # Pass Markdown string directly
+# Split a combined file into sub-documents
+parsed = client.parse(document=Path("statements.pdf"), model="dpt-2-latest")
+split = client.split(
+    split_class=json.dumps([
+        {"name": "Bank Statement", "description": "Summarizes account activity over a period."},
+        {"name": "Pay Stub", "description": "Details an employee's earnings for a pay period."},
+    ]),
+    markdown=parsed.markdown,
     model="split-latest",
 )
-
-# Access the splits
-for split in split_response.splits:
-    print(f"Classification: {split.classification}")
-    print(f"Identifier: {split.identifier}")
-    print(f"Pages: {split.pages}")
+for s in split.splits:
+    print(s.classification, s.pages)
 ```
 
-### Parse Jobs
+## Handling Errors
 
-For processing large documents asynchronously:
+All HTTP errors inherit from `landingai_ade.APIError`.
 
-```python
-import os
-from pathlib import Path
-from landingai_ade import LandingAIADE
+- Connection problems raise a subclass of `landingai_ade.APIConnectionError`.
+- Non-success HTTP status codes (4xx, 5xx) raise a subclass of `landingai_ade.APIStatusError` with `status_code` and `response` properties.
 
-client = LandingAIADE(
-    apikey=os.environ.get("VISION_AGENT_API_KEY"),
-)
-
-# Create an async parse job
-job = client.parse_jobs.create(
-    document=Path("path/to/large_file.pdf"),
-    model="dpt-2-latest",
-)
-print(f"Job created with ID: {job.job_id}")
-
-# Get job status
-job_status = client.parse_jobs.get(job.job_id)
-print(f"Status: {job_status.status}")
-
-# List all jobs (with optional filtering)
-response = client.parse_jobs.list(
-    status="completed",
-    page=0,
-    page_size=10,
-)
-for job in response.jobs:
-    print(f"Job {job.job_id}: {job.status}")
-```
-
-### Extract
-
-```python
-import os
-from pathlib import Path
-from landingai_ade import LandingAIADE
-from landingai_ade.lib import pydantic_to_json_schema
-from pydantic import BaseModel, Field
-
-
-# Define your schema
-class Person(BaseModel):
-    name: str = Field(description="Person's name")
-    age: int = Field(description="Person's age")
-
-
-# Convert to JSON schema
-schema = pydantic_to_json_schema(Person)
-# Use with the SDK
-client = LandingAIADE(apikey=os.environ.get("VISION_AGENT_API_KEY"))
-response = client.extract(
-    schema=schema,
-    # use markdown= for local files, markdown_url= for remote URLs
-    markdown=Path("path/to/file.md"),
-    save_to="./output_folder",  # optional: saves as {input_file}_extract_output.json
-)
-```
-
-### Extract Jobs
-
-For extracting structured data from large markdown documents asynchronously:
-
-```python
-import os
-from pathlib import Path
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE(
-    apikey=os.environ.get("VISION_AGENT_API_KEY"),
-)
-
-# Create an async extract job
-job = client.extract_jobs.create(
-    schema='{"type": "object", "properties": {"title": {"type": "string"}}}',
-    markdown=Path("path/to/large_file.md"),
-    model="extract-latest",
-)
-print(f"Job created with ID: {job.job_id}")
-
-# Get job status
-job_status = client.extract_jobs.get(job.job_id)
-print(f"Status: {job_status.status}")
-
-# List all jobs (with optional filtering)
-response = client.extract_jobs.list(
-    status="completed",
-    page=0,
-    page_size=10,
-)
-for job in response.jobs:
-    print(f"Job {job.job_id}: {job.status}")
-```
-
-## V2 API
-
-`client.v2` is a new, **additive** sub-client for LandingAI's next-generation ADE gateway. It does not replace or change anything about the V1 usage above -- `client.parse`, `client.extract`, `client.parse_jobs`, `client.extract_jobs`, etc. all keep working exactly as documented. Use `client.v2.*` when you want the newer parse/extract surface.
-
-The V2 gateway lives on its own host (`api.ade.[env].landing.ai`), separate from the V1 host (`api.va.[env].landing.ai`). Select the environment the same way as V1, via the `environment` argument or the `LANDINGAI_ADE_ENVIRONMENT` env var:
-
-```python
-import os
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE(
-    apikey=os.environ.get("VISION_AGENT_API_KEY"),
-    # one of "production" (default), "eu", "staging", "dev"
-    # can also be set via the LANDINGAI_ADE_ENVIRONMENT env var instead of passing it here
-    environment="staging",
-)
-```
-
-### Sync parse and extract
-
-```python
-from pathlib import Path
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-
-parse_result = client.v2.parse(
-    document=Path("path/to/file.pdf"),
-    save_to="./output_folder",  # optional: saves as {input_file}_parse_output.json
-)
-print(parse_result.markdown)
-
-extract_result = client.v2.extract(
-    schema='{"type": "object", "properties": {"total": {"type": "string"}}}',
-    markdown=parse_result.markdown,
-    strict=False,  # prune unsupported schema fields instead of raising a 422
-)
-print(extract_result.extraction)
-```
-
-### Passing a pydantic model as the extract schema
-
-`schema` accepts a pydantic `BaseModel` subclass directly -- no need to convert it yourself:
-
-```python
-from pydantic import BaseModel, Field
-from landingai_ade import LandingAIADE
-
-
-class Invoice(BaseModel):
-    total: str = Field(description="Invoice grand total")
-
-
-client = LandingAIADE()
-result = client.v2.extract(schema=Invoice, markdown_url="https://example.com/doc.md")
-print(result.extraction)
-```
-
-### Async jobs and `wait()`
-
-For large documents, create a job and poll it, or block until it finishes with `.wait()`:
-
-```python
-from pathlib import Path
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-
-job = client.v2.parse_jobs.create(document=Path("path/to/large_file.pdf"), service_tier="priority")
-print(job.job_id, job.status)
-
-# Block until the job is terminal (raises JobWaitTimeoutError / JobFailedError on failure paths)
-done = client.v2.parse_jobs.wait(job.job_id, timeout=600, raise_on_failure=True)
-if done.result is not None:
-    print(done.result.markdown[:200])
-
-# client.v2.extract_jobs.{create,get,list,wait} mirror the same shape for extract jobs.
-```
-
-`parse_jobs.create` and `extract_jobs.create` both return a normalized `Job` -- one shape shared by parse and extract jobs, even though their upstream envelopes differ. Use `job.raw` to reach any field not surfaced on the typed model.
-
-`client.v2.parse`, `client.v2.extract`, and their async counterparts also accept `save_to`, with the same auto-naming behavior as the V1 methods above.
-
-The async client mirrors this entire surface: `AsyncLandingAIADE().v2.parse(...)`, `await client.v2.parse_jobs.wait(...)`, etc.
-
-## Async usage
-
-Simply import `AsyncLandingAIADE` instead of `LandingAIADE` and use `await` with each API call:
-
-```python
-import os
-import asyncio
-from pathlib import Path
-from landingai_ade import AsyncLandingAIADE
-
-client = AsyncLandingAIADE(
-    apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
-    # defaults to "production".
-    environment="eu",
-)
-
-
-async def main() -> None:
-    response = await client.parse(
-        document=Path("path/to/file"),
-        model="dpt-2-latest",
-    )
-    print(response.chunks)
-
-
-asyncio.run(main())
-```
-
-Functionality between the synchronous and asynchronous clients is otherwise identical.
-
-### With aiohttp
-
-By default, the async client uses `httpx` for HTTP requests. However, for improved concurrency performance you may also use `aiohttp` as the HTTP backend.
-
-You can enable this by installing `aiohttp`:
-
-```sh
-# install from PyPI
-pip install landingai-ade[aiohttp]
-```
-
-Then you can enable it by instantiating the client with `http_client=DefaultAioHttpClient()`:
-
-```python
-import os
-import asyncio
-from pathlib import Path
-from landingai_ade import DefaultAioHttpClient
-from landingai_ade import AsyncLandingAIADE
-
-
-async def main() -> None:
-    async with AsyncLandingAIADE(
-        apikey=os.environ.get("VISION_AGENT_API_KEY"),  # This is the default and can be omitted
-        http_client=DefaultAioHttpClient(),
-    ) as client:
-        response = await client.parse(
-            document=Path("path/to/file"),
-            model="dpt-2-latest",
-        )
-        print(response.chunks)
-
-
-asyncio.run(main())
-```
-
-## Using types
-
-Nested request parameters are [TypedDicts](https://docs.python.org/3/library/typing.html#typing.TypedDict). Responses are [Pydantic models](https://docs.pydantic.dev) which also provide helper methods for things like:
-
-- Serializing back into JSON, `model.to_json()`
-- Converting to a dictionary, `model.to_dict()`
-
-Typed requests and responses provide autocomplete and documentation within your editor. If you would like to see type errors in VS Code to help catch bugs earlier, set `python.analysis.typeCheckingMode` to `basic`.
-
-## Nested params
-
-Nested parameters are dictionaries, typed using `TypedDict`, for example:
-
-```python
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-
-response = client.parse(
-    custom_prompts={},
-)
-print(response.custom_prompts)
-```
-
-## File uploads
-
-Request parameters that correspond to file uploads can be passed as `bytes`, or a [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) instance or a tuple of `(filename, contents, media type)`.
-
-```python
-from pathlib import Path
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-
-client.parse(
-    document=Path("/path/to/file"),
-)
-```
-
-The async client uses the exact same interface. If you pass a [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) instance, the file contents will be read asynchronously automatically.
-
-## Handling errors
-
-When the library is unable to connect to the API (for example, due to network connection problems or a timeout), a subclass of `landingai_ade.APIConnectionError` is raised.
-
-When the API returns a non-success status code (that is, 4xx or 5xx
-response), a subclass of `landingai_ade.APIStatusError` is raised, containing `status_code` and `response` properties.
-
-All errors inherit from `landingai_ade.APIError`.
+The v2 helper exceptions are separate: `V2SyncTimeoutError`, `JobWaitTimeoutError`, and `JobFailedError` (importable from `landingai_ade.lib.v2_errors`) inherit from `LandingAiadeError` rather than `APIError`, so catch them explicitly as shown in the [jobs example](#process-large-documents-asynchronously-jobs).
 
 ```python
 import landingai_ade
 from landingai_ade import LandingAIADE
+from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 client = LandingAIADE()
 
 try:
-    client.parse()
+    client.v2.parse(document_url="https://example.com/file.pdf")
 except landingai_ade.APIConnectionError as e:
     print("The server could not be reached")
-    print(e.__cause__)  # an underlying Exception, likely raised within httpx.
-except landingai_ade.RateLimitError as e:
-    print("A 429 status code was received; we should back off a bit.")
+    print(e.__cause__)
+except V2SyncTimeoutError:
+    print("The synchronous request timed out; use parse_jobs for this document.")
+except landingai_ade.RateLimitError:
+    print("A 429 status code was received; back off and retry.")
 except landingai_ade.APIStatusError as e:
-    print("Another non-200-range status code was received")
     print(e.status_code)
     print(e.response)
 ```
-
-Error codes are as follows:
 
 | Status Code | Error Type                 |
 | ----------- | -------------------------- |
@@ -456,162 +309,65 @@ Error codes are as follows:
 
 ### Retries
 
-Certain errors are automatically retried 2 times by default, with a short exponential backoff.
-Connection errors (for example, due to a network connectivity problem), 408 Request Timeout, 409 Conflict,
-429 Rate Limit, and >=500 Internal errors are all retried by default.
-
-You can use the `max_retries` option to configure or disable retry settings:
+Connection errors, 408, 409, 429, and 5xx responses are retried twice by default with exponential backoff. Configure with `max_retries`:
 
 ```python
-from landingai_ade import LandingAIADE
-
-# Configure the default for all requests:
-client = LandingAIADE(
-    # default is 2
-    max_retries=0,
-)
-
-# Or, configure per-request:
-client.with_options(max_retries=5).parse()
+client = LandingAIADE(max_retries=0)                 # default is 2
+client.with_options(max_retries=5).v2.parse(...)     # per-request
 ```
 
 ### Timeouts
 
-By default requests time out after 8 minutes. You can configure this with a `timeout` option,
-which accepts a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration) object:
+Requests time out after 8 minutes by default. Configure with `timeout` (a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration)):
 
 ```python
-from landingai_ade import LandingAIADE
-
-# Configure the default for all requests:
-client = LandingAIADE(
-    # 20 seconds (default is 8 minutes)
-    timeout=20.0,
-)
-
-# More granular control:
-client = LandingAIADE(
-    timeout=httpx.Timeout(60.0, read=5.0, write=10.0, connect=2.0),
-)
-
-# Override per-request:
-client.with_options(timeout=5.0).parse()
+client = LandingAIADE(timeout=20.0)                  # seconds
+client.with_options(timeout=5.0).v2.parse(...)       # per-request
 ```
 
-On timeout, an `APITimeoutError` is thrown.
+On a client-side transport timeout, an `APITimeoutError` is raised, and the request is retried twice by default. The v2 synchronous endpoints also have a server-side wait window: exceeding it returns HTTP 504 and raises `V2SyncTimeoutError` instead; switch to [jobs](#process-large-documents-asynchronously-jobs) for those documents.
 
-Note that requests that time out are [retried twice by default](#retries).
-
-## Advanced
-
-### Logging
-
-We use the standard library [`logging`](https://docs.python.org/3/library/logging.html) module.
-
-You can enable logging by setting the environment variable `LANDINGAI_ADE_LOG` to `info`.
-
-```shell
-$ export LANDINGAI_ADE_LOG=info
-```
-
-Or to `debug` for more verbose logging.
-
-### How to tell whether `None` means `null` or missing
-
-In an API response, a field may be explicitly `null`, or missing entirely; in either case, its value is `None` in this library. You can differentiate the two cases with `.model_fields_set`:
-
-```py
-if response.my_field is None:
-  if 'my_field' not in response.model_fields_set:
-    print('Got json like {}, without a "my_field" key present at all.')
-  else:
-    print('Got json like {"my_field": null}.')
-```
+## Advanced Usage
 
 ### Accessing raw response data (e.g. headers)
 
-The "raw" Response object can be accessed by prefixing `.with_raw_response.` to any HTTP method call, e.g.,
-
-```py
-from landingai_ade import LandingAIADE
-
-client = LandingAIADE()
-response = client.with_raw_response.parse()
-print(response.headers.get('X-My-Header'))
-
-client = response.parse()  # get the object that `parse()` would have returned
-print(client.chunks)
-```
-
-These methods return an [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/landingai_ade/_response.py) object.
-
-The async client returns an [`AsyncAPIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/landingai_ade/_response.py) with the same structure, the only difference being `await`able methods for reading the response content.
-
-#### `.with_streaming_response`
-
-The above interface eagerly reads the full response body when you make the request, which may not always be what you want.
-
-To stream the response body, use `.with_streaming_response` instead, which requires a context manager and only reads the response body once you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()` or `.parse()`. In the async client, these are async methods.
+Prefix any v1 method call with `.with_raw_response.` to get the raw HTTP response (these wrappers cover the v1 methods only, not `client.v2`):
 
 ```python
-with client.with_streaming_response.parse() as response:
-    print(response.headers.get("X-My-Header"))
-
-    for line in response.iter_lines():
-        print(line)
+response = client.with_raw_response.parse(document=Path("file.pdf"), model="dpt-2-latest")
+print(response.headers.get("X-My-Header"))
+parsed = response.parse()  # the object the method would have returned
 ```
 
-The context manager is required so that the response will reliably be closed.
+Use `.with_streaming_response` instead (also v1 methods only) to stream the body rather than reading it eagerly; it requires a context manager and reads the body only when you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()`, or `.parse()`. These return [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/landingai_ade/_response.py) (or `AsyncAPIResponse`) objects.
 
-### Making custom/undocumented requests
+### Nested params and file uploads
 
-This library is typed for convenient access to the documented API.
+Nested request parameters are [TypedDicts](https://docs.python.org/3/library/typing.html#typing.TypedDict); responses are [Pydantic models](https://docs.pydantic.dev) with helpers such as `model.to_json()` and `model.to_dict()`. File upload parameters accept `bytes`, a [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) instance, or a `(filename, contents, media type)` tuple; the async client reads `PathLike` files asynchronously.
 
-If you need to access undocumented endpoints, params, or response properties, the library can still be used.
+### How to tell whether `None` means `null` or missing
 
-#### Undocumented endpoints
-
-To make requests to undocumented endpoints, you can make requests using `client.get`, `client.post`, and other
-http verbs. Options on the client will be respected (such as retries) when making this request.
-
-```py
-import httpx
-
-response = client.post(
-    "/foo",
-    cast_to=httpx.Response,
-    body={"my_param": True},
-)
-
-print(response.headers.get("x-foo"))
+```python
+if response.my_field is None:
+    if "my_field" not in response.model_fields_set:
+        print('The "my_field" key was absent from the response.')
+    else:
+        print('The response contained "my_field": null.')
 ```
 
-#### Undocumented request params
+### Making custom or undocumented requests
 
-If you want to explicitly send an extra param, you can do so with the `extra_query`, `extra_body`, and `extra_headers` request
-options.
-
-#### Undocumented response properties
-
-To access undocumented response properties, you can access the extra fields like `response.unknown_prop`. You
-can also get all the extra fields on the Pydantic model as a dict with
-[`response.model_extra`](https://docs.pydantic.dev/latest/api/base_model/#pydantic.BaseModel.model_extra).
+Use `client.get` / `client.post` for undocumented endpoints (client options such as retries still apply), and `extra_query`, `extra_body`, or `extra_headers` for undocumented parameters. Undocumented response properties are available via `response.unknown_prop` or [`response.model_extra`](https://docs.pydantic.dev/latest/api/base_model/#pydantic.BaseModel.model_extra).
 
 ### Configuring the HTTP client
 
-You can directly override the [httpx client](https://www.python-httpx.org/api/#client) to customize it for your use case, including:
-
-- Support for [proxies](https://www.python-httpx.org/advanced/proxies/)
-- Custom [transports](https://www.python-httpx.org/advanced/transports/)
-- Additional [advanced](https://www.python-httpx.org/advanced/clients/) functionality
+Override the [httpx client](https://www.python-httpx.org/api/#client) for proxies, custom transports, or other advanced behavior:
 
 ```python
 import httpx
 from landingai_ade import LandingAIADE, DefaultHttpxClient
 
 client = LandingAIADE(
-    # Or use the `LANDINGAI_ADE_BASE_URL` env var
-    base_url="http://my.test.server.example.com:8083",
     http_client=DefaultHttpxClient(
         proxy="http://my.test.proxy.example.com",
         transport=httpx.HTTPTransport(local_address="0.0.0.0"),
@@ -619,24 +375,23 @@ client = LandingAIADE(
 )
 ```
 
-You can also customize the client on a per-request basis by using `with_options()`:
-
-```python
-client.with_options(http_client=DefaultHttpxClient(...))
-```
+You can also change it per-request with `client.with_options(http_client=...)`.
 
 ### Managing HTTP resources
 
-By default the library closes underlying HTTP connections whenever the client is [garbage collected](https://docs.python.org/3/reference/datamodel.html#object.__del__). You can manually close the client using the `.close()` method if desired, or with a context manager that closes when exiting.
+The client closes HTTP connections when garbage collected. Close it explicitly with `.close()`, or use a context manager:
 
-```py
-from landingai_ade import LandingAIADE
-
+```python
 with LandingAIADE() as client:
-  # make requests here
-  ...
+    ...  # connections close on exit
+```
 
-# HTTP client is now closed
+### Logging
+
+Set the `LANDINGAI_ADE_LOG` environment variable to `info` (or `debug` for more detail):
+
+```sh
+export LANDINGAI_ADE_LOG=info
 ```
 
 ## Versioning
@@ -649,15 +404,9 @@ This package generally follows [SemVer](https://semver.org/spec/v2.0.0.html) con
 
 We take backwards-compatibility seriously and work hard to ensure you can rely on a smooth upgrade experience.
 
-We are keen for your feedback; please open an [issue](https://www.github.com/landing-ai/ade-python/issues) with questions, bugs, or suggestions.
+To check the version in use at runtime:
 
-### Determining the installed version
-
-If you've upgraded to the latest version but aren't seeing any new features you were expecting then your python environment is likely still using an older version.
-
-You can determine the version that is being used at runtime with:
-
-```py
+```python
 import landingai_ade
 print(landingai_ade.__version__)
 ```
@@ -668,4 +417,4 @@ Python 3.9 or higher.
 
 ## Contributing
 
-See [the contributing documentation](./CONTRIBUTING.md).
+See [the contributing documentation](./CONTRIBUTING.md). We welcome [issues](https://www.github.com/landing-ai/ade-python/issues) with questions, bugs, or suggestions.
