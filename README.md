@@ -170,7 +170,7 @@ except JobFailedError as e:
     print(f"Job failed: {e}")
 ```
 
-The `create`, `get`, and `wait` methods return a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model). The `list` method returns a `JobList`, a list of `Job` items that also carries pagination metadata: `has_more` on both endpoints, plus `page` and `page_size` on extract job lists only.
+The `create`, `get`, and `wait` methods return a normalized `Job` with `job_id`, `status` (`pending`, `processing`, `completed`, `failed`, or `cancelled`), `progress`, `result`, `error`, `is_terminal`, and `raw` (the unmodified API envelope, for any field not surfaced on the typed model). The `list` method returns a `JobList`, a list of `Job` items that also carries `has_more`. Parse job lists also populate `org_id`, and extract job lists also populate `page` and `page_size`; fields an endpoint doesn't populate are `None`.
 
 ```python
 # Poll manually instead of blocking
@@ -229,7 +229,7 @@ from landingai_ade import LandingAIADE
 client = LandingAIADE(environment="eu")  # "production" (default) or "eu"
 ```
 
-API keys are per-environment: an EU key works only with `environment="eu"`. To point the client at a mock server or proxy, pass `base_url` (and `v2_base_url` if v2 traffic needs a separate target) or set the `LANDINGAI_ADE_BASE_URL` environment variable.
+API keys are per-environment: an EU key works only with `environment="eu"`.
 
 ## v1 API
 
