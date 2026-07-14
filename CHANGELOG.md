@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.13.0 (2026-07-14)
+
+Full Changelog: [v1.12.0...v1.13.0](https://github.com/landing-ai/ade-python/compare/v1.12.0...v1.13.0)
+
+### Features
+
+* **spec-sync:** extend the pipeline to the V2 spec (detection + dormant AI-wiring) (#110) ([95dd137](https://github.com/landing-ai/ade-python/commit/95dd1373a864a204ff5b291e4bc3453264d64643))
+* **v2:** type the parse ParseResponse structure & grounding trees (#108) ([9b1ddca](https://github.com/landing-ai/ade-python/commit/9b1ddca60765742bc2b8c84e9fb37afab10748ad))
+* **v2:** align client.v2 with updated ADE spec (service_tier, billing) (#106) ([608860a](https://github.com/landing-ai/ade-python/commit/608860afd8f05db1f0409b6f3b6ed784a991d528))
+* V2 parse & extract SDK support (client.v2) (#105) ([50682fe](https://github.com/landing-ai/ade-python/commit/50682fe99fbb3c2e276b06d95d0346982f773a66))
+* spec-sync pipeline (Problem 3) (#99) ([650f0b7](https://github.com/landing-ai/ade-python/commit/650f0b7fda42867491ee2e1f2b1c1cc23d371ee5))
+* smart save_to with full path support and bug fix (#85) ([7576d1f](https://github.com/landing-ai/ade-python/commit/7576d1f80c20744c0dbbb81ebf1b5f72323c3ec2))
+
+### Bug Fixes
+
+* **v2:** drop stale extract params & fix README drift from aide spec (#111) ([b4d102a](https://github.com/landing-ai/ade-python/commit/b4d102aa45df9e69595e49463974bd5d69bdb46a))
+* **v2:** utf-8 save encoding + require exactly one extract markdown source (#107) ([3a9c32c](https://github.com/landing-ai/ade-python/commit/3a9c32c604bf22ce6360b1a036de41d2da608100))
+
+### Chores
+
+* remove Stainless-generated file headers (#101) ([ab717d5](https://github.com/landing-ai/ade-python/commit/ab717d5585871cb6a7602565313764b299aa9929))
+* take over release automation and remove Stainless dependencies (#100) ([c502fa8](https://github.com/landing-ai/ade-python/commit/c502fa8105fd1f8d1a9c5a81c6c420f60c5212ae))
+
+### Documentation
+
+* rewrite README to lead with the v2 API (#112) ([6a4f0e7](https://github.com/landing-ai/ade-python/commit/6a4f0e71b4de4dd429b5a97dce61777adf0fcad7))
+* use theme-aware logo in README (#89) ([2f49d2a](https://github.com/landing-ai/ade-python/commit/2f49d2ab0395fabdfdb6e8b25f3fceb270efb933))
+
+### Other Changes
+
+* spec-sync: track V1 spec drift (#104) ([744b922](https://github.com/landing-ai/ade-python/commit/744b922cd0fbc342adf1642b8f525c86392752c8))
+
 ## 1.12.0 (2026-04-23)
 
 Full Changelog: [v1.11.1...v1.12.0](https://github.com/landing-ai/ade-python/compare/v1.11.1...v1.12.0)
