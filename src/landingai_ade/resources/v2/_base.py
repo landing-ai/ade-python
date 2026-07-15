@@ -48,8 +48,7 @@ def _next_delay(current: float, poll_interval: Optional[float]) -> float:
 def _raise_if_failed(job: Job, *, raise_on_failure: bool) -> None:
     if raise_on_failure and job.error is not None:
         raise JobFailedError(
-            f"Job {job.job_id} ended {job.status.value}: "
-            f"{job.error.message or job.error.code or 'unknown error'}"
+            f"Job {job.job_id} ended {job.status.value}: {job.error.message or job.error.code or 'unknown error'}"
         )
 
 

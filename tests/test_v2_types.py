@@ -111,5 +111,102 @@ def test_parse_response_retains_unknown_fields() -> None:
     assert e.to_dict()["another_surprise"] == 42
 
 
+def test_extract_result_new_metadata_and_billing_fields() -> None:
+    # model_version / range_units / openapi_spec on metadata, the two new billing
+    # counters, and the top-level output_ref all deserialize.
+    r = V2ExtractResult(
+        extraction={},
+        extraction_metadata={},
+        markdown="d",
+        metadata={  # type: ignore[arg-type]
+            "job_id": "e1",
+            "version": "extract-1",
+            "model_version": "dpt-3-20260710",
+            "duration_ms": 5,
+            "range_units": "unicode_codepoints",
+            "openapi_spec": "https://api.example/openapi.json",
+            "billing": {"input_markdown_chars": 100, "output_extraction_chars": 20},
+        },
+        output_ref="ref-123",
+    )
+    assert r.metadata.model_version == "dpt-3-20260710"
+    assert r.metadata.range_units == "unicode_codepoints"
+    assert r.metadata.openapi_spec is not None and r.metadata.openapi_spec.endswith("openapi.json")
+    assert r.metadata.billing is not None
+    assert r.metadata.billing.input_markdown_chars == 100
+    assert r.metadata.billing.output_extraction_chars == 20
+    assert r.output_ref == "ref-123"
+
+
+def test_parse_response_inline_grounding_and_metadata() -> None:
+    # Newer parse responses carry per-node spatial `grounding` ({page, range, box})
+    # inline on `structure`, plus `atomic_grounding` on leaves and the renamed
+    # `output_markdown_chars` / `range_units` / `openapi_spec` metadata fields.
+    # Built via `.construct()` -- the lenient path used for real responses, which
+    # no longer include the (still-declared, now-legacy) page/element `span`.
+    r = V2ParseResponse.construct(
+        markdown="# hi",
+        structure={
+            "type": "document",
+            "markdown": "# hi",
+            "children": [
+                {
+                    "type": "page",
+                    "markdown": "# hi",
+                    "grounding": {
+                        "page": 1,
+                        "range": {"start": 0, "end": 4},
+                        "box": {"xmin": 0, "ymin": 0, "xmax": 1, "ymax": 1},
+                    },
+                    "children": [
+                        {
+                            "type": "text",
+                            "id": "text-0",
+                            "markdown": "# hi",
+                            "grounding": {
+                                "page": 1,
+                                "range": {"start": 0, "end": 4},
+                                "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
+                            },
+                            "atomic_grounding": [
+                                {
+                                    "page": 1,
+                                    "range": {"start": 0, "end": 4},
+                                    "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        },
+        metadata={
+            "job_id": "parse-1",
+            "model_version": "dpt-3",
+            "page_count": 1,
+            "failed_pages": [],
+            "output_markdown_chars": 4,
+            "range_units": "unicode_codepoints",
+            "openapi_spec": "https://api.example/openapi.json",
+        },
+    )
+    assert r.structure is not None and r.structure.markdown == "# hi"
+    page = r.structure.children[0]
+    assert page.grounding is not None and page.grounding.page == 1
+    assert page.grounding.range is not None and page.grounding.range.end == 4
+    assert page.grounding.box is not None and page.grounding.box.xmax == 1
+    assert page.markdown == "# hi"
+    el = page.children[0]
+    assert el.id == "text-0" and el.markdown == "# hi"
+    assert el.grounding is not None and el.grounding.box is not None and el.grounding.box.xmin == 0.1
+    assert el.atomic_grounding is not None and len(el.atomic_grounding) == 1
+    seg = el.atomic_grounding[0]
+    assert seg.range is not None and seg.range.start == 0
+    assert r.metadata is not None
+    assert r.metadata.output_markdown_chars == 4
+    assert r.metadata.range_units == "unicode_codepoints"
+    assert r.metadata.openapi_spec is not None
+
+
 def test_file_upload_response() -> None:
     assert V2FileUploadResponse(file_ref="abc").file_ref == "abc"

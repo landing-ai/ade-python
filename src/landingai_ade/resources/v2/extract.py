@@ -41,9 +41,7 @@ def _build_extract_body(
     if len(provided) != 1:
         raise ValueError(
             "extract requires exactly one markdown source: provide one of "
-            "`markdown` or `markdown_url`"
-            + (f" (received: {', '.join(provided)})" if provided else "")
-            + "."
+            "`markdown` or `markdown_url`" + (f" (received: {', '.join(provided)})" if provided else "") + "."
         )
     body: Dict[str, Any] = {"schema": coerce_schema_to_dict(schema)}
     for key, value in (

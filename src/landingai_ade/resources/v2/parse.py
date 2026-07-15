@@ -300,7 +300,13 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         )
         env = cast(Mapping[str, Any], raw)
         jobs = [normalize_parse_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
-        return JobList.build(jobs, has_more=env.get("has_more"), org_id=env.get("org_id"))
+        return JobList.build(
+            jobs,
+            has_more=env.get("has_more"),
+            org_id=env.get("org_id"),
+            page=env.get("page"),
+            page_size=env.get("page_size"),
+        )
 
     def wait(
         self,
@@ -419,7 +425,13 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         )
         env = cast(Mapping[str, Any], raw)
         jobs = [normalize_parse_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
-        return JobList.build(jobs, has_more=env.get("has_more"), org_id=env.get("org_id"))
+        return JobList.build(
+            jobs,
+            has_more=env.get("has_more"),
+            org_id=env.get("org_id"),
+            page=env.get("page"),
+            page_size=env.get("page_size"),
+        )
 
     async def wait(
         self,

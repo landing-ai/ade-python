@@ -45,7 +45,9 @@ def test_extract_sync(staging_client: LandingAIADE) -> None:
     assert isinstance(res, V2ExtractResult)
     assert isinstance(res.extraction, dict)
     assert res.extraction
-    assert res.metadata.version
+    # `version` was renamed to `model_version` upstream; the current gateway
+    # populates `model_version`.
+    assert res.metadata.model_version
 
 
 def test_extract_jobs(staging_client: LandingAIADE) -> None:
@@ -61,6 +63,22 @@ def test_parse_sync(staging_client: LandingAIADE) -> None:
     assert isinstance(resp, V2ParseResponse)
     assert isinstance(resp.markdown, str)
     assert resp.markdown
+
+
+def test_parse_sync_inline_grounding_and_metadata(staging_client: LandingAIADE) -> None:
+    # Exercise the current parse surface: `inline_markdown` option, per-node
+    # spatial `grounding` ({page, range, box}) inline on `structure`, and the
+    # renamed `output_markdown_chars` / `range_units` metadata fields.
+    pdf = Path(__file__).parent / "sample.pdf"
+    resp = staging_client.v2.parse(document=pdf, options={"inline_markdown": True})
+    assert isinstance(resp, V2ParseResponse)
+    assert resp.structure is not None and resp.structure.children
+    page = resp.structure.children[0]
+    assert page.grounding is not None and page.grounding.range is not None
+    assert page.grounding.box is not None
+    assert resp.metadata is not None
+    assert resp.metadata.range_units == "unicode_codepoints"
+    assert resp.metadata.output_markdown_chars is not None
 
 
 def test_parse_jobs(staging_client: LandingAIADE) -> None:

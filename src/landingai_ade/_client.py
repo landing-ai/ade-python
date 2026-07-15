@@ -265,9 +265,7 @@ class LandingAIADE(SyncAPIClient):
             except KeyError as exc:
                 raise ValueError(f"Unknown environment: {environment}") from exc
 
-        v1_base_url_was_explicit = v1_base_url_was_explicit or (
-            base_url_env is not None and not is_given(environment)
-        )
+        v1_base_url_was_explicit = v1_base_url_was_explicit or (base_url_env is not None and not is_given(environment))
         self._v2_base_url = _resolve_v2_base_url(environment, v2_base_url, base_url, v1_base_url_was_explicit)
 
         super().__init__(
@@ -981,9 +979,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
             except KeyError as exc:
                 raise ValueError(f"Unknown environment: {environment}") from exc
 
-        v1_base_url_was_explicit = v1_base_url_was_explicit or (
-            base_url_env is not None and not is_given(environment)
-        )
+        v1_base_url_was_explicit = v1_base_url_was_explicit or (base_url_env is not None and not is_given(environment))
         self._v2_base_url = _resolve_v2_base_url(environment, v2_base_url, base_url, v1_base_url_was_explicit)
 
         super().__init__(

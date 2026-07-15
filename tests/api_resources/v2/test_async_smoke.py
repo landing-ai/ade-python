@@ -69,8 +69,6 @@ async def test_async_extract_jobs_create_get_and_wait() -> None:
     assert fetched.status is JobStatus.PROCESSING
 
     ticks = iter([0.0, 0.0, 0.1, 0.2, 0.3])
-    waited = await client.v2.extract_jobs.wait(
-        "e1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks)
-    )
+    waited = await client.v2.extract_jobs.wait("e1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
     assert waited.status is JobStatus.COMPLETED
     assert isinstance(waited.result, V2ExtractResult)
