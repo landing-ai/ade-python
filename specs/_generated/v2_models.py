@@ -6,15 +6,48 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 
 class BaseElementOptions(BaseModel):
-    caption: Optional[bool] = Field(True, title='Caption')
+    markdown: Optional[bool] = Field(True, title='Markdown')
 
 
 class BodyStageFileV1FilesPost(BaseModel):
     file: str = Field(..., title='File')
+
+
+class Box(BaseModel):
+    """
+    Axis-aligned bounding box in normalized page coordinates.
+
+    Every value is a fraction of the page's width (`xmin`/`xmax`) or height
+    (`ymin`/`ymax`) in `[0, 1]`, with at most 8 decimal places. To convert to
+    pixels, multiply by the dimensions of whatever raster of the page you are
+    drawing on. Coordinates are clamped and rounded at construction so the
+    in-process value always equals the serialized one.
+    """
+
+    xmax: float = Field(
+        ...,
+        description='Right edge as a fraction of the page width, in `[0, 1]`.',
+        title='Xmax',
+    )
+    xmin: float = Field(
+        ...,
+        description='Left edge as a fraction of the page width, in `[0, 1]`.',
+        title='Xmin',
+    )
+    ymax: float = Field(
+        ...,
+        description='Bottom edge as a fraction of the page height, in `[0, 1]`.',
+        title='Ymax',
+    )
+    ymin: float = Field(
+        ...,
+        description='Top edge as a fraction of the page height, in `[0, 1]`.',
+        title='Ymin',
+    )
 
 
 class Type(Enum):
@@ -33,101 +66,8 @@ class Type(Enum):
     scan_code = 'scan_code'
 
 
-class Element(BaseModel):
-    """
-    Hierarchical document element. All non-page elements share this shape.
-
-    Keys off `type`; optional fields are excluded from the serialized JSON
-    via ``exclude_none=True`` when not set.
-    """
-
-    children: Optional[list[Element]] = Field(
-        None,
-        description='The cells (`table_cell` elements) of a `table` element. Present only when `type` is `table`.',
-        title='Children',
-    )
-    col: Optional[int] = Field(
-        None,
-        description='0-indexed column position of this cell within its parent `table`. Present only on `table_cell` elements.',
-        title='Col',
-    )
-    colspan: Optional[int] = Field(
-        None,
-        description='Number of columns this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.',
-        title='Colspan',
-    )
-    id: str = Field(
-        ...,
-        description="A unique identifier for this element within the document. Use it to look up the element's entry in the top-level `grounding` map; treat the value as opaque.",
-        title='Id',
-    )
-    row: Optional[int] = Field(
-        None,
-        description='0-indexed row position of this cell within its parent `table`. Present only on `table_cell` elements.',
-        title='Row',
-    )
-    rowspan: Optional[int] = Field(
-        None,
-        description='Number of rows this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.',
-        title='Rowspan',
-    )
-    span: list[Any] = Field(
-        ...,
-        description='Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this element.',
-        max_length=2,
-        min_length=2,
-        title='Span',
-    )
-    type: Type = Field(
-        ...,
-        description='The element type. Determines which optional fields appear on this element.',
-        title='Type',
-    )
-
-
 class FigureOptions(BaseModel):
-    caption: Optional[bool] = Field(True, title='Caption')
-
-
-class Type1(Enum):
-    """
-    The element type. Matches the same element's `type` in the `structure` tree.
-    """
-
-    text = 'text'
-    table = 'table'
-    table_cell = 'table_cell'
-    figure = 'figure'
-    marginalia = 'marginalia'
-    attestation = 'attestation'
-    logo = 'logo'
-    card = 'card'
-    scan_code = 'scan_code'
-
-
-class GroundingEntry(BaseModel):
-    """
-    One fine-grained grounding segment (line-level or finer).
-    """
-
-    box: list[Any] = Field(
-        ...,
-        description='Bounding box `[left, top, right, bottom]` for this part on the source page, in pixels.',
-        max_length=4,
-        min_length=4,
-        title='Box',
-    )
-    span: list[Any] = Field(
-        ...,
-        description='Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this part.',
-        max_length=2,
-        min_length=2,
-        title='Span',
-    )
-
-
-class GroundingOptions(BaseModel):
-    parts: Optional[bool] = Field(True, title='Parts')
+    markdown: Optional[bool] = Field(True, title='Markdown')
 
 
 class Status(Enum):
@@ -137,56 +77,6 @@ class Status(Enum):
 
     ok = 'ok'
     failed = 'failed'
-
-
-class Page(BaseModel):
-    children: Optional[list[Element]] = Field(
-        None,
-        description='The elements detected on this page, in reading order.',
-        title='Children',
-    )
-    dpi: Optional[int] = Field(
-        None,
-        description="DPI used to scale this page's PDF coordinates to pixels (pixels = PDF_points × dpi / 72). Present only for pages that originated from a PDF; omitted for image-input pages (which have no DPI concept — their coordinates are already pixels relative to the original upload) and for pages with `status` `failed`.",
-        title='Dpi',
-    )
-    height: Optional[int] = Field(
-        None,
-        description='Page height in pixels. Omitted when `status` is `failed`.',
-        title='Height',
-    )
-    page: int = Field(
-        ...,
-        description='The 0-indexed page number in the source document. Not contiguous when `options.pages` filters out some pages.',
-        title='Page',
-    )
-    reason: Optional[str] = Field(
-        None,
-        description='Failure reason. Present only when `status` is `failed`.',
-        title='Reason',
-    )
-    span: list[Any] = Field(
-        ...,
-        description='Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this page. Zero-length `[n, n]` for failed pages.',
-        max_length=2,
-        min_length=2,
-        title='Span',
-    )
-    status: Optional[Status] = Field(
-        'ok',
-        description='Whether this page was parsed successfully (`ok`) or failed (`failed`).',
-        title='Status',
-    )
-    type: Literal['page'] = Field(
-        'page',
-        description='The node type. Identifies this node as a page in the structure tree.',
-        title='Type',
-    )
-    width: Optional[int] = Field(
-        None,
-        description='Page width in pixels. Omitted when `status` is `failed`.',
-        title='Width',
-    )
 
 
 class ServiceTier(Enum):
@@ -228,28 +118,55 @@ class ParseMetadata(BaseModel):
     )
     failed_pages: list[int] = Field(
         ...,
-        description='0-indexed page numbers that failed to parse. Empty when all pages succeed; failed pages also appear in `structure.children` with `status: failed`.',
+        description='1-indexed page numbers that failed to parse. Empty when all pages succeed; failed pages also appear in `structure.children` with `status: failed`.',
         title='Failed Pages',
     )
     job_id: Optional[str] = Field(
         ...,
-        description="The parse job identifier — always server-minted and unique per submit. On the async `/jobs` route this is the id the caller polls. Correlates with the job's entry in your billing dashboard.",
+        description="The parse job identifier — always server-minted and unique per submit. On the async `/jobs` route this is the id the caller polls. Correlates with the job's entry in your billing dashboard. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
         title='Job Id',
-    )
-    markdown_chars: Optional[int] = Field(
-        ...,
-        description='Number of Unicode code points in the returned `markdown` string.',
-        title='Markdown Chars',
     )
     model_version: Optional[str] = Field(
         ...,
         description='The exact model snapshot that parsed the document, e.g. `dpt-3-pro-20260710`.',
         title='Model Version',
     )
+    openapi_spec: str = Field(
+        ...,
+        description='URL of the OpenAPI spec covering this API, for inspection and client generation.',
+        title='Openapi Spec',
+    )
+    output_markdown_chars: Optional[int] = Field(
+        ...,
+        description='Number of Unicode code points in the returned `markdown` string.',
+        title='Output Markdown Chars',
+    )
     page_count: Optional[int] = Field(
         ...,
         description='Total number of pages in the source document. Includes pages filtered out by `options.pages`; the actual returned pages are in `structure.children`.',
         title='Page Count',
+    )
+    range_units: Literal['unicode_codepoints'] = Field(
+        ...,
+        description='Units of every `range` offset in the response. Always `"unicode_codepoints"` (Unicode code points into `markdown`). Declared explicitly so consumers know how to slice the string — e.g. JavaScript strings are UTF-16, so a naive `.slice()` drifts when the markdown contains astral characters; such consumers must convert code-point offsets to UTF-16 indices first.',
+        title='Range Units',
+    )
+
+
+class Range(BaseModel):
+    """
+    A `[start, end)` slice of the top-level `markdown` string.
+    """
+
+    end: int = Field(
+        ...,
+        description='Exclusive end offset into the top-level `markdown` string, in the units declared by `metadata.range_units` (Unicode code points).',
+        title='End',
+    )
+    start: int = Field(
+        ...,
+        description='Inclusive start offset into the top-level `markdown` string, in the units declared by `metadata.range_units` (Unicode code points).',
+        title='Start',
     )
 
 
@@ -259,8 +176,8 @@ class Format(Enum):
 
 
 class TableOptions(BaseModel):
-    caption: Optional[bool] = Field(True, title='Caption')
     format: Optional[Format] = Field('html', title='Format')
+    markdown: Optional[bool] = Field(True, title='Markdown')
 
 
 class V2Billing(BaseModel):
@@ -269,6 +186,16 @@ class V2Billing(BaseModel):
     charged.
     """
 
+    input_markdown_chars: Optional[int] = Field(
+        None,
+        description='Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge. Extract responses only.',
+        title='Input Markdown Chars',
+    )
+    output_extraction_chars: Optional[int] = Field(
+        None,
+        description='Characters in the serialized extraction output — the output basis of the credit charge. Extract responses only.',
+        title='Output Extraction Chars',
+    )
     service_tier: Optional[ServiceTier] = Field(
         None,
         description='The service tier the request ran in: `standard` or `priority`. A sync request reports `priority` (same lane, same price).',
@@ -306,7 +233,18 @@ class V2ExtractMetadata(BaseModel):
         description='Gateway job id (workflow id). Matches the ``x-request-id`` the gateway minted for this request and the billing row id in vision-agent.',
         title='Job Id',
     )
-    version: str = Field(..., description='Resolved model version.', title='Version')
+    model_version: str = Field(
+        ..., description='Resolved model version.', title='Model Version'
+    )
+    openapi_spec: str = Field(
+        ...,
+        description='URL of the OpenAPI spec covering this API, for inspection and client generation.',
+    )
+    range_units: Literal['unicode_codepoints'] = Field(
+        ...,
+        description='Units of every `range` offset in the response. Always `"unicode_codepoints"` (Unicode code points into `markdown`). Declared explicitly so consumers know how to slice the string — e.g. JavaScript strings are UTF-16, so a naive `.slice()` drifts when the markdown contains astral characters.',
+        title='Range Units',
+    )
 
 
 class V2ExtractOptions(BaseModel):
@@ -344,6 +282,10 @@ class V2WorkflowMetadata(BaseModel):
     job_id: str = Field(
         ..., description='Gateway job id (workflow id).', title='Job Id'
     )
+    openapi_spec: str = Field(
+        ...,
+        description='URL of the OpenAPI spec covering this API, for inspection and client generation.',
+    )
 
 
 class ValidationError(BaseModel):
@@ -379,6 +321,10 @@ class WorkflowDocumentInput(BaseModel):
     )
 
 
+class Page1(RootModel[int]):
+    root: int = Field(..., ge=1)
+
+
 class WorkflowStepOptions(BaseModel):
     """
     Unified options for the ``parse-extract`` prebuilt step.
@@ -387,9 +333,9 @@ class WorkflowStepOptions(BaseModel):
     stage. Omit entirely to use each stage's defaults.
     """
 
-    pages: Optional[list[int]] = Field(
+    pages: Optional[list[Page1]] = Field(
         None,
-        description='0-indexed page indices to process. ``null`` = all pages. Negative indices are rejected; indices ≥ page_count are silently ignored.',
+        description='1-indexed page numbers to process. ``null`` = all pages. Values < 1 are rejected; numbers > page_count are silently ignored.',
         title='Pages',
     )
     strict: Optional[bool] = Field(
@@ -410,90 +356,27 @@ class BlocksOptions(BaseModel):
     text: Optional[BaseElementOptions] = None
 
 
-class Document(BaseModel):
-    children: Optional[list[Page]] = Field(
-        None,
-        description='The pages of the document, in source order.',
-        title='Children',
-    )
-    type: Literal['document'] = Field(
-        'document',
-        description='The node type. Identifies this node as the root of the structure tree.',
-        title='Type',
-    )
-
-
-class GroundingElement(BaseModel):
+class Grounding(BaseModel):
     """
-    Spatial grounding for one document element.
+    Where a node lives: its page, its slice of `markdown`, and its box.
 
-    Mirrors the element's node in the `structure` tree (same `id`, same `span`)
-    and layers the spatial data on top: the element-level bounding box, its
-    fine-grained `parts`, and — for a `table` — its cells nested as `children`.
+    The same shape is used for page nodes, element nodes, and each
+    `atomic_grounding` entry, so any grounding object is self-contained — it
+    can be lifted out of the tree and still locates its content.
     """
 
-    box: list[Any] = Field(
+    box: Box = Field(
         ...,
-        description='Bounding box `[left, top, right, bottom]` for the full element on the source page, in pixels.',
-        max_length=4,
-        min_length=4,
-        title='Box',
-    )
-    children: Optional[list[GroundingElement]] = Field(
-        None,
-        description="The cells (`table_cell` grounding nodes) of a `table` element, mirroring the table's `children` in the `structure` tree. Present only when `type` is `table`.",
-        title='Children',
-    )
-    id: str = Field(
-        ...,
-        description="The element's unique identifier within the document. Matches the same element's `id` in the `structure` tree.",
-        title='Id',
-    )
-    parts: Optional[list[GroundingEntry]] = Field(
-        None,
-        description='Finer-grained grounding segments within the element. Per visual line for `text` and `marginalia`; empty for other element types or when `options.grounding.parts` is `false`.',
-        title='Parts',
-    )
-    span: list[Any] = Field(
-        ...,
-        description="Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this element. Matches the element's `span` in the `structure` tree.",
-        max_length=2,
-        min_length=2,
-        title='Span',
-    )
-    type: Type1 = Field(
-        ...,
-        description="The element type. Matches the same element's `type` in the `structure` tree.",
-        title='Type',
-    )
-
-
-class GroundingPage(BaseModel):
-    """
-    A page node in the `grounding` tree, mirroring the page in `structure`.
-    """
-
-    children: Optional[list[GroundingElement]] = Field(
-        None,
-        description="Grounding for the elements on this page, in reading order — the same order and `id`s as the page's `children` in the `structure` tree. Empty for failed pages.",
-        title='Children',
+        description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 8 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`.",
     )
     page: int = Field(
         ...,
-        description="The 0-indexed page number in the source document. Matches the page's `page` in the `structure` tree.",
+        description="1-indexed page number this grounding is on. On a page node, the page's own number.",
         title='Page',
     )
-    span: list[Any] = Field(
+    range: Range = Field(
         ...,
-        description='Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this page. Zero-length `[n, n]` for failed pages.',
-        max_length=2,
-        min_length=2,
-        title='Span',
-    )
-    type: Literal['page'] = Field(
-        'page',
-        description='The node type. Identifies this node as a page in the grounding tree.',
-        title='Type',
+        description='`[start, end)` offsets into the top-level `markdown` string covered by this node or segment.',
     )
 
 
@@ -533,21 +416,111 @@ class PrebuiltWorkflowStep(BaseModel):
     )
 
 
-class GroundingDocument(BaseModel):
+class Element(BaseModel):
     """
-    Root of the `grounding` tree. Mirrors the hierarchy of `structure`
-    (`document → page → element → table_cell`), carrying the spatial data
-    (`box`, `parts`) that `structure` deliberately omits.
+    Hierarchical document element. All non-page elements share this shape.
+
+    Keys off `type`; optional fields are excluded from the serialized JSON
+    via ``exclude_none=True`` when not set.
     """
 
-    children: Optional[list[GroundingPage]] = Field(
+    atomic_grounding: Optional[list[Grounding]] = Field(
         None,
-        description='The pages of the document, in source order — the same order as `structure.children`.',
+        description="Fine-grained grounding segments at the model's current granularity (visual lines today; finer in future versions, same schema). Present only on leaf elements — every type except `table`. `[]` only when segments are structurally impossible: `table_cell` (a cell has no finer granularity than itself) and elements whose markdown is suppressed via `blocks.<type>.markdown=false`. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
+        title='Atomic Grounding',
+    )
+    children: Optional[list[Element]] = Field(
+        None,
+        description='The cells (`table_cell` elements) of a `table` element. Present only when `type` is `table`.',
         title='Children',
+    )
+    col: Optional[int] = Field(
+        None,
+        description='0-indexed column position of this cell within its parent `table`. Present only on `table_cell` elements.',
+        title='Col',
+    )
+    colspan: Optional[int] = Field(
+        None,
+        description='Number of columns this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.',
+        title='Colspan',
+    )
+    grounding: Grounding = Field(
+        ...,
+        description="The element's spatial data: the page it appears on, its `[start, end)` range in the top-level `markdown` string, and its bounding box in normalized page coordinates.",
+    )
+    id: str = Field(
+        ...,
+        description='Semantic element id, unique within the document. Format `<type>-<index>`, where `<index>` is a per-type 0-based counter assigned in reading order — `text-0` is the first text element in the document, `figure-0` the first figure, `table_cell-0` the first cell of the first table. Stable within a response but not across re-parses of the same document.',
+        title='Id',
+    )
+    markdown: Optional[str] = Field(
+        None,
+        description='The element\'s slice of the top-level `markdown` string (`markdown[grounding.range.start:grounding.range.end]`). `""` for zero-length ranges (e.g. blocks suppressed via `blocks.<type>.markdown=false`). Present only when `options.inline_markdown` is `true`.',
+        title='Markdown',
+    )
+    row: Optional[int] = Field(
+        None,
+        description='0-indexed row position of this cell within its parent `table`. Present only on `table_cell` elements.',
+        title='Row',
+    )
+    rowspan: Optional[int] = Field(
+        None,
+        description='Number of rows this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.',
+        title='Rowspan',
+    )
+    type: Type = Field(
+        ...,
+        description='The element type. Determines which optional fields appear on this element.',
+        title='Type',
+    )
+
+
+class Page(BaseModel):
+    children: Optional[list[Element]] = Field(
+        None,
+        description='The elements detected on this page, in reading order. Empty for failed pages.',
+        title='Children',
+    )
+    grounding: Grounding = Field(
+        ...,
+        description="The page's spatial data: `page` is the 1-indexed page number in the source document (not contiguous when `options.pages` filters out some pages); `range` covers this page's content in the top-level `markdown` string (zero-length `start == end` for failed pages); `box` is always the full page `{0, 0, 1, 1}`.",
+    )
+    markdown: Optional[str] = Field(
+        None,
+        description='This page\'s slice of the top-level `markdown` string (`markdown[grounding.range.start:grounding.range.end]`). `""` for failed pages. Present only when `options.inline_markdown` is `true`.',
+        title='Markdown',
+    )
+    reason: Optional[str] = Field(
+        None,
+        description='Failure reason. Present only when `status` is `failed`.',
+        title='Reason',
+    )
+    status: Optional[Status] = Field(
+        'ok',
+        description='Whether this page was parsed successfully (`ok`) or failed (`failed`).',
+        title='Status',
+    )
+    type: Literal['page'] = Field(
+        'page',
+        description='The node type. Identifies this node as a page in the structure tree.',
+        title='Type',
+    )
+
+
+class Document(BaseModel):
+    children: Optional[list[Page]] = Field(
+        None,
+        description='The pages of the document, in source order.',
+        title='Children',
+    )
+    markdown: Optional[str] = Field(
+        None,
+        description='The full document markdown — identical to the top-level `markdown` field, included so the structure tree is self-contained. Present only when `options.inline_markdown` is `true`.',
+        title='Markdown',
     )
     type: Literal['document'] = Field(
         'document',
-        description='The node type. Identifies this node as the root of the grounding tree.',
+        description='The node type. Identifies this node as the root of the structure tree.',
         title='Type',
     )
 
@@ -555,13 +528,10 @@ class GroundingDocument(BaseModel):
 class ParseResponse(BaseModel):
     """
     The parse result: the full document as `markdown`, its hierarchical
-    `structure`, per-element spatial `grounding`, and request `metadata`.
+    `structure` (with per-node spatial `grounding` inline), and request
+    `metadata`.
     """
 
-    grounding: GroundingDocument = Field(
-        ...,
-        description="The document's spatial grounding, as a tree mirroring `structure` (`document → page → element → table_cell`). Each element node carries the same `id` and `span` as in `structure`, plus its bounding box and finer-grained parts.",
-    )
     markdown: str = Field(
         ...,
         description='The full document as a single Markdown string, in reading order.',
@@ -573,9 +543,8 @@ class ParseResponse(BaseModel):
     )
     structure: Document = Field(
         ...,
-        description="The document's hierarchical structure: pages and the elements detected on each page. Spatial information for each element is in `grounding`.",
+        description="The document's hierarchical structure: pages and the elements detected on each page. Every node below the root carries its spatial data inline in a `grounding` object (`{page, range, box}`, normalized page coordinates); leaf elements additionally carry `atomic_grounding`.",
     )
 
 
 Element.model_rebuild()
-GroundingElement.model_rebuild()
