@@ -6,10 +6,13 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 
 class BaseElementOptions(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     markdown: Optional[bool] = Field(True, title='Markdown')
 
 
@@ -66,7 +69,18 @@ class Type(Enum):
     scan_code = 'scan_code'
 
 
+class ErrorResponse(BaseModel):
+    code: str = Field(
+        ...,
+        description='Stable snake_case error code (e.g. ``validation_error``, ``unknown_model_version``, ``invalid_url``, ``invalid_api_key``, ``rate_limit_exceeded``).',
+    )
+    message: str = Field(..., description='Human-readable detail.')
+
+
 class FigureOptions(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     markdown: Optional[bool] = Field(True, title='Markdown')
 
 
@@ -176,6 +190,9 @@ class Format(Enum):
 
 
 class TableOptions(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     format: Optional[Format] = Field('html', title='Format')
     markdown: Optional[bool] = Field(True, title='Markdown')
 
@@ -186,16 +203,6 @@ class V2Billing(BaseModel):
     charged.
     """
 
-    input_markdown_chars: Optional[int] = Field(
-        None,
-        description='Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge. Extract responses only.',
-        title='Input Markdown Chars',
-    )
-    output_extraction_chars: Optional[int] = Field(
-        None,
-        description='Characters in the serialized extraction output — the output basis of the credit charge. Extract responses only.',
-        title='Output Extraction Chars',
-    )
     service_tier: Optional[ServiceTier] = Field(
         None,
         description='The service tier the request ran in: `standard` or `priority`. A sync request reports `priority` (same lane, same price).',
@@ -215,9 +222,6 @@ class V2ExtractMetadata(BaseModel):
         None,
         description='Billing summary: the service tier the request ran in and the credits charged.',
     )
-    credit_usage: Optional[float] = Field(
-        0.0, description='Credits billed for this request.', title='Credit Usage'
-    )
     doc_id: Optional[str] = Field(
         None,
         description='Present when the input markdown contained a ``<!-- doc_id=<id> -->`` comment (embedded by ``POST /v2/parse``). Links this extract call to the originating parse job.',
@@ -227,6 +231,11 @@ class V2ExtractMetadata(BaseModel):
         ...,
         description='End-to-end request duration in milliseconds.',
         title='Duration Ms',
+    )
+    input_markdown_chars: Optional[int] = Field(
+        None,
+        description='Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge.',
+        title='Input Markdown Chars',
     )
     job_id: str = Field(
         ...,
@@ -240,6 +249,11 @@ class V2ExtractMetadata(BaseModel):
         ...,
         description='URL of the OpenAPI spec covering this API, for inspection and client generation.',
     )
+    output_extraction_chars: Optional[int] = Field(
+        None,
+        description='Characters in the serialized extraction output — the output basis of the credit charge.',
+        title='Output Extraction Chars',
+    )
     range_units: Literal['unicode_codepoints'] = Field(
         ...,
         description='Units of every `range` offset in the response. Always `"unicode_codepoints"` (Unicode code points into `markdown`). Declared explicitly so consumers know how to slice the string — e.g. JavaScript strings are UTF-16, so a naive `.slice()` drifts when the markdown contains astral characters.',
@@ -252,9 +266,12 @@ class V2ExtractOptions(BaseModel):
     Extraction options (``docs/extract-v2-proposal.md`` → Options).
     """
 
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     strict: Optional[bool] = Field(
         False,
-        description='When ``true``, returns HTTP 422 if the schema contains fields the model cannot extract. When ``false`` (default), unsupported fields are skipped and extraction continues.',
+        description='When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job (``status: "failed"``) on the async ``/jobs`` route. When ``false`` (default), unsupported fields are skipped and extraction continues.',
         title='Strict',
     )
 
@@ -268,11 +285,6 @@ class V2WorkflowMetadata(BaseModel):
     billing: Optional[V2Billing] = Field(
         None,
         description='Billing summary: the service tier the request ran in and the credits charged.',
-    )
-    credit_usage: Optional[float] = Field(
-        0.0,
-        description='Combined credits billed for this request (parse + extract).',
-        title='Credit Usage',
     )
     duration_ms: int = Field(
         ...,
@@ -340,12 +352,15 @@ class WorkflowStepOptions(BaseModel):
     )
     strict: Optional[bool] = Field(
         False,
-        description='When ``true``, returns 422 if the schema contains fields the model cannot extract. When ``false``, unsupported fields are skipped.',
+        description='When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job on the async ``/jobs`` route. When ``false``, unsupported fields are skipped.',
         title='Strict',
     )
 
 
 class BlocksOptions(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     attestation: Optional[BaseElementOptions] = None
     card: Optional[BaseElementOptions] = None
     figure: Optional[FigureOptions] = None

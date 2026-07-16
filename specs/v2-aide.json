@@ -2,6 +2,7 @@
   "components": {
     "schemas": {
       "BaseElementOptions": {
+        "additionalProperties": false,
         "properties": {
           "markdown": {
             "default": true,
@@ -13,6 +14,7 @@
         "type": "object"
       },
       "BlocksOptions": {
+        "additionalProperties": false,
         "properties": {
           "attestation": {
             "$ref": "#/components/schemas/BaseElementOptions"
@@ -257,7 +259,26 @@
         "title": "Element",
         "type": "object"
       },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "description": "Stable snake_case error code (e.g. ``validation_error``, ``unknown_model_version``, ``invalid_url``, ``invalid_api_key``, ``rate_limit_exceeded``).",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable detail.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
       "FigureOptions": {
+        "additionalProperties": false,
         "properties": {
           "markdown": {
             "default": true,
@@ -606,6 +627,7 @@
         "type": "object"
       },
       "TableOptions": {
+        "additionalProperties": false,
         "properties": {
           "format": {
             "default": "html",
@@ -628,32 +650,6 @@
       "V2Billing": {
         "description": "Billing summary: the service tier the request ran in and the credits\ncharged.",
         "properties": {
-          "input_markdown_chars": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge. Extract responses only.",
-            "title": "Input Markdown Chars"
-          },
-          "output_extraction_chars": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Characters in the serialized extraction output — the output basis of the credit charge. Extract responses only.",
-            "title": "Output Extraction Chars"
-          },
           "service_tier": {
             "anyOf": [
               {
@@ -702,12 +698,6 @@
             ],
             "description": "Billing summary: the service tier the request ran in and the credits charged."
           },
-          "credit_usage": {
-            "default": 0.0,
-            "description": "Credits billed for this request.",
-            "title": "Credit Usage",
-            "type": "number"
-          },
           "doc_id": {
             "anyOf": [
               {
@@ -726,6 +716,19 @@
             "title": "Duration Ms",
             "type": "integer"
           },
+          "input_markdown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge.",
+            "title": "Input Markdown Chars"
+          },
           "job_id": {
             "description": "Gateway job id (workflow id). Matches the ``x-request-id`` the gateway minted for this request and the billing row id in vision-agent.",
             "title": "Job Id",
@@ -739,6 +742,19 @@
           "openapi_spec": {
             "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
             "type": "string"
+          },
+          "output_extraction_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Characters in the serialized extraction output — the output basis of the credit charge.",
+            "title": "Output Extraction Chars"
           },
           "range_units": {
             "const": "unicode_codepoints",
@@ -759,11 +775,12 @@
         "type": "object"
       },
       "V2ExtractOptions": {
+        "additionalProperties": false,
         "description": "Extraction options (``docs/extract-v2-proposal.md`` → Options).",
         "properties": {
           "strict": {
             "default": false,
-            "description": "When ``true``, returns HTTP 422 if the schema contains fields the model cannot extract. When ``false`` (default), unsupported fields are skipped and extraction continues.",
+            "description": "When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job (``status: \"failed\"``) on the async ``/jobs`` route. When ``false`` (default), unsupported fields are skipped and extraction continues.",
             "title": "Strict",
             "type": "boolean"
           }
@@ -784,12 +801,6 @@
               }
             ],
             "description": "Billing summary: the service tier the request ran in and the credits charged."
-          },
-          "credit_usage": {
-            "default": 0.0,
-            "description": "Combined credits billed for this request (parse + extract).",
-            "title": "Credit Usage",
-            "type": "number"
           },
           "duration_ms": {
             "description": "Total end-to-end duration across all stages in milliseconds.",
@@ -910,7 +921,7 @@
           },
           "strict": {
             "default": false,
-            "description": "When ``true``, returns 422 if the schema contains fields the model cannot extract. When ``false``, unsupported fields are skipped.",
+            "description": "When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job on the async ``/jobs`` route. When ``false``, unsupported fields are skipped.",
             "title": "Strict",
             "type": "boolean"
           }
@@ -1170,9 +1181,9 @@
                     },
                     "metadata": {
                       "$ref": "#/components/schemas/V2ExtractMetadata",
-                      "description": "Request metadata (job_id, model_version, duration_ms, doc_id, credit_usage)."
+                      "description": "Request metadata (job_id, model_version, duration_ms, doc_id, billing)."
                     },
-                    "output_ref": {
+                    "schema_violation_error": {
                       "anyOf": [
                         {
                           "type": "string"
@@ -1182,7 +1193,17 @@
                         }
                       ],
                       "default": null,
-                      "title": "Output Ref"
+                      "description": "Set when ``options.strict`` is false and the schema contained fields the model could not extract — the extraction is partial.",
+                      "title": "Schema Violation Error"
+                    },
+                    "warnings": {
+                      "description": "Non-fatal warnings emitted during extraction.",
+                      "items": {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      "title": "Warnings",
+                      "type": "array"
                     }
                   },
                   "required": [
@@ -1202,11 +1223,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Extract",
@@ -1337,11 +1358,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE List Extract Jobs",
@@ -1408,6 +1429,19 @@
                     ],
                     "default": null,
                     "description": "Extraction options (``strict``). Omit for defaults."
+                  },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.",
+                    "title": "Output Save Url"
                   },
                   "schema": {
                     "additionalProperties": true,
@@ -1505,6 +1539,19 @@
                     "default": null,
                     "description": "Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data."
                   },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.",
+                    "title": "Output Save Url"
+                  },
                   "schema": {
                     "additionalProperties": true,
                     "description": "JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions. JSON-serialized string in form data.",
@@ -1580,6 +1627,16 @@
               }
             },
             "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Extract Jobs",
@@ -1638,8 +1695,18 @@
                       "description": "The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "progress": {
-                      "description": "Best-effort progress, present while processing only for jobs that report it."
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
                     "result": {
                       "anyOf": [
@@ -1665,9 +1732,9 @@
                             },
                             "metadata": {
                               "$ref": "#/components/schemas/V2ExtractMetadata",
-                              "description": "Request metadata (job_id, model_version, duration_ms, doc_id, credit_usage)."
+                              "description": "Request metadata (job_id, model_version, duration_ms, doc_id, billing)."
                             },
-                            "output_ref": {
+                            "schema_violation_error": {
                               "anyOf": [
                                 {
                                   "type": "string"
@@ -1677,7 +1744,17 @@
                                 }
                               ],
                               "default": null,
-                              "title": "Output Ref"
+                              "description": "Set when ``options.strict`` is false and the schema contained fields the model could not extract — the extraction is partial.",
+                              "title": "Schema Violation Error"
+                            },
+                            "warnings": {
+                              "description": "Non-fatal warnings emitted during extraction.",
+                              "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                              },
+                              "title": "Warnings",
+                              "type": "array"
                             }
                           },
                           "required": [
@@ -1693,7 +1770,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Present once status is ``completed``."
+                      "description": "Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
                     },
                     "status": {
                       "enum": [
@@ -1711,15 +1788,25 @@
             },
             "description": "Job status / result"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Get Extract Jobs",
@@ -1751,6 +1838,7 @@
                     "type": "string"
                   },
                   "options": {
+                    "additionalProperties": false,
                     "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
                     "properties": {
                       "atomic_grounding": {
@@ -1832,11 +1920,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Parse",
@@ -1934,6 +2022,13 @@
                             "description": "The unique identifier for the parse job. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                             "type": "string"
                           },
+                          "model_version": {
+                            "description": "The model snapshot used to parse the document.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "status": {
                             "description": "The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
                             "enum": [
@@ -1943,13 +2038,6 @@
                               "failed"
                             ],
                             "type": "string"
-                          },
-                          "version": {
-                            "description": "The model snapshot used to parse the document.",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
                           }
                         },
                         "type": "object"
@@ -1975,11 +2063,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE List Parse Jobs",
@@ -2009,6 +2097,7 @@
                     "type": "string"
                   },
                   "options": {
+                    "additionalProperties": false,
                     "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
                     "properties": {
                       "atomic_grounding": {
@@ -2115,6 +2204,16 @@
               }
             },
             "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Parse Jobs",
@@ -2214,17 +2313,24 @@
             "description": "Job status / result"
           },
           "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
             "description": "Job not found"
           },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Get Parse Jobs",
@@ -2385,25 +2491,13 @@
                   "properties": {
                     "metadata": {
                       "$ref": "#/components/schemas/V2WorkflowMetadata",
-                      "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                      "description": "Request metadata (job_id, duration_ms, billing)."
                     },
                     "output": {
                       "additionalProperties": true,
                       "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
                       "title": "Output",
                       "type": "object"
-                    },
-                    "output_ref": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Output Ref"
                     }
                   },
                   "required": [
@@ -2421,11 +2515,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "Run v2-workflow (sync)",
@@ -2555,11 +2649,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "List v2-workflow jobs",
@@ -2769,6 +2863,16 @@
               }
             },
             "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
           }
         },
         "summary": "Create v2-workflow job",
@@ -2828,7 +2932,10 @@
                       "type": "string"
                     },
                     "progress": {
-                      "description": "Best-effort progress, present while processing only for jobs that report it."
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
                     "result": {
                       "anyOf": [
@@ -2837,25 +2944,13 @@
                           "properties": {
                             "metadata": {
                               "$ref": "#/components/schemas/V2WorkflowMetadata",
-                              "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                              "description": "Request metadata (job_id, duration_ms, billing)."
                             },
                             "output": {
                               "additionalProperties": true,
                               "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
                               "title": "Output",
                               "type": "object"
-                            },
-                            "output_ref": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Output Ref"
                             }
                           },
                           "required": [
@@ -2887,15 +2982,25 @@
             },
             "description": "Job status / result"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "Get v2-workflow job",
