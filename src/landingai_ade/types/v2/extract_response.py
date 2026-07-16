@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from ..._models import BaseModel
 
@@ -31,6 +31,14 @@ class V2ExtractMetadata(BaseModel):
     doc_id: Optional[str] = None
     credit_usage: float = 0.0
     billing: Optional[V2ExtractBilling] = None
+    # Characters (code points) in the input markdown as submitted -- the input
+    # basis of the credit charge. Now reported at the metadata top level (also
+    # mirrored on `billing` for older gateway responses).
+    input_markdown_chars: Optional[int] = None
+    # Characters in the serialized extraction output -- the output basis of the
+    # credit charge. Now reported at the metadata top level (also mirrored on
+    # `billing` for older gateway responses).
+    output_extraction_chars: Optional[int] = None
     # Units of every `range` offset in the response (always "unicode_codepoints").
     range_units: Optional[str] = None
     # URL of the OpenAPI spec covering this API.
@@ -42,6 +50,12 @@ class V2ExtractResult(BaseModel):
     extraction_metadata: Dict[str, object]
     markdown: str
     metadata: V2ExtractMetadata
-    # Present when the extraction output was delivered out-of-band (e.g. to a
-    # ZDR save URL) instead of inline.
+    # Set when `options.strict` is false and the schema contained fields the
+    # model could not extract -- the extraction is partial.
+    schema_violation_error: Optional[str] = None
+    # Non-fatal warnings emitted during extraction.
+    warnings: Optional[List[Dict[str, object]]] = None
+    # Deprecated: replaced by `schema_violation_error`/`output_url` upstream;
+    # retained for backward compatibility and populated only by older gateway
+    # responses that delivered the output out-of-band (e.g. to a ZDR save URL).
     output_ref: Optional[str] = None

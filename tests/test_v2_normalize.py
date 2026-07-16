@@ -99,6 +99,22 @@ def test_normalize_extract_job_iso_and_result() -> None:
     assert job.result.metadata.version == "extract-1"
 
 
+def test_normalize_extract_job_surfaces_output_url() -> None:
+    # When output_save_url was set, a completed job carries `output_url`
+    # (and no inline result); the normalizer surfaces it on Job.output_url.
+    raw = {"job_id": "e-zdr", "status": "completed", "output_url": "https://s3.example/get"}
+    job = normalize_extract_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.output_url == "https://s3.example/get"
+    assert job.result is None
+
+
+def test_normalize_parse_job_surfaces_output_url() -> None:
+    raw = {"job_id": "p-zdr", "status": "completed", "output_url": "https://s3.example/get"}
+    job = normalize_parse_job(raw)
+    assert job.output_url == "https://s3.example/get"
+
+
 def test_normalize_extract_job_error_object() -> None:
     raw = {"job_id": "e2", "status": "failed", "error": {"code": "internal_error", "message": "boom"}}
     job = normalize_extract_job(raw)

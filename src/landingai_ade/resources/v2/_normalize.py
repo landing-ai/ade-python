@@ -26,6 +26,12 @@ def _progress(value: object) -> Optional[float]:
     return None
 
 
+def _str_or_none(value: object) -> Optional[str]:
+    if value is None:
+        return None
+    return str(value)
+
+
 def _status(raw: Mapping[str, Any]) -> JobStatus:
     value = raw.get("status")
     if value is None:
@@ -67,6 +73,7 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
         completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
+        output_url=_str_or_none(raw.get("output_url")),
         error=error,
         raw=dict(raw),
     )
@@ -94,6 +101,7 @@ def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
         completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
+        output_url=_str_or_none(raw.get("output_url")),
         error=error,
         raw=dict(raw),
     )

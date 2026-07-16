@@ -130,6 +130,45 @@ def test_extract_job_create_sends_service_tier(monkeypatch: pytest.MonkeyPatch) 
     assert "priority" not in captured["body"]
 
 
+def test_extract_job_create_sends_output_save_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The async job create body carries `output_save_url` when supplied, and
+    # omits it (rather than sending null) when left at the default.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_post(path: str, *, cast_to: Any, body: Any = None, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["body"] = body
+        return {"job_id": "e1", "status": "pending"}
+
+    monkeypatch.setattr(client.v2.extract_jobs, "_post", fake_post)
+
+    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", output_save_url="https://s3.example/put")
+    assert captured["body"]["output_save_url"] == "https://s3.example/put"
+
+    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", output_save_url=None)
+    assert "output_save_url" not in captured["body"]
+
+
+@respx.mock
+def test_extract_job_get_surfaces_output_url() -> None:
+    # When `output_save_url` was set, a completed job reports `output_url`
+    # instead of an inline `result`; it is surfaced on the normalized Job.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e4").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "e4",
+                "status": "completed",
+                "output_url": "https://s3.example/get",
+            },
+        )
+    )
+    job = client.v2.extract_jobs.get("e4")
+    assert job.status is JobStatus.COMPLETED
+    assert job.output_url == "https://s3.example/get"
+
+
 @respx.mock
 def test_extract_sync_parses_billing_metadata() -> None:
     # The V2 spec adds a `billing` object to the response metadata.

@@ -34,8 +34,11 @@ class Job(BaseModel):
     progress: Optional[float] = None
     # Populated on completion: V2ParseResponse for parse jobs, V2ExtractResult for extract jobs.
     result: Optional[object] = None
+    # URL the result was delivered to, present once the job has completed and an
+    # `output_save_url` was supplied on submit (the inline `result` is omitted then).
+    output_url: Optional[str] = None
     error: Optional[JobError] = None
-    # Full original envelope for fields not surfaced above (org_id, output_url, version, ...).
+    # Full original envelope for fields not surfaced above (org_id, version, ...).
     raw: Dict[str, object] = Field(default_factory=dict)
 
     @property

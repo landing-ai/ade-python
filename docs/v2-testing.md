@@ -54,10 +54,22 @@ responses omit it in favor of the inline `grounding` above.
 
 `POST /v2/extract` (and the completed `extract_jobs` result) returns a
 `V2ExtractResult` with `extraction`, `extraction_metadata`, `markdown`,
-`output_ref` (set when the output was delivered out-of-band), and `metadata`
-(`V2ExtractMetadata`): `job_id`, `model_version`, `duration_ms`, `doc_id`,
-`credit_usage`, `range_units`, `openapi_spec`, and `billing` (`V2ExtractBilling`
-with `input_markdown_chars` / `output_extraction_chars`).
+`schema_violation_error` (set when a non-strict extract skipped fields the model
+could not extract — the extraction is partial), `warnings` (non-fatal warnings
+emitted during extraction), the deprecated `output_ref` (older out-of-band
+delivery), and `metadata` (`V2ExtractMetadata`): `job_id`, `model_version`,
+`duration_ms`, `doc_id`, `credit_usage`, `input_markdown_chars` /
+`output_extraction_chars` (the credit-basis char counters, now reported at the
+metadata top level; still mirrored on `billing` for older gateway responses),
+`range_units`, `openapi_spec`, and `billing` (`V2ExtractBilling`).
+
+## Async result delivery (`output_save_url`)
+
+`extract_jobs.create` (like `parse_jobs.create`) accepts an optional
+`output_save_url` — a public http(s) URL (e.g. a presigned S3 PUT) the finished
+result is delivered to. When set, the completed job reports `output_url` instead
+of an inline `result`; the normalizers surface it on `Job.output_url`. The sync
+`extract` / `parse` routes do not accept it (async jobs only).
 
 ## Async job envelopes
 

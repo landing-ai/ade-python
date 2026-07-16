@@ -50,6 +50,18 @@ def test_extract_sync(staging_client: LandingAIADE) -> None:
     assert res.metadata.model_version
 
 
+def test_extract_sync_char_counters(staging_client: LandingAIADE) -> None:
+    # The V2 spec moved the credit-basis char counters up to the metadata top
+    # level (`input_markdown_chars` / `output_extraction_chars`). The SDK also
+    # exposes `schema_violation_error` / `warnings` on the result.
+    res = staging_client.v2.extract(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN)
+    assert res.metadata.input_markdown_chars is None or res.metadata.input_markdown_chars > 0
+    assert res.metadata.output_extraction_chars is None or res.metadata.output_extraction_chars > 0
+    # Non-strict extraction of a supported schema should not violate; the field
+    # is present regardless (None when there was no violation).
+    assert res.schema_violation_error is None or isinstance(res.schema_violation_error, str)
+
+
 def test_extract_jobs(staging_client: LandingAIADE) -> None:
     job = staging_client.v2.extract_jobs.create(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN)
     done = staging_client.v2.extract_jobs.wait(job.job_id, timeout=300)

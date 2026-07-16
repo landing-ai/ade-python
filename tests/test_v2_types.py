@@ -139,6 +139,29 @@ def test_extract_result_new_metadata_and_billing_fields() -> None:
     assert r.output_ref == "ref-123"
 
 
+def test_extract_result_schema_violation_warnings_and_metadata_char_counts() -> None:
+    # The V2 spec moved the char counters up to metadata top level and replaced
+    # the result's `output_ref` with `schema_violation_error` + `warnings`.
+    r = V2ExtractResult(
+        extraction={},
+        extraction_metadata={},
+        markdown="d",
+        metadata={  # type: ignore[arg-type]
+            "job_id": "e1",
+            "model_version": "dpt-3-20260710",
+            "duration_ms": 5,
+            "input_markdown_chars": 100,
+            "output_extraction_chars": 20,
+        },
+        schema_violation_error="field `foo` is not extractable",
+        warnings=[{"code": "low_confidence", "field": "revenue"}],
+    )
+    assert r.metadata.input_markdown_chars == 100
+    assert r.metadata.output_extraction_chars == 20
+    assert r.schema_violation_error == "field `foo` is not extractable"
+    assert r.warnings is not None and r.warnings[0]["code"] == "low_confidence"
+
+
 def test_parse_response_inline_grounding_and_metadata() -> None:
     # Newer parse responses carry per-node spatial `grounding` ({page, range, box})
     # inline on `structure`, plus `atomic_grounding` on leaves and the renamed
