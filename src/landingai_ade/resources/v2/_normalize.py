@@ -45,8 +45,8 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
     payload = raw.get("result")
     if payload is None:
         payload = raw.get("data")
-    # Build leniently (like the sync-response path) so fields the current gateway
-    # dropped -- e.g. a page's legacy `page`/`span` -- don't fail construction.
+    # Build leniently (like the sync-response path) so unexpected upstream drift
+    # doesn't fail construction.
     result = V2ParseResponse.construct(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
 
     error = None
@@ -75,8 +75,8 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
 def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
     status = _status(raw)
     payload = raw.get("result")
-    # Build leniently so fields the current gateway renamed -- e.g. metadata's
-    # legacy required `version` (now `model_version`) -- don't fail construction.
+    # Build leniently (like the sync-response path) so unexpected upstream drift
+    # doesn't fail construction.
     result = V2ExtractResult.construct(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
 
     error = None

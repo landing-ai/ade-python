@@ -92,8 +92,8 @@ class V2ParseElement(BaseModel):
     type: str
     id: str
     # Deprecated: replaced by `grounding.range` upstream; populated only by older
-    # gateway responses (absent -> `None` on newer responses).
-    span: List[int]
+    # gateway responses.
+    span: Optional[List[int]] = None
     # The element's spatial data (`{page, range, box}`), inline on the node.
     grounding: Optional[V2ParseNodeGrounding] = None
     # Fine-grained grounding segments (visual lines today). Present on leaf
@@ -114,10 +114,10 @@ class V2ParseElement(BaseModel):
 class V2ParsePage(BaseModel):
     type: str = "page"
     # Deprecated: page number is now carried on `grounding.page` (1-indexed);
-    # populated only by older responses (absent -> `None` on newer responses).
-    page: int
+    # populated only by older responses.
+    page: Optional[int] = None
     # Deprecated: replaced by `grounding.range` upstream.
-    span: List[int]
+    span: Optional[List[int]] = None
     # Deprecated: pixel dimensions/DPI were dropped in favor of normalized
     # coordinates; retained for backward compatibility.
     width: Optional[int] = None

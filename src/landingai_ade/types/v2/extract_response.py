@@ -24,7 +24,7 @@ class V2ExtractMetadata(BaseModel):
     job_id: str
     # Deprecated: renamed to `model_version` upstream; retained for backward
     # compatibility and populated only by older gateway responses.
-    version: str
+    version: Optional[str] = None
     # Resolved model version (the current name for `version`).
     model_version: Optional[str] = None
     duration_ms: int
