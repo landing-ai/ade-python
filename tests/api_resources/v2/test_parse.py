@@ -189,6 +189,44 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
     assert b"None" not in sent
 
 
+@respx.mock
+def test_parse_sync_folds_password_into_options() -> None:
+    # The current gateway reads the document password from `options.password`;
+    # the kwarg must land there (and stay as a top-level field for older
+    # gateways).
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    client.v2.parse(document=b"pdf", password="hunter2")
+    sent = route.calls.last.request.content
+    assert b'{"password": "hunter2"}' in sent
+    assert b'name="password"' in sent
+
+
+@respx.mock
+def test_parse_sync_merges_password_into_existing_options() -> None:
+    # `password` merges into a caller-supplied `options` (dict or JSON string)
+    # without clobbering its other keys; an explicit `options["password"]` wins
+    # over the kwarg.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+
+    client.v2.parse(document=b"pdf", options={"pages": [1]}, password="pw")
+    sent = route.calls.last.request.content
+    assert b'"pages": [1]' in sent
+    assert b'"password": "pw"' in sent
+
+    # A pre-serialized JSON string for `options` is tolerated at runtime (though
+    # the signature advertises a Mapping); the password must merge into it too.
+    client.v2.parse(document=b"pdf", options='{"pages": [2]}', password="pw")  # type: ignore[arg-type]
+    sent = route.calls.last.request.content
+    assert b'"pages": [2]' in sent
+    assert b'"password": "pw"' in sent
+
+    client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="pw")
+    sent = route.calls.last.request.content
+    assert b'"password": "explicit"' in sent
+
+
 def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     # Regression test at the body-dict level (before multipart encoding, which
     # happens to drop bare `None` values and would otherwise mask this bug):
@@ -467,6 +505,20 @@ def test_parse_job_create_normalizes_envelope() -> None:
     job = client.v2.parse_jobs.create(document=b"pdf", service_tier="priority")
     assert isinstance(job, Job)
     assert job.job_id == "p1" and job.status is JobStatus.PENDING
+
+
+@respx.mock
+def test_parse_job_create_folds_password_into_options() -> None:
+    # The jobs route shares `_build_parse_body`, so `password` must reach
+    # `options.password` there too.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending"})
+    )
+    client.v2.parse_jobs.create(document=b"pdf", password="hunter2")
+    sent = route.calls.last.request.content
+    assert b'{"password": "hunter2"}' in sent
+    assert b'name="password"' in sent
 
 
 @respx.mock
