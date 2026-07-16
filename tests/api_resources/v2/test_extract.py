@@ -89,7 +89,9 @@ def test_extract_sync_504() -> None:
 def test_extract_job_create_and_get() -> None:
     client = LandingAIADE(apikey=APIKEY)
     respx.post("https://api.ade.landing.ai/v2/extract/jobs").mock(
-        return_value=httpx.Response(202, json={"job_id": "e1", "status": "pending", "created_at": "2026-01-01T00:00:00Z"})
+        return_value=httpx.Response(
+            202, json={"job_id": "e1", "status": "pending", "created_at": "2026-01-01T00:00:00Z"}
+        )
     )
     job = client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", service_tier="priority")
     assert job.job_id == "e1" and job.status is JobStatus.PENDING
@@ -97,8 +99,13 @@ def test_extract_job_create_and_get() -> None:
     respx.get("https://api.ade.landing.ai/v2/extract/jobs/e1").mock(
         return_value=httpx.Response(
             200,
-            json={"job_id": "e1", "status": "completed", "created_at": "2026-01-01T00:00:00Z",
-                  "completed_at": "2026-01-01T00:00:09Z", "result": EXTRACT_BODY},
+            json={
+                "job_id": "e1",
+                "status": "completed",
+                "created_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:09Z",
+                "result": EXTRACT_BODY,
+            },
         )
     )
     done = client.v2.extract_jobs.get("e1")
@@ -156,11 +163,12 @@ def test_extract_job_wait_raise_on_failure() -> None:
 
     client = LandingAIADE(apikey=APIKEY)
     respx.get("https://api.ade.landing.ai/v2/extract/jobs/e3").mock(
-        return_value=httpx.Response(200, json={"job_id": "e3", "status": "failed", "error": {"code": "x", "message": "no"}})
+        return_value=httpx.Response(
+            200, json={"job_id": "e3", "status": "failed", "error": {"code": "x", "message": "no"}}
+        )
     )
     with pytest.raises(JobFailedError):
-        client.v2.extract_jobs.wait("e3", timeout=5, poll_interval=0.01, raise_on_failure=True,
-                                    _monotonic=lambda: 0.0)
+        client.v2.extract_jobs.wait("e3", timeout=5, poll_interval=0.01, raise_on_failure=True, _monotonic=lambda: 0.0)
 
 
 @respx.mock

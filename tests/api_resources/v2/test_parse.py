@@ -44,8 +44,15 @@ RICH_PARSE_BODY: Dict[str, Any] = {
                         "id": "e2",
                         "span": [20, 80],
                         "children": [
-                            {"type": "table_cell", "id": "e3", "span": [25, 30],
-                             "row": 0, "col": 1, "colspan": 2, "rowspan": 1},
+                            {
+                                "type": "table_cell",
+                                "id": "e3",
+                                "span": [25, 30],
+                                "row": 0,
+                                "col": 1,
+                                "colspan": 2,
+                                "rowspan": 1,
+                            },
                         ],
                     },
                 ],
@@ -60,12 +67,23 @@ RICH_PARSE_BODY: Dict[str, Any] = {
                 "page": 0,
                 "span": [0, 100],
                 "children": [
-                    {"type": "text", "id": "e1", "span": [0, 20], "box": [10, 10, 200, 30],
-                     "parts": [{"span": [0, 20], "box": [10, 10, 200, 30]}]},
-                    {"type": "table", "id": "e2", "span": [20, 80], "box": [10, 40, 400, 300], "parts": [],
-                     "children": [
-                         {"type": "table_cell", "id": "e3", "span": [25, 30], "box": [12, 42, 100, 80], "parts": []},
-                     ]},
+                    {
+                        "type": "text",
+                        "id": "e1",
+                        "span": [0, 20],
+                        "box": [10, 10, 200, 30],
+                        "parts": [{"span": [0, 20], "box": [10, 10, 200, 30]}],
+                    },
+                    {
+                        "type": "table",
+                        "id": "e2",
+                        "span": [20, 80],
+                        "box": [10, 40, 400, 300],
+                        "parts": [],
+                        "children": [
+                            {"type": "table_cell", "id": "e3", "span": [25, 30], "box": [12, 42, 100, 80], "parts": []},
+                        ],
+                    },
                 ],
             }
         ],
@@ -76,9 +94,7 @@ RICH_PARSE_BODY: Dict[str, Any] = {
 @respx.mock
 def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
-        return_value=httpx.Response(200, json=PARSE_BODY)
-    )
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     result = client.v2.parse(document=b"pdf", model="dpt-3-latest", options={"foo": "bar"})
     assert isinstance(result, V2ParseResponse)
     assert result.markdown == "# Hello"
@@ -90,9 +106,7 @@ def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
 @respx.mock
 def test_parse_sync_omits_unset_fields_from_multipart_body() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
-        return_value=httpx.Response(200, json=PARSE_BODY)
-    )
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     client.v2.parse(document=b"pdf")
     # Unset `Omit`/`NotGiven` sentinels must never leak into the multipart
     # body as literal `"<...Omit object...>"` / `"NOT_GIVEN"` form fields.
@@ -111,9 +125,7 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
     # so an explicit `None` for an optional field must be dropped by hand -- it
     # must never leak into the multipart body as a literal "None"/"null" field.
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(
-        return_value=httpx.Response(200, json=PARSE_BODY)
-    )
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     client.v2.parse(document=b"x", document_url=None, model=None, options=None, password=None)
     sent = route.calls.last.request.content
     assert b"document_url" not in sent
@@ -219,9 +231,7 @@ def test_parse_sync_typed_structure_and_grounding() -> None:
     from landingai_ade.types.v2 import V2ParseGrounding, V2ParseStructure
 
     client = LandingAIADE(apikey=APIKEY)
-    respx.post("https://api.ade.landing.ai/v2/parse").mock(
-        return_value=httpx.Response(200, json=RICH_PARSE_BODY)
-    )
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=RICH_PARSE_BODY))
     result = client.v2.parse(document=b"pdf")
 
     assert isinstance(result.structure, V2ParseStructure)
@@ -252,9 +262,15 @@ def test_parse_sync_tolerates_unknown_element_type_and_extra_keys() -> None:
         "structure": {
             "type": "document",
             "children": [
-                {"type": "page", "page": 0, "span": [0, 5], "future_field": 7, "children": [
-                    {"type": "some_future_kind", "id": "e9", "span": [0, 5]},
-                ]},
+                {
+                    "type": "page",
+                    "page": 0,
+                    "span": [0, 5],
+                    "future_field": 7,
+                    "children": [
+                        {"type": "some_future_kind", "id": "e9", "span": [0, 5]},
+                    ],
+                },
             ],
         },
         "grounding": {"type": "document", "children": []},

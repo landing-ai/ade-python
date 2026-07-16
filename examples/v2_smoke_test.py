@@ -106,6 +106,7 @@ def _selected(only: Optional[str]) -> List[str]:
 
 # --------------------------------------------------------------------------- sync
 
+
 def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
     kwargs: dict[str, Any] = {}
     environment = _resolve_environment(args)
@@ -130,6 +131,7 @@ def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
             print()
 
     if "files" in checks:
+
         def _files() -> Any:
             nonlocal file_ref
             file_ref = client.v2.files.upload(file=("doc.md", SAMPLE_MARKDOWN.encode(), "text/markdown"))
@@ -138,6 +140,7 @@ def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
         record("files.upload", _files)
 
     if "extract" in checks:
+
         def _extract() -> Any:
             res = client.v2.extract(
                 schema=RevenueSchema,
@@ -149,6 +152,7 @@ def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
         record("v2.extract (sync)", _extract)
 
     if "extract_jobs" in checks:
+
         def _extract_jobs() -> Any:
             job = client.v2.extract_jobs.create(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN)
             done = client.v2.extract_jobs.wait(job.job_id, timeout=args.timeout)
@@ -162,13 +166,17 @@ def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
             print("── v2.parse (sync) ".ljust(60, "─") + "\n   SKIP  (no --document / --document-url)\n")
             results["v2.parse (sync)"] = "SKIP"
         else:
-            record("v2.parse (sync)", lambda: _short(client.v2.parse(model=args.parse_model or None, **doc_kwargs).markdown))  # type: ignore[arg-type]
+            record(
+                "v2.parse (sync)",
+                lambda: _short(client.v2.parse(model=args.parse_model or None, **doc_kwargs).markdown),
+            )  # type: ignore[arg-type]
 
     if "parse_jobs" in checks:
         if doc_kwargs is None:
             print("── v2.parse_jobs ".ljust(60, "─") + "\n   SKIP  (no --document / --document-url)\n")
             results["v2.parse_jobs"] = "SKIP"
         else:
+
             def _parse_jobs() -> Any:
                 job = client.v2.parse_jobs.create(**doc_kwargs)
                 done = client.v2.parse_jobs.wait(job.job_id, timeout=args.timeout)
@@ -188,6 +196,7 @@ def _document_kwargs(args: argparse.Namespace) -> Optional[dict[str, Any]]:
 
 
 # -------------------------------------------------------------------------- async
+
 
 def run_async(args: argparse.Namespace, checks: List[str]) -> int:
     async def _main() -> int:
@@ -237,6 +246,7 @@ def run_async(args: argparse.Namespace, checks: List[str]) -> int:
 
 
 # ------------------------------------------------------------------------- shared
+
 
 def _summarize(results: dict[str, str]) -> int:
     print("═" * 60)
