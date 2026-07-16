@@ -26,6 +26,26 @@ def test_sync_split_class_sent_as_json_string() -> None:
     assert json.loads(body["split_class"]) == SPLIT_CLASS
 
 
+def test_sync_split_class_json_string_passed_through() -> None:
+    # An already JSON-encoded split_class (documented in the README) must not be re-serialized.
+    encoded = json.dumps(SPLIT_CLASS)
+    with LandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+        with patch.object(client, "post", return_value=MagicMock()) as post:
+            client.split(split_class=encoded, markdown="some markdown")
+
+    assert post.call_args.kwargs["body"]["split_class"] == encoded
+
+
+@pytest.mark.asyncio
+async def test_async_split_class_json_string_passed_through() -> None:
+    encoded = json.dumps(SPLIT_CLASS)
+    async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
+        with patch.object(client, "post", new_callable=AsyncMock, return_value=MagicMock()) as post:
+            await client.split(split_class=encoded, markdown="some markdown")
+
+    assert post.call_args.kwargs["body"]["split_class"] == encoded
+
+
 @pytest.mark.asyncio
 async def test_async_split_class_sent_as_json_string() -> None:
     async with AsyncLandingAIADE(apikey="test-key", base_url="http://localhost") as client:
