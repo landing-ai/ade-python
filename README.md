@@ -51,9 +51,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from landingai_ade import LandingAIADE
 
+
 class Invoice(BaseModel):
     invoice_number: str = Field(description="The invoice number")
     total: str = Field(description="Invoice grand total")
+
 
 client = LandingAIADE()  # reads VISION_AGENT_API_KEY
 
@@ -83,15 +85,15 @@ client = LandingAIADE()
 # Parse a local file
 parsed = client.v2.parse(
     document=Path("path/to/file.pdf"),
-    model="dpt-3-pro-latest",       # optional; defaults to the latest DPT-3 Pro model
-    save_to="./output",             # optional; saves as {input_file}_parse_output.json
+    model="dpt-3-pro-latest",  # optional; defaults to the latest DPT-3 Pro model
+    save_to="./output",  # optional; saves as {input_file}_parse_output.json
 )
 
 # Or parse a file at a URL
 parsed = client.v2.parse(document_url="https://example.com/file.pdf")
 
-print(parsed.markdown)              # full document as Markdown
-print(parsed.metadata.page_count)   # pages processed
+print(parsed.markdown)  # full document as Markdown
+print(parsed.metadata.page_count)  # pages processed
 ```
 
 The response is a `V2ParseResponse`:
@@ -114,21 +116,23 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from landingai_ade import LandingAIADE
 
+
 class Person(BaseModel):
     name: str = Field(description="Person's full name")
     age: int = Field(description="Person's age")
+
 
 client = LandingAIADE()
 parsed = client.v2.parse(document=Path("path/to/file.pdf"))
 
 result = client.v2.extract(
-    schema=Person,                       # Pydantic model, dict, or JSON string
-    markdown=parsed.markdown,            # or markdown_url="https://example.com/doc.md"
-    save_to="./output",                  # optional
+    schema=Person,  # Pydantic model, dict, or JSON string
+    markdown=parsed.markdown,  # or markdown_url="https://example.com/doc.md"
+    save_to="./output",  # optional
 )
 
-print(result.extraction)                 # {"name": "...", "age": ...}
-print(result.extraction_metadata)        # per-field source spans in the Markdown
+print(result.extraction)  # {"name": "...", "age": ...}
+print(result.extraction_metadata)  # per-field source spans in the Markdown
 ```
 
 The response is a `V2ExtractResult`:
@@ -155,7 +159,7 @@ client = LandingAIADE()
 
 job = client.v2.parse_jobs.create(
     document=Path("path/to/large_file.pdf"),
-    service_tier="standard",   # "standard" (default, lower cost) or "priority" (faster)
+    service_tier="standard",  # "standard" (default, lower cost) or "priority" (faster)
 )
 print(job.job_id, job.status)
 
@@ -194,10 +198,12 @@ import asyncio
 from pathlib import Path
 from landingai_ade import AsyncLandingAIADE
 
+
 async def main() -> None:
     async with AsyncLandingAIADE() as client:
         parsed = await client.v2.parse(document=Path("path/to/file.pdf"))
         print(parsed.markdown)
+
 
 asyncio.run(main())
 ```
@@ -212,9 +218,11 @@ pip install landingai-ade[aiohttp]
 import asyncio
 from landingai_ade import AsyncLandingAIADE, DefaultAioHttpClient
 
+
 async def main() -> None:
     async with AsyncLandingAIADE(http_client=DefaultAioHttpClient()) as client:
         ...  # same usage as the example above
+
 
 asyncio.run(main())
 ```
@@ -255,10 +263,12 @@ client = LandingAIADE()
 # Split a combined file into sub-documents
 parsed = client.parse(document=Path("statements.pdf"), model="dpt-2-latest")
 split = client.split(
-    split_class=json.dumps([
-        {"name": "Bank Statement", "description": "Summarizes account activity over a period."},
-        {"name": "Pay Stub", "description": "Details an employee's earnings for a pay period."},
-    ]),
+    split_class=json.dumps(
+        [
+            {"name": "Bank Statement", "description": "Summarizes account activity over a period."},
+            {"name": "Pay Stub", "description": "Details an employee's earnings for a pay period."},
+        ]
+    ),
     markdown=parsed.markdown,
     model="split-latest",
 )
@@ -312,8 +322,8 @@ except landingai_ade.APIStatusError as e:
 Connection errors, 408, 409, 429, and 5xx responses are retried twice by default with exponential backoff. Configure with `max_retries`:
 
 ```python
-client = LandingAIADE(max_retries=0)                 # default is 2
-client.with_options(max_retries=5).v2.parse(...)     # per-request
+client = LandingAIADE(max_retries=0)  # default is 2
+client.with_options(max_retries=5).v2.parse(...)  # per-request
 ```
 
 ### Timeouts
@@ -321,8 +331,8 @@ client.with_options(max_retries=5).v2.parse(...)     # per-request
 Requests time out after 8 minutes by default. Configure with `timeout` (a float or an [`httpx.Timeout`](https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration)):
 
 ```python
-client = LandingAIADE(timeout=20.0)                  # seconds
-client.with_options(timeout=5.0).v2.parse(...)       # per-request
+client = LandingAIADE(timeout=20.0)  # seconds
+client.with_options(timeout=5.0).v2.parse(...)  # per-request
 ```
 
 On a client-side transport timeout, an `APITimeoutError` is raised, and the request is retried twice by default. The v2 synchronous endpoints also have a server-side wait window: exceeding it returns HTTP 504 and raises `V2SyncTimeoutError` instead; switch to [jobs](#process-large-documents-asynchronously-jobs) for those documents.
@@ -408,6 +418,7 @@ To check the version in use at runtime:
 
 ```python
 import landingai_ade
+
 print(landingai_ade.__version__)
 ```
 
