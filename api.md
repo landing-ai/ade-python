@@ -78,21 +78,24 @@ from landingai_ade.types.v2 import (
     V2ExtractResult,
     V2FileUploadResponse,
     V2ParseBilling,
+    V2ParseBox,
     V2ParseElement,
     V2ParseGrounding,
     V2ParseGroundingElement,
     V2ParseGroundingEntry,
     V2ParseGroundingPage,
     V2ParseMetadata,
+    V2ParseNodeGrounding,
     V2ParsePage,
+    V2ParseRange,
     V2ParseResponse,
     V2ParseStructure,
 )
 ```
 
 - <code><a href="./src/landingai_ade/types/v2/job.py">Job</a></code> -- unified job shape: `job_id`, `status` (<code><a href="./src/landingai_ade/types/v2/job.py">JobStatus</a></code>: `pending` / `processing` / `completed` / `failed` / `cancelled`), `created_at`, `completed_at`, `progress`, `result` (a `V2ParseResponse` for parse jobs, a `V2ExtractResult` for extract jobs, or `None` until completion), `error` (<code><a href="./src/landingai_ade/types/v2/job.py">JobError</a></code>), `raw` (the full original envelope as a `dict`), and the `.is_terminal` property.
-- <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseResponse</a></code> -- `markdown`, `structure`, `grounding`, `metadata` (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseMetadata</a></code>, which nests <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseBilling</a></code>). `structure` is a typed <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseStructure</a></code> tree (`document` → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParsePage</a></code> → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseElement</a></code>); `grounding` is the parallel <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseGrounding</a></code> tree (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseGroundingPage</a></code> → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseGroundingElement</a></code> → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseGroundingEntry</a></code>) carrying boxes and parts. Element `type`/page `status` are permissive strings and unknown keys are retained.
-- <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code> -- `extraction`, `extraction_metadata`, `markdown`, `metadata` (<code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractMetadata</a></code>, which nests <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractBilling</a></code>).
+- <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseResponse</a></code> -- `markdown`, `structure`, `grounding`, `metadata` (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseMetadata</a></code>, which nests <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseBilling</a></code> and carries `output_markdown_chars`, `range_units`, and `openapi_spec`). `structure` is a typed <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseStructure</a></code> tree (`document` → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParsePage</a></code> → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseElement</a></code>); each node below the root carries its spatial data inline in a <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseNodeGrounding</a></code> (`page`, <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseRange</a></code>, <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseBox</a></code>, normalized page coordinates), and leaf elements additionally carry an `atomic_grounding` list. With `options.inline_markdown`, each node also carries its `markdown` slice. The legacy top-level `grounding` tree (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseGrounding</a></code> → `V2ParseGroundingPage` → `V2ParseGroundingElement` → `V2ParseGroundingEntry`) is retained for older gateway responses. Element `type`/page `status` are permissive strings and unknown keys are retained.
+- <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code> -- `extraction`, `extraction_metadata`, `markdown`, `output_ref`, `metadata` (<code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractMetadata</a></code>, which carries `model_version`, `range_units`, `openapi_spec`, and nests <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractBilling</a></code> with `input_markdown_chars` / `output_extraction_chars`).
 - <code><a href="./src/landingai_ade/types/v2/file_upload_response.py">V2FileUploadResponse</a></code> -- `file_ref`.
 
 Methods:

@@ -49,6 +49,35 @@ def test_normalize_parse_job_failure_reason() -> None:
     assert job.result is None
 
 
+def test_normalize_parse_job_result_envelope_and_iso_timestamps() -> None:
+    # The current parse-job envelope carries the response under `result` (not the
+    # legacy `data`) and uses ISO-8601 `created_at`/`completed_at` timestamps.
+    raw = {
+        "job_id": "parse-abc",
+        "status": "completed",
+        "created_at": "2026-01-02T03:04:05Z",
+        "completed_at": "2026-01-02T03:04:09Z",
+        "progress": 1.0,
+        "result": {"markdown": "# hi", "metadata": {"job_id": "parse-abc", "page_count": 1}},
+    }
+    job = normalize_parse_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.created_at is not None and job.created_at.year == 2026
+    assert job.completed_at is not None and job.completed_at.year == 2026
+    assert isinstance(job.result, V2ParseResponse)
+    assert job.result.markdown == "# hi"
+    assert job.error is None
+
+
+def test_normalize_parse_job_error_object() -> None:
+    # The current parse-job failure shape is a structured `error` {code, message}.
+    raw = {"job_id": "parse-x", "status": "failed", "error": {"code": "bad_pdf", "message": "boom"}}
+    job = normalize_parse_job(raw)
+    assert job.status is JobStatus.FAILED
+    assert job.error is not None and job.error.code == "bad_pdf" and job.error.message == "boom"
+    assert job.result is None
+
+
 def test_normalize_extract_job_iso_and_result() -> None:
     raw: Dict[str, Any] = {
         "job_id": "e1",

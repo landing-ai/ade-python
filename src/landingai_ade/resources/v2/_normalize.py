@@ -40,13 +40,22 @@ def _status(raw: Mapping[str, Any]) -> JobStatus:
 
 def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
     status = _status(raw)
-    data = raw.get("data")
-    result = V2ParseResponse(**cast(Dict[str, Any], data)) if isinstance(data, Mapping) else None
+    # Newer envelopes carry the parse response under `result`; older ones under
+    # `data`. Accept either so both the current and legacy shapes normalize.
+    payload = raw.get("result")
+    if payload is None:
+        payload = raw.get("data")
+    # Build leniently (like the sync-response path) so unexpected upstream drift
+    # doesn't fail construction.
+    result = V2ParseResponse.construct(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
 
     error = None
-    reason = raw.get("failure_reason")
-    if reason:
-        error = JobError(message=str(reason))
+    err = raw.get("error")
+    if isinstance(err, Mapping):
+        err = cast(Dict[str, Any], err)
+        error = JobError(code=err.get("code"), message=err.get("message"))
+    elif raw.get("failure_reason"):  # older parse envelope uses failure_reason
+        error = JobError(message=str(raw["failure_reason"]))
 
     created = raw.get("created_at")
     created = created if created is not None else raw.get("received_at")
@@ -55,7 +64,7 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
         job_id=str(raw["job_id"]),
         status=status,
         created_at=_ts(created),
-        completed_at=None,  # parse envelope has no completed_at
+        completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
         error=error,
@@ -66,7 +75,9 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
 def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
     status = _status(raw)
     payload = raw.get("result")
-    result = V2ExtractResult(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
+    # Build leniently (like the sync-response path) so unexpected upstream drift
+    # doesn't fail construction.
+    result = V2ExtractResult.construct(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
 
     error = None
     err = raw.get("error")

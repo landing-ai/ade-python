@@ -31,6 +31,16 @@ def _build_parse_body(
     options: object,
     password: object,
 ) -> dict[str, Any]:
+    # The current gateway reads the document password from `options.password`,
+    # so fold the `password` kwarg into `options` (an explicit
+    # `options["password"]` wins). The top-level `password` form field is kept
+    # too, for older gateways that read it from there.
+    if is_given(password) and password is not None:
+        opts: dict[str, Any] = {}
+        if is_given(options) and options is not None:
+            opts = dict(json.loads(options)) if isinstance(options, str) else dict(cast(Mapping[str, Any], options))
+        opts.setdefault("password", password)
+        options = opts
     # `options` is a JSON-encoded string form field per the contract.
     if is_given(options) and options is not None:
         options = json.dumps(options) if not isinstance(options, str) else options
@@ -86,7 +96,9 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
               field.
 
-          password: Password for encrypted document files.
+          password: Password for encrypted document files. Sent to the server as
+              `options.password` (an explicit `options["password"]` takes precedence) and,
+              for older gateways, as a top-level form field.
 
           save_to: Optional output path. If a directory, auto-generates the filename
               (e.g. {input_file}_parse_output.json, or parse_output.json when no
@@ -215,7 +227,9 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
               field.
 
-          password: Password for encrypted document files.
+          password: Password for encrypted document files. Sent to the server as
+              `options.password` (an explicit `options["password"]` takes precedence) and,
+              for older gateways, as a top-level form field.
 
           output_save_url: If zero data retention (ZDR) is enabled, a URL the parsed output should be
               saved to instead of being returned in the job result.
@@ -300,7 +314,13 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         )
         env = cast(Mapping[str, Any], raw)
         jobs = [normalize_parse_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
-        return JobList.build(jobs, has_more=env.get("has_more"), org_id=env.get("org_id"))
+        return JobList.build(
+            jobs,
+            has_more=env.get("has_more"),
+            org_id=env.get("org_id"),
+            page=env.get("page"),
+            page_size=env.get("page_size"),
+        )
 
     def wait(
         self,
@@ -419,7 +439,13 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         )
         env = cast(Mapping[str, Any], raw)
         jobs = [normalize_parse_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
-        return JobList.build(jobs, has_more=env.get("has_more"), org_id=env.get("org_id"))
+        return JobList.build(
+            jobs,
+            has_more=env.get("has_more"),
+            org_id=env.get("org_id"),
+            page=env.get("page"),
+            page_size=env.get("page_size"),
+        )
 
     async def wait(
         self,

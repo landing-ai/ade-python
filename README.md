@@ -101,8 +101,8 @@ The response is a `V2ParseResponse`:
 | Field | Description |
 | --- | --- |
 | `markdown` | The full document as one Markdown string, in reading order. |
-| `structure` | A typed tree (`document` → pages → elements) with element types and character spans into `markdown`. |
-| `grounding` | A tree mirroring `structure` that adds pixel-coordinate bounding boxes for each element. |
+| `structure` | A typed tree (`document` → pages → elements); each node carries its spatial `grounding` (`page`, character `range` into `markdown`, and a normalized-coordinate bounding `box`). |
+| `grounding` | Legacy tree mirroring `structure`, present only on older gateway responses — newer responses carry grounding inline on `structure` nodes. |
 | `metadata` | Processing details: `page_count`, `failed_pages`, `duration_ms`, and `billing` (credits used). |
 
 If some pages cannot be parsed, the request still succeeds (HTTP 206) and `metadata.failed_pages` lists the pages that failed. If a synchronous parse times out, the client raises `V2SyncTimeoutError`; use [jobs](#process-large-documents-asynchronously-jobs) instead.
@@ -132,7 +132,7 @@ result = client.v2.extract(
 )
 
 print(result.extraction)  # {"name": "...", "age": ...}
-print(result.extraction_metadata)  # per-field source spans in the Markdown
+print(result.extraction_metadata)  # per-field source ranges in the Markdown
 ```
 
 The response is a `V2ExtractResult`:
@@ -140,7 +140,7 @@ The response is a `V2ExtractResult`:
 | Field | Description |
 | --- | --- |
 | `extraction` | The extracted values, matching your schema. |
-| `extraction_metadata` | Mirrors `extraction`; each field carries the character spans in the Markdown that the value came from. |
+| `extraction_metadata` | Mirrors `extraction`; each field carries the character `ranges` in the Markdown that the value came from. |
 | `markdown` | The Markdown the extraction ran against, echoed back. |
 | `metadata` | Processing details, including credits used. |
 

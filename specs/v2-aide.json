@@ -3,9 +3,9 @@
     "schemas": {
       "BaseElementOptions": {
         "properties": {
-          "caption": {
+          "markdown": {
             "default": true,
-            "title": "Caption",
+            "title": "Markdown",
             "type": "boolean"
           }
         },
@@ -56,6 +56,39 @@
         "title": "Body_stage_file_v1_files_post",
         "type": "object"
       },
+      "Box": {
+        "description": "Axis-aligned bounding box in normalized page coordinates.\n\nEvery value is a fraction of the page's width (`xmin`/`xmax`) or height\n(`ymin`/`ymax`) in `[0, 1]`, with at most 8 decimal places. To convert to\npixels, multiply by the dimensions of whatever raster of the page you are\ndrawing on. Coordinates are clamped and rounded at construction so the\nin-process value always equals the serialized one.",
+        "properties": {
+          "xmax": {
+            "description": "Right edge as a fraction of the page width, in `[0, 1]`.",
+            "title": "Xmax",
+            "type": "number"
+          },
+          "xmin": {
+            "description": "Left edge as a fraction of the page width, in `[0, 1]`.",
+            "title": "Xmin",
+            "type": "number"
+          },
+          "ymax": {
+            "description": "Bottom edge as a fraction of the page height, in `[0, 1]`.",
+            "title": "Ymax",
+            "type": "number"
+          },
+          "ymin": {
+            "description": "Top edge as a fraction of the page height, in `[0, 1]`.",
+            "title": "Ymin",
+            "type": "number"
+          }
+        },
+        "required": [
+          "xmin",
+          "ymin",
+          "xmax",
+          "ymax"
+        ],
+        "title": "Box",
+        "type": "object"
+      },
       "Document": {
         "properties": {
           "children": {
@@ -65,6 +98,19 @@
             },
             "title": "Children",
             "type": "array"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The full document markdown — identical to the top-level `markdown` field, included so the structure tree is self-contained. Present only when `options.inline_markdown` is `true`.",
+            "title": "Markdown"
           },
           "type": {
             "const": "document",
@@ -80,6 +126,22 @@
       "Element": {
         "description": "Hierarchical document element. All non-page elements share this shape.\n\nKeys off `type`; optional fields are excluded from the serialized JSON\nvia ``exclude_none=True`` when not set.",
         "properties": {
+          "atomic_grounding": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Grounding"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Fine-grained grounding segments at the model's current granularity (visual lines today; finer in future versions, same schema). Present only on leaf elements — every type except `table`. `[]` only when segments are structurally impossible: `table_cell` (a cell has no finer granularity than itself) and elements whose markdown is suppressed via `blocks.<type>.markdown=false`. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
+            "title": "Atomic Grounding"
+          },
           "children": {
             "anyOf": [
               {
@@ -122,10 +184,27 @@
             "description": "Number of columns this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.",
             "title": "Colspan"
           },
+          "grounding": {
+            "$ref": "#/components/schemas/Grounding",
+            "description": "The element's spatial data: the page it appears on, its `[start, end)` range in the top-level `markdown` string, and its bounding box in normalized page coordinates."
+          },
           "id": {
-            "description": "A unique identifier for this element within the document. Use it to look up the element's entry in the top-level `grounding` map; treat the value as opaque.",
+            "description": "Semantic element id, unique within the document. Format `<type>-<index>`, where `<index>` is a per-type 0-based counter assigned in reading order — `text-0` is the first text element in the document, `figure-0` the first figure, `table_cell-0` the first cell of the first table. Stable within a response but not across re-parses of the same document.",
             "title": "Id",
             "type": "string"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The element's slice of the top-level `markdown` string (`markdown[grounding.range.start:grounding.range.end]`). `\"\"` for zero-length ranges (e.g. blocks suppressed via `blocks.<type>.markdown=false`). Present only when `options.inline_markdown` is `true`.",
+            "title": "Markdown"
           },
           "row": {
             "anyOf": [
@@ -153,21 +232,6 @@
             "description": "Number of rows this cell spans. `1` for unmerged cells. Present only on `table_cell` elements.",
             "title": "Rowspan"
           },
-          "span": {
-            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this element.",
-            "maxItems": 2,
-            "minItems": 2,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Span",
-            "type": "array"
-          },
           "type": {
             "description": "The element type. Determines which optional fields appear on this element.",
             "enum": [
@@ -188,240 +252,45 @@
         "required": [
           "type",
           "id",
-          "span"
+          "grounding"
         ],
         "title": "Element",
         "type": "object"
       },
       "FigureOptions": {
         "properties": {
-          "caption": {
+          "markdown": {
             "default": true,
-            "title": "Caption",
+            "title": "Markdown",
             "type": "boolean"
           }
         },
         "title": "FigureOptions",
         "type": "object"
       },
-      "GroundingDocument": {
-        "description": "Root of the `grounding` tree. Mirrors the hierarchy of `structure`\n(`document → page → element → table_cell`), carrying the spatial data\n(`box`, `parts`) that `structure` deliberately omits.",
-        "properties": {
-          "children": {
-            "description": "The pages of the document, in source order — the same order as `structure.children`.",
-            "items": {
-              "$ref": "#/components/schemas/GroundingPage"
-            },
-            "title": "Children",
-            "type": "array"
-          },
-          "type": {
-            "const": "document",
-            "default": "document",
-            "description": "The node type. Identifies this node as the root of the grounding tree.",
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "title": "GroundingDocument",
-        "type": "object"
-      },
-      "GroundingElement": {
-        "description": "Spatial grounding for one document element.\n\nMirrors the element's node in the `structure` tree (same `id`, same `span`)\nand layers the spatial data on top: the element-level bounding box, its\nfine-grained `parts`, and — for a `table` — its cells nested as `children`.",
+      "Grounding": {
+        "description": "Where a node lives: its page, its slice of `markdown`, and its box.\n\nThe same shape is used for page nodes, element nodes, and each\n`atomic_grounding` entry, so any grounding object is self-contained — it\ncan be lifted out of the tree and still locates its content.",
         "properties": {
           "box": {
-            "description": "Bounding box `[left, top, right, bottom]` for the full element on the source page, in pixels.",
-            "maxItems": 4,
-            "minItems": 4,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Box",
-            "type": "array"
-          },
-          "children": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/GroundingElement"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The cells (`table_cell` grounding nodes) of a `table` element, mirroring the table's `children` in the `structure` tree. Present only when `type` is `table`.",
-            "title": "Children"
-          },
-          "id": {
-            "description": "The element's unique identifier within the document. Matches the same element's `id` in the `structure` tree.",
-            "title": "Id",
-            "type": "string"
-          },
-          "parts": {
-            "description": "Finer-grained grounding segments within the element. Per visual line for `text` and `marginalia`; empty for other element types or when `options.grounding.parts` is `false`.",
-            "items": {
-              "$ref": "#/components/schemas/GroundingEntry"
-            },
-            "title": "Parts",
-            "type": "array"
-          },
-          "span": {
-            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this element. Matches the element's `span` in the `structure` tree.",
-            "maxItems": 2,
-            "minItems": 2,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Span",
-            "type": "array"
-          },
-          "type": {
-            "description": "The element type. Matches the same element's `type` in the `structure` tree.",
-            "enum": [
-              "text",
-              "table",
-              "table_cell",
-              "figure",
-              "marginalia",
-              "attestation",
-              "logo",
-              "card",
-              "scan_code"
-            ],
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "id",
-          "span",
-          "box"
-        ],
-        "title": "GroundingElement",
-        "type": "object"
-      },
-      "GroundingEntry": {
-        "description": "One fine-grained grounding segment (line-level or finer).",
-        "properties": {
-          "box": {
-            "description": "Bounding box `[left, top, right, bottom]` for this part on the source page, in pixels.",
-            "maxItems": 4,
-            "minItems": 4,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Box",
-            "type": "array"
-          },
-          "span": {
-            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this part.",
-            "maxItems": 2,
-            "minItems": 2,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Span",
-            "type": "array"
-          }
-        },
-        "required": [
-          "span",
-          "box"
-        ],
-        "title": "GroundingEntry",
-        "type": "object"
-      },
-      "GroundingOptions": {
-        "properties": {
-          "parts": {
-            "default": true,
-            "title": "Parts",
-            "type": "boolean"
-          }
-        },
-        "title": "GroundingOptions",
-        "type": "object"
-      },
-      "GroundingPage": {
-        "description": "A page node in the `grounding` tree, mirroring the page in `structure`.",
-        "properties": {
-          "children": {
-            "description": "Grounding for the elements on this page, in reading order — the same order and `id`s as the page's `children` in the `structure` tree. Empty for failed pages.",
-            "items": {
-              "$ref": "#/components/schemas/GroundingElement"
-            },
-            "title": "Children",
-            "type": "array"
+            "$ref": "#/components/schemas/Box",
+            "description": "Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 8 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`."
           },
           "page": {
-            "description": "The 0-indexed page number in the source document. Matches the page's `page` in the `structure` tree.",
+            "description": "1-indexed page number this grounding is on. On a page node, the page's own number.",
             "title": "Page",
             "type": "integer"
           },
-          "span": {
-            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this page. Zero-length `[n, n]` for failed pages.",
-            "maxItems": 2,
-            "minItems": 2,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Span",
-            "type": "array"
-          },
-          "type": {
-            "const": "page",
-            "default": "page",
-            "description": "The node type. Identifies this node as a page in the grounding tree.",
-            "title": "Type",
-            "type": "string"
+          "range": {
+            "$ref": "#/components/schemas/Range",
+            "description": "`[start, end)` offsets into the top-level `markdown` string covered by this node or segment."
           }
         },
         "required": [
           "page",
-          "span"
+          "range",
+          "box"
         ],
-        "title": "GroundingPage",
+        "title": "Grounding",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -440,43 +309,29 @@
       "Page": {
         "properties": {
           "children": {
-            "description": "The elements detected on this page, in reading order.",
+            "description": "The elements detected on this page, in reading order. Empty for failed pages.",
             "items": {
               "$ref": "#/components/schemas/Element"
             },
             "title": "Children",
             "type": "array"
           },
-          "dpi": {
+          "grounding": {
+            "$ref": "#/components/schemas/Grounding",
+            "description": "The page's spatial data: `page` is the 1-indexed page number in the source document (not contiguous when `options.pages` filters out some pages); `range` covers this page's content in the top-level `markdown` string (zero-length `start == end` for failed pages); `box` is always the full page `{0, 0, 1, 1}`."
+          },
+          "markdown": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "DPI used to scale this page's PDF coordinates to pixels (pixels = PDF_points × dpi / 72). Present only for pages that originated from a PDF; omitted for image-input pages (which have no DPI concept — their coordinates are already pixels relative to the original upload) and for pages with `status` `failed`.",
-            "title": "Dpi"
-          },
-          "height": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page height in pixels. Omitted when `status` is `failed`.",
-            "title": "Height"
-          },
-          "page": {
-            "description": "The 0-indexed page number in the source document. Not contiguous when `options.pages` filters out some pages.",
-            "title": "Page",
-            "type": "integer"
+            "description": "This page's slice of the top-level `markdown` string (`markdown[grounding.range.start:grounding.range.end]`). `\"\"` for failed pages. Present only when `options.inline_markdown` is `true`.",
+            "title": "Markdown"
           },
           "reason": {
             "anyOf": [
@@ -490,21 +345,6 @@
             "default": null,
             "description": "Failure reason. Present only when `status` is `failed`.",
             "title": "Reason"
-          },
-          "span": {
-            "description": "Unicode code point offsets `[start, end)` in the top-level `markdown` string covered by this page. Zero-length `[n, n]` for failed pages.",
-            "maxItems": 2,
-            "minItems": 2,
-            "prefixItems": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Span",
-            "type": "array"
           },
           "status": {
             "default": "ok",
@@ -522,24 +362,10 @@
             "description": "The node type. Identifies this node as a page in the structure tree.",
             "title": "Type",
             "type": "string"
-          },
-          "width": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Page width in pixels. Omitted when `status` is `failed`.",
-            "title": "Width"
           }
         },
         "required": [
-          "page",
-          "span"
+          "grounding"
         ],
         "title": "Page",
         "type": "object"
@@ -603,7 +429,7 @@
             "title": "Duration Ms"
           },
           "failed_pages": {
-            "description": "0-indexed page numbers that failed to parse. Empty when all pages succeed; failed pages also appear in `structure.children` with `status: failed`.",
+            "description": "1-indexed page numbers that failed to parse. Empty when all pages succeed; failed pages also appear in `structure.children` with `status: failed`.",
             "items": {
               "type": "integer"
             },
@@ -619,20 +445,8 @@
                 "type": "null"
               }
             ],
-            "description": "The parse job identifier — always server-minted and unique per submit. On the async `/jobs` route this is the id the caller polls. Correlates with the job's entry in your billing dashboard.",
+            "description": "The parse job identifier — always server-minted and unique per submit. On the async `/jobs` route this is the id the caller polls. Correlates with the job's entry in your billing dashboard. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
             "title": "Job Id"
-          },
-          "markdown_chars": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Number of Unicode code points in the returned `markdown` string.",
-            "title": "Markdown Chars"
           },
           "model_version": {
             "anyOf": [
@@ -646,6 +460,23 @@
             "description": "The exact model snapshot that parsed the document, e.g. `dpt-3-pro-20260710`.",
             "title": "Model Version"
           },
+          "openapi_spec": {
+            "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
+            "title": "Openapi Spec",
+            "type": "string"
+          },
+          "output_markdown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Number of Unicode code points in the returned `markdown` string.",
+            "title": "Output Markdown Chars"
+          },
           "page_count": {
             "anyOf": [
               {
@@ -657,13 +488,21 @@
             ],
             "description": "Total number of pages in the source document. Includes pages filtered out by `options.pages`; the actual returned pages are in `structure.children`.",
             "title": "Page Count"
+          },
+          "range_units": {
+            "const": "unicode_codepoints",
+            "description": "Units of every `range` offset in the response. Always `\"unicode_codepoints\"` (Unicode code points into `markdown`). Declared explicitly so consumers know how to slice the string — e.g. JavaScript strings are UTF-16, so a naive `.slice()` drifts when the markdown contains astral characters; such consumers must convert code-point offsets to UTF-16 indices first.",
+            "title": "Range Units",
+            "type": "string"
           }
         },
         "required": [
           "job_id",
           "model_version",
           "page_count",
-          "markdown_chars",
+          "output_markdown_chars",
+          "range_units",
+          "openapi_spec",
           "failed_pages",
           "duration_ms",
           "billing"
@@ -672,12 +511,8 @@
         "type": "object"
       },
       "ParseResponse": {
-        "description": "The parse result: the full document as `markdown`, its hierarchical\n`structure`, per-element spatial `grounding`, and request `metadata`.",
+        "description": "The parse result: the full document as `markdown`, its hierarchical\n`structure` (with per-node spatial `grounding` inline), and request\n`metadata`.",
         "properties": {
-          "grounding": {
-            "$ref": "#/components/schemas/GroundingDocument",
-            "description": "The document's spatial grounding, as a tree mirroring `structure` (`document → page → element → table_cell`). Each element node carries the same `id` and `span` as in `structure`, plus its bounding box and finer-grained parts."
-          },
           "markdown": {
             "description": "The full document as a single Markdown string, in reading order.",
             "title": "Markdown",
@@ -689,14 +524,13 @@
           },
           "structure": {
             "$ref": "#/components/schemas/Document",
-            "description": "The document's hierarchical structure: pages and the elements detected on each page. Spatial information for each element is in `grounding`."
+            "description": "The document's hierarchical structure: pages and the elements detected on each page. Every node below the root carries its spatial data inline in a `grounding` object (`{page, range, box}`, normalized page coordinates); leaf elements additionally carry `atomic_grounding`."
           }
         },
         "required": [
           "markdown",
           "metadata",
-          "structure",
-          "grounding"
+          "structure"
         ],
         "title": "ParseResponse",
         "type": "object"
@@ -750,13 +584,29 @@
         "title": "PrebuiltWorkflowStep",
         "type": "object"
       },
+      "Range": {
+        "description": "A `[start, end)` slice of the top-level `markdown` string.",
+        "properties": {
+          "end": {
+            "description": "Exclusive end offset into the top-level `markdown` string, in the units declared by `metadata.range_units` (Unicode code points).",
+            "title": "End",
+            "type": "integer"
+          },
+          "start": {
+            "description": "Inclusive start offset into the top-level `markdown` string, in the units declared by `metadata.range_units` (Unicode code points).",
+            "title": "Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Range",
+        "type": "object"
+      },
       "TableOptions": {
         "properties": {
-          "caption": {
-            "default": true,
-            "title": "Caption",
-            "type": "boolean"
-          },
           "format": {
             "default": "html",
             "enum": [
@@ -765,6 +615,11 @@
             ],
             "title": "Format",
             "type": "string"
+          },
+          "markdown": {
+            "default": true,
+            "title": "Markdown",
+            "type": "boolean"
           }
         },
         "title": "TableOptions",
@@ -773,6 +628,32 @@
       "V2Billing": {
         "description": "Billing summary: the service tier the request ran in and the credits\ncharged.",
         "properties": {
+          "input_markdown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge. Extract responses only.",
+            "title": "Input Markdown Chars"
+          },
+          "output_extraction_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Characters in the serialized extraction output — the output basis of the credit charge. Extract responses only.",
+            "title": "Output Extraction Chars"
+          },
           "service_tier": {
             "anyOf": [
               {
@@ -850,16 +731,29 @@
             "title": "Job Id",
             "type": "string"
           },
-          "version": {
+          "model_version": {
             "description": "Resolved model version.",
-            "title": "Version",
+            "title": "Model Version",
+            "type": "string"
+          },
+          "openapi_spec": {
+            "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
+            "type": "string"
+          },
+          "range_units": {
+            "const": "unicode_codepoints",
+            "default": "unicode_codepoints",
+            "description": "Units of every `range` offset in the response. Always `\"unicode_codepoints\"` (Unicode code points into `markdown`). Declared explicitly so consumers know how to slice the string — e.g. JavaScript strings are UTF-16, so a naive `.slice()` drifts when the markdown contains astral characters.",
+            "title": "Range Units",
             "type": "string"
           }
         },
         "required": [
           "job_id",
-          "version",
-          "duration_ms"
+          "model_version",
+          "duration_ms",
+          "openapi_spec",
+          "range_units"
         ],
         "title": "V2ExtractMetadata",
         "type": "object"
@@ -906,11 +800,16 @@
             "description": "Gateway job id (workflow id).",
             "title": "Job Id",
             "type": "string"
+          },
+          "openapi_spec": {
+            "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
+            "type": "string"
           }
         },
         "required": [
           "job_id",
-          "duration_ms"
+          "duration_ms",
+          "openapi_spec"
         ],
         "title": "V2WorkflowMetadata",
         "type": "object"
@@ -996,6 +895,7 @@
             "anyOf": [
               {
                 "items": {
+                  "minimum": 1,
                   "type": "integer"
                 },
                 "type": "array"
@@ -1005,7 +905,7 @@
               }
             ],
             "default": null,
-            "description": "0-indexed page indices to process. ``null`` = all pages. Negative indices are rejected; indices ≥ page_count are silently ignored.",
+            "description": "1-indexed page numbers to process. ``null`` = all pages. Values < 1 are rejected; numbers > page_count are silently ignored.",
             "title": "Pages"
           },
           "strict": {
@@ -1259,7 +1159,7 @@
                     },
                     "extraction_metadata": {
                       "additionalProperties": true,
-                      "description": "Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, spans}`` objects.",
+                      "description": "Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, ranges}`` objects.",
                       "title": "Extraction Metadata",
                       "type": "object"
                     },
@@ -1270,7 +1170,19 @@
                     },
                     "metadata": {
                       "$ref": "#/components/schemas/V2ExtractMetadata",
-                      "description": "Request metadata (job_id, version, duration_ms, doc_id, credit_usage)."
+                      "description": "Request metadata (job_id, model_version, duration_ms, doc_id, credit_usage)."
+                    },
+                    "output_ref": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Output Ref"
                     }
                   },
                   "required": [
@@ -1385,7 +1297,14 @@
                             ]
                           },
                           "job_id": {
+                            "description": "The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                             "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "status": {
                             "enum": [
@@ -1395,12 +1314,6 @@
                               "failed"
                             ],
                             "type": "string"
-                          },
-                          "version": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
                           }
                         },
                         "type": "object"
@@ -1649,6 +1562,7 @@
                       ]
                     },
                     "job_id": {
+                      "description": "The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
                     "status": {
@@ -1721,6 +1635,7 @@
                       "type": "object"
                     },
                     "job_id": {
+                      "description": "The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
                     "progress": {
@@ -1739,7 +1654,7 @@
                             },
                             "extraction_metadata": {
                               "additionalProperties": true,
-                              "description": "Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, spans}`` objects.",
+                              "description": "Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, ranges}`` objects.",
                               "title": "Extraction Metadata",
                               "type": "object"
                             },
@@ -1750,7 +1665,19 @@
                             },
                             "metadata": {
                               "$ref": "#/components/schemas/V2ExtractMetadata",
-                              "description": "Request metadata (job_id, version, duration_ms, doc_id, credit_usage)."
+                              "description": "Request metadata (job_id, model_version, duration_ms, doc_id, credit_usage)."
+                            },
+                            "output_ref": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Output Ref"
                             }
                           },
                           "required": [
@@ -1826,19 +1753,20 @@
                   "options": {
                     "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
                     "properties": {
+                      "atomic_grounding": {
+                        "default": true,
+                        "description": "Include the fine-grained `atomic_grounding` array on leaf elements. Set `false` to omit the field entirely from every node.",
+                        "title": "Atomic Grounding",
+                        "type": "boolean"
+                      },
                       "blocks": {
                         "$ref": "#/components/schemas/BlocksOptions"
                       },
-                      "dpi": {
-                        "default": 200,
-                        "description": "Resolution for PDF coordinate scaling. Bounding box coordinates and page dimensions are returned in pixels at this DPI (pixels = PDF_points × dpi / 72). Allowed range: 72–300. Has no effect for image inputs.",
-                        "maximum": 300,
-                        "minimum": 72,
-                        "title": "Dpi",
-                        "type": "integer"
-                      },
-                      "grounding": {
-                        "$ref": "#/components/schemas/GroundingOptions"
+                      "inline_markdown": {
+                        "default": false,
+                        "description": "Include each node's slice of the document `markdown` inline as a `markdown` field on every structure node: the document root, each page, and each element (including table cells). `atomic_grounding` entries do not carry it.",
+                        "title": "Inline Markdown",
+                        "type": "boolean"
                       },
                       "pages": {
                         "anyOf": [
@@ -1854,14 +1782,23 @@
                         ],
                         "default": null,
                         "title": "Pages"
+                      },
+                      "password": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "description": "Password for encrypted PDFs. Not currently supported — providing a value returns a 422 error; decrypt the file before uploading.",
+                        "title": "Password"
                       }
                     },
                     "title": "ParseOptions",
                     "type": "object"
-                  },
-                  "password": {
-                    "description": "Encrypted PDFs are not currently supported. Providing a password returns a 422 error; decrypt the file before uploading.",
-                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -1972,48 +1909,60 @@
                       "description": "The caller's parse jobs for this page, newest first.",
                       "items": {
                         "properties": {
+                          "completed_at": {
+                            "description": "ISO-8601 timestamp for when the job finished, if terminal.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "created_at": {
-                            "description": "Unix timestamp (seconds) for when the job was created. Mirrors ``received_at``; exposed so clients have an explicit creation time.",
-                            "type": "integer"
+                            "description": "ISO-8601 timestamp for when the job was created.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "failure_reason": {
                             "description": "The reason the job failed. Present only when ``status`` is ``failed``.",
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "job_id": {
-                            "description": "The unique identifier for the parse job.",
+                            "description": "The unique identifier for the parse job. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                             "type": "string"
                           },
-                          "progress": {
-                            "description": "Job completion as a decimal from 0 (not started) to 1 (complete).",
-                            "type": "number"
-                          },
-                          "received_at": {
-                            "description": "Unix timestamp (seconds) for when the job was received.",
-                            "type": "integer"
-                          },
                           "status": {
-                            "description": "The job's current status: ``pending``, ``processing``, ``completed``, ``failed``, or ``cancelled``.",
+                            "description": "The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
                             "enum": [
                               "pending",
                               "processing",
                               "completed",
-                              "failed",
-                              "cancelled"
+                              "failed"
                             ],
                             "type": "string"
+                          },
+                          "version": {
+                            "description": "The model snapshot used to parse the document.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "type": "object"
                       },
                       "type": "array"
                     },
-                    "org_id": {
-                      "description": "The organization that owns these jobs.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                    "page": {
+                      "description": "The 0-indexed page number.",
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "description": "Items per page.",
+                      "type": "integer"
                     }
                   },
                   "type": "object"
@@ -2062,19 +2011,20 @@
                   "options": {
                     "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
                     "properties": {
+                      "atomic_grounding": {
+                        "default": true,
+                        "description": "Include the fine-grained `atomic_grounding` array on leaf elements. Set `false` to omit the field entirely from every node.",
+                        "title": "Atomic Grounding",
+                        "type": "boolean"
+                      },
                       "blocks": {
                         "$ref": "#/components/schemas/BlocksOptions"
                       },
-                      "dpi": {
-                        "default": 200,
-                        "description": "Resolution for PDF coordinate scaling. Bounding box coordinates and page dimensions are returned in pixels at this DPI (pixels = PDF_points × dpi / 72). Allowed range: 72–300. Has no effect for image inputs.",
-                        "maximum": 300,
-                        "minimum": 72,
-                        "title": "Dpi",
-                        "type": "integer"
-                      },
-                      "grounding": {
-                        "$ref": "#/components/schemas/GroundingOptions"
+                      "inline_markdown": {
+                        "default": false,
+                        "description": "Include each node's slice of the document `markdown` inline as a `markdown` field on every structure node: the document root, each page, and each element (including table cells). `atomic_grounding` entries do not carry it.",
+                        "title": "Inline Markdown",
+                        "type": "boolean"
                       },
                       "pages": {
                         "anyOf": [
@@ -2090,6 +2040,19 @@
                         ],
                         "default": null,
                         "title": "Pages"
+                      },
+                      "password": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null,
+                        "description": "Password for encrypted PDFs. Not currently supported — providing a value returns a 422 error; decrypt the file before uploading.",
+                        "title": "Password"
                       }
                     },
                     "title": "ParseOptions",
@@ -2097,10 +2060,6 @@
                   },
                   "output_save_url": {
                     "description": "Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data.",
-                    "type": "string"
-                  },
-                  "password": {
-                    "description": "Encrypted PDFs are not currently supported. Providing a password returns a 422 error; decrypt the file before uploading.",
                     "type": "string"
                   },
                   "service_tier": {
@@ -2124,13 +2083,32 @@
               "application/json": {
                 "schema": {
                   "properties": {
+                    "created_at": {
+                      "description": "ISO-8601 timestamp for when the job was created.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "job_id": {
-                      "description": "The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result.",
+                      "description": "The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.",
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
                       "type": "string"
                     }
                   },
                   "required": [
-                    "job_id"
+                    "job_id",
+                    "status",
+                    "created_at"
                   ],
                   "type": "object"
                 }
@@ -2147,7 +2125,7 @@
     },
     "/v2/parse/jobs/{job_id}": {
       "get": {
-        "description": "Get the status of an async parse job. Once the job has ``completed``, ``data`` carries the parse result (or ``output_url`` when ``output_save_url`` was set).",
+        "description": "Get the status of an async parse job. Once the job has ``completed``, ``result`` carries the parse response (or ``output_url`` when ``output_save_url`` was set). Partial success (some pages failed) is reported in ``result.metadata.failed_pages``.",
         "operationId": "parse_get_job",
         "parameters": [
           {
@@ -2168,14 +2146,46 @@
               "application/json": {
                 "schema": {
                   "properties": {
+                    "completed_at": {
+                      "description": "ISO-8601 timestamp; present once the job is terminal.",
+                      "type": "string"
+                    },
                     "created_at": {
-                      "description": "Unix timestamp (seconds) for when the job was created. Mirrors ``received_at``; exposed so clients have an explicit creation time.",
+                      "description": "ISO-8601 timestamp for when the job was created.",
                       "type": [
-                        "integer",
+                        "string",
                         "null"
                       ]
                     },
-                    "data": {
+                    "error": {
+                      "description": "Present once the job has ``failed`` — the failure code + message.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code.",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this parse job. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "progress": {
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "type": "number"
+                    },
+                    "result": {
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/ParseResponse"
@@ -2184,72 +2194,17 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The parse result, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
-                    },
-                    "failure_reason": {
-                      "description": "The reason the job failed. Present only when ``status`` is ``failed``.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this parse job.",
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/ParseMetadata"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "The result's ``metadata`` (model version, page count, billing, and more). Present once the job has ``completed``."
-                    },
-                    "org_id": {
-                      "description": "The organization that owns this job.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "output_url": {
-                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set; the result is delivered there instead of inline ``data``.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "progress": {
-                      "description": "Job completion progress as a decimal from 0 to 1, where 0 is not started, 1 is finished, and values between 0 and 1 indicate work in progress.",
-                      "type": "number"
-                    },
-                    "received_at": {
-                      "description": "Unix timestamp (seconds) for when the job was received.",
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
+                      "description": "The parse response, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
                     },
                     "status": {
-                      "description": "The job's current status: ``pending``, ``processing``, ``completed``, ``failed``, or ``cancelled``.",
+                      "description": "The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
                       "enum": [
                         "pending",
                         "processing",
                         "completed",
-                        "failed",
-                        "cancelled"
+                        "failed"
                       ],
                       "type": "string"
-                    },
-                    "version": {
-                      "description": "The model snapshot used to parse the document.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
                     }
                   },
                   "type": "object"
@@ -2257,101 +2212,6 @@
               }
             },
             "description": "Job status / result"
-          },
-          "206": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "created_at": {
-                      "description": "Unix timestamp (seconds) for when the job was created. Mirrors ``received_at``; exposed so clients have an explicit creation time.",
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "data": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/ParseResponse"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "The parse result, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
-                    },
-                    "failure_reason": {
-                      "description": "The reason the job failed. Present only when ``status`` is ``failed``.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this parse job.",
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/ParseMetadata"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "The result's ``metadata`` (model version, page count, billing, and more). Present once the job has ``completed``."
-                    },
-                    "org_id": {
-                      "description": "The organization that owns this job.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "output_url": {
-                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set; the result is delivered there instead of inline ``data``.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "progress": {
-                      "description": "Job completion progress as a decimal from 0 to 1, where 0 is not started, 1 is finished, and values between 0 and 1 indicate work in progress.",
-                      "type": "number"
-                    },
-                    "received_at": {
-                      "description": "Unix timestamp (seconds) for when the job was received.",
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "status": {
-                      "description": "The job's current status: ``pending``, ``processing``, ``completed``, ``failed``, or ``cancelled``.",
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed",
-                        "cancelled"
-                      ],
-                      "type": "string"
-                    },
-                    "version": {
-                      "description": "The model snapshot used to parse the document.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Partial success (some pages failed to parse)"
           },
           "404": {
             "description": "Job not found"
@@ -2521,7 +2381,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure, grounding, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, spans}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, spans}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
+                  "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure with per-node grounding inline, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, ranges}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
                   "properties": {
                     "metadata": {
                       "$ref": "#/components/schemas/V2WorkflowMetadata",
@@ -2532,6 +2392,18 @@
                       "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
                       "title": "Output",
                       "type": "object"
+                    },
+                    "output_ref": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Output Ref"
                     }
                   },
                   "required": [
@@ -2643,7 +2515,14 @@
                             ]
                           },
                           "job_id": {
+                            "description": "The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                             "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "status": {
                             "enum": [
@@ -2653,12 +2532,6 @@
                               "failed"
                             ],
                             "type": "string"
-                          },
-                          "version": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
                           }
                         },
                         "type": "object"
@@ -2878,6 +2751,7 @@
                       ]
                     },
                     "job_id": {
+                      "description": "The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
                     "status": {
@@ -2950,6 +2824,7 @@
                       "type": "object"
                     },
                     "job_id": {
+                      "description": "The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
                     "progress": {
@@ -2958,7 +2833,7 @@
                     "result": {
                       "anyOf": [
                         {
-                          "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure, grounding, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, spans}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, spans}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
+                          "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure with per-node grounding inline, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, ranges}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
                           "properties": {
                             "metadata": {
                               "$ref": "#/components/schemas/V2WorkflowMetadata",
@@ -2969,6 +2844,18 @@
                               "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
                               "title": "Output",
                               "type": "object"
+                            },
+                            "output_ref": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Output Ref"
                             }
                           },
                           "required": [

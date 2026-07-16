@@ -91,6 +91,59 @@ RICH_PARSE_BODY: Dict[str, Any] = {
 }
 
 
+# A ParseResponse in the current gateway shape: per-node spatial `grounding`
+# ({page, range, box} in normalized coordinates) inline on `structure`, an
+# `atomic_grounding` array on the leaf, inline `markdown`, and the renamed
+# `output_markdown_chars` / `range_units` / `openapi_spec` metadata fields.
+INLINE_PARSE_BODY: Dict[str, Any] = {
+    "markdown": "# Invoice",
+    "metadata": {
+        "req_id": "r1",
+        "job_id": "parse-1",
+        "model_version": "dpt-3",
+        "page_count": 1,
+        "failed_pages": [],
+        "output_markdown_chars": 9,
+        "range_units": "unicode_codepoints",
+        "openapi_spec": "https://api.ade.landing.ai/openapi.json",
+    },
+    "structure": {
+        "type": "document",
+        "markdown": "# Invoice",
+        "children": [
+            {
+                "type": "page",
+                "markdown": "# Invoice",
+                "grounding": {
+                    "page": 1,
+                    "range": {"start": 0, "end": 9},
+                    "box": {"xmin": 0, "ymin": 0, "xmax": 1, "ymax": 1},
+                },
+                "children": [
+                    {
+                        "type": "text",
+                        "id": "text-0",
+                        "markdown": "# Invoice",
+                        "grounding": {
+                            "page": 1,
+                            "range": {"start": 0, "end": 9},
+                            "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
+                        },
+                        "atomic_grounding": [
+                            {
+                                "page": 1,
+                                "range": {"start": 0, "end": 9},
+                                "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    },
+}
+
+
 @respx.mock
 def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
@@ -134,6 +187,44 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
     assert b"password" not in sent
     assert b"null" not in sent
     assert b"None" not in sent
+
+
+@respx.mock
+def test_parse_sync_folds_password_into_options() -> None:
+    # The current gateway reads the document password from `options.password`;
+    # the kwarg must land there (and stay as a top-level field for older
+    # gateways).
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    client.v2.parse(document=b"pdf", password="hunter2")
+    sent = route.calls.last.request.content
+    assert b'{"password": "hunter2"}' in sent
+    assert b'name="password"' in sent
+
+
+@respx.mock
+def test_parse_sync_merges_password_into_existing_options() -> None:
+    # `password` merges into a caller-supplied `options` (dict or JSON string)
+    # without clobbering its other keys; an explicit `options["password"]` wins
+    # over the kwarg.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+
+    client.v2.parse(document=b"pdf", options={"pages": [1]}, password="pw")
+    sent = route.calls.last.request.content
+    assert b'"pages": [1]' in sent
+    assert b'"password": "pw"' in sent
+
+    # A pre-serialized JSON string for `options` is tolerated at runtime (though
+    # the signature advertises a Mapping); the password must merge into it too.
+    client.v2.parse(document=b"pdf", options='{"pages": [2]}', password="pw")  # type: ignore[arg-type]
+    sent = route.calls.last.request.content
+    assert b'"pages": [2]' in sent
+    assert b'"password": "pw"' in sent
+
+    client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="pw")
+    sent = route.calls.last.request.content
+    assert b'"password": "explicit"' in sent
 
 
 def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -252,6 +343,98 @@ def test_parse_sync_typed_structure_and_grounding() -> None:
 
 
 @respx.mock
+def test_parse_sync_inline_grounding_structure() -> None:
+    # The current gateway returns per-node `grounding` ({page, range, box}) inline
+    # on `structure`, `atomic_grounding` on leaves, and the renamed metadata
+    # fields; all deserialize into typed models with attribute access.
+    from landingai_ade.types.v2 import (
+        V2ParseBox,
+        V2ParseRange,
+        V2ParseStructure,
+        V2ParseNodeGrounding,
+    )
+
+    client = LandingAIADE(apikey=APIKEY)
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=INLINE_PARSE_BODY))
+    result = client.v2.parse(document=b"pdf")
+
+    assert isinstance(result.structure, V2ParseStructure)
+    assert result.structure.markdown == "# Invoice"
+    page = result.structure.children[0]
+    assert isinstance(page.grounding, V2ParseNodeGrounding)
+    assert isinstance(page.grounding.range, V2ParseRange) and page.grounding.range.end == 9
+    assert isinstance(page.grounding.box, V2ParseBox) and page.grounding.box.xmax == 1
+    assert page.markdown == "# Invoice"
+
+    el = page.children[0]
+    assert el.type == "text" and el.id == "text-0" and el.markdown == "# Invoice"
+    assert el.grounding is not None and el.grounding.box is not None and el.grounding.box.xmin == 0.1
+    assert el.atomic_grounding is not None and len(el.atomic_grounding) == 1
+    seg = el.atomic_grounding[0]
+    assert seg.range is not None and seg.range.start == 0
+
+    assert result.metadata is not None
+    assert result.metadata.output_markdown_chars == 9
+    assert result.metadata.range_units == "unicode_codepoints"
+    assert result.metadata.openapi_spec is not None
+
+
+@respx.mock
+def test_parse_job_get_result_envelope_and_error() -> None:
+    # Current parse-job GET carries the response under `result` (not legacy `data`)
+    # and reports failure via a structured `error` {code, message}.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "p1",
+                "status": "completed",
+                "created_at": "2026-01-02T03:04:05Z",
+                "completed_at": "2026-01-02T03:04:09Z",
+                "result": PARSE_BODY,
+            },
+        )
+    )
+    job = client.v2.parse_jobs.get("p1")
+    assert job.status is JobStatus.COMPLETED
+    assert job.completed_at is not None
+    assert isinstance(job.result, V2ParseResponse)
+    assert job.result.markdown == "# Hello"
+
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p2").mock(
+        return_value=httpx.Response(
+            200,
+            json={"job_id": "p2", "status": "failed", "error": {"code": "bad_pdf", "message": "boom"}},
+        )
+    )
+    failed = client.v2.parse_jobs.get("p2")
+    assert failed.status is JobStatus.FAILED
+    assert failed.error is not None and failed.error.code == "bad_pdf"
+    assert failed.result is None
+
+
+@respx.mock
+def test_parse_job_list_carries_page_envelope() -> None:
+    # The current list envelope exposes `page` / `page_size` (org_id was dropped).
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [{"job_id": "p1", "status": "completed", "version": "dpt-3"}],
+                "page": 0,
+                "page_size": 20,
+                "has_more": False,
+            },
+        )
+    )
+    jobs = client.v2.parse_jobs.list()
+    assert len(jobs) == 1 and jobs[0].job_id == "p1"
+    assert jobs.page == 0 and jobs.page_size == 20 and jobs.has_more is False
+
+
+@respx.mock
 def test_parse_sync_tolerates_unknown_element_type_and_extra_keys() -> None:
     # Novel element `type` values and extra keys must not break deserialization
     # (`type` is a permissive str; BaseModel retains extra keys).
@@ -322,6 +505,20 @@ def test_parse_job_create_normalizes_envelope() -> None:
     job = client.v2.parse_jobs.create(document=b"pdf", service_tier="priority")
     assert isinstance(job, Job)
     assert job.job_id == "p1" and job.status is JobStatus.PENDING
+
+
+@respx.mock
+def test_parse_job_create_folds_password_into_options() -> None:
+    # The jobs route shares `_build_parse_body`, so `password` must reach
+    # `options.password` there too.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "p1", "status": "pending"})
+    )
+    client.v2.parse_jobs.create(document=b"pdf", password="hunter2")
+    sent = route.calls.last.request.content
+    assert b'{"password": "hunter2"}' in sent
+    assert b'name="password"' in sent
 
 
 @respx.mock
