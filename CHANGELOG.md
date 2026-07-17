@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.14.0 (2026-07-17)
+
+Full Changelog: [v1.13.0...v1.14.0](https://github.com/landing-ai/ade-python/compare/v1.13.0...v1.14.0)
+
+### Documentation
+
+* correct the JobList fields and trim the Environments section (#113) ([54a8fb8](https://github.com/landing-ai/ade-python/commit/54a8fb8d19e653e7f059c26e2c78bdf396074a62))
+
+### Styles
+
+* make main format-clean under ./scripts/format (#116) ([d5295c2](https://github.com/landing-ai/ade-python/commit/d5295c271912cfc6b006e9d9e8f418f9e85d976b))
+
+### Other Changes
+
+* spec-sync: track V2 spec drift (#115) ([a10fa61](https://github.com/landing-ai/ade-python/commit/a10fa617ff82df11bde9110229df8657d617ab17))
+
 ## 1.13.0 (2026-07-14)
 
 Full Changelog: [v1.12.0...v1.13.0](https://github.com/landing-ai/ade-python/compare/v1.12.0...v1.13.0)
