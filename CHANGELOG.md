@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.13.0 (2026-07-18)
+
+Full Changelog: [v1.12.0...v1.13.0](https://github.com/landing-ai/ade-python/compare/v1.12.0...v1.13.0)
+
+### Features
+
+* **api:** api update ([c9846e3](https://github.com/landing-ai/ade-python/commit/c9846e3a63660a1001212a73e5c919edf81ce323))
+* **api:** api update ([3216770](https://github.com/landing-ai/ade-python/commit/3216770f746525a87780e26d228a4f1f8e0c9403))
+* **internal/types:** support eagerly validating pydantic iterators ([92a4a3a](https://github.com/landing-ai/ade-python/commit/92a4a3af2789b0189ad1e3f5efaf6ba83c7e0a36))
+* smart save_to with full path support and bug fix ([#85](https://github.com/landing-ai/ade-python/issues/85)) ([7576d1f](https://github.com/landing-ai/ade-python/commit/7576d1f80c20744c0dbbb81ebf1b5f72323c3ec2))
+* **stlc:** configurable CI runner and private-production-repo support in workflow templates ([d5da739](https://github.com/landing-ai/ade-python/commit/d5da739ce3ae09b42deb7a7d8d2bdddf421bfe96))
+* support setting headers via env ([a3a857d](https://github.com/landing-ai/ade-python/commit/a3a857d74244911f8f70937f1159d232b488b2f8))
+
+
+### Bug Fixes
+
+* **client:** add missing f-string prefix in file type error message ([3dde871](https://github.com/landing-ai/ade-python/commit/3dde871a50f9b541f2b12ef37b7c97ee1a9b23e3))
+* use correct field name format for multipart file arrays ([8344ac4](https://github.com/landing-ai/ade-python/commit/8344ac463dd76eb2d36d7da43fc6e22d95886fdc))
+
+
+### Chores
+
+* **internal:** reformat pyproject.toml ([ecfd5e2](https://github.com/landing-ai/ade-python/commit/ecfd5e233952511a64c8277168682f7e4ed3dbd4))
+
+
+### Documentation
+
+* use theme-aware logo in README ([#89](https://github.com/landing-ai/ade-python/issues/89)) ([2f49d2a](https://github.com/landing-ai/ade-python/commit/2f49d2ab0395fabdfdb6e8b25f3fceb270efb933))
+
 ## 1.12.0 (2026-04-23)
 
 Full Changelog: [v1.11.1...v1.12.0](https://github.com/landing-ai/ade-python/compare/v1.11.1...v1.12.0)
