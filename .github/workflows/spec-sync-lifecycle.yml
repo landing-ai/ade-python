@@ -1,0 +1,109 @@
+name: Spec Sync Lifecycle
+# Phase 2 spec-sync Slack notifications: gate failures, merges, and aging — all posted as replies
+# under the PR-opened thread root (root ts persisted on the PR body by the spec-sync workflow).
+# These triggers run the DEFAULT-branch version of this file, so they only take effect once merged.
+on:
+  workflow_run:
+    workflows: ['PR Gates']
+    types: [completed]
+  pull_request:
+    types: [closed]
+    branches: [main]
+  schedule:
+    - cron: '0 16 * * *' # daily aging sweep
+
+permissions:
+  contents: read
+  pull-requests: write # aging writes a dedup marker to the PR body; the others only read
+
+jobs:
+  # ⑤ Gates failed on a sync PR — reply under its thread.
+  gate-alert:
+    if: >-
+      github.event_name == 'workflow_run'
+      && github.repository == 'landing-ai/ade-python'
+      && github.event.workflow_run.conclusion == 'failure'
+      && startsWith(github.event.workflow_run.head_branch, 'spec-sync/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Resolve sync PR + thread root
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          num="$(gh pr list --state open --head "$HEAD_BRANCH" --json number --jq '.[0].number')"
+          if [ -z "$num" ]; then echo "No open PR for $HEAD_BRANCH."; echo "found=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          {
+            echo "found=true"
+            echo "url=$(gh pr view "$num" --json url --jq .url)"
+            echo "ts=$(./scripts/spec-sync/thread-ts.sh get "$num")"
+            echo "label=$([ "$HEAD_BRANCH" = 'spec-sync/v2' ] && echo V2 || echo V1)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Slack — gates failed on the sync PR
+        if: steps.pr.outputs.found == 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          status: failure
+          title: 'spec-sync ${{ steps.pr.outputs.label }}: gates failed on the sync PR'
+          text: 'PR Gates failed on the <${{ steps.pr.outputs.url }}|open sync PR> — it can''t merge until they are green. See <${{ github.event.workflow_run.html_url }}|the gate run>.'
+          thread_ts: ${{ steps.pr.outputs.ts }}
+
+  # ⑦ Sync PR merged — reply under its thread and broadcast to the channel.
+  merged:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.repository == 'landing-ai/ade-python'
+      && github.event.pull_request.merged == true
+      && startsWith(github.event.pull_request.head.ref, 'spec-sync/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Read thread root
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          {
+            echo "ts=$(./scripts/spec-sync/thread-ts.sh get "$PR")"
+            echo "label=$([ "$HEAD_REF" = 'spec-sync/v2' ] && echo V2 || echo V1)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Slack — sync PR merged
+        uses: ./.github/actions/slack-notify
+        with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          status: success
+          title: 'spec-sync ${{ steps.pr.outputs.label }}: PR merged — spec back in sync'
+          text: 'The <${{ github.event.pull_request.html_url }}|sync PR> was merged. Spec is back in sync.'
+          thread_ts: ${{ steps.pr.outputs.ts }}
+          reply_broadcast: 'true'
+
+  # ⑥ Aging nudge — daily reminder for a sync PR left open too long.
+  aging:
+    if: github.event_name == 'schedule' && github.repository == 'landing-ai/ade-python'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: [spec-sync/v1, spec-sync/v2]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check aging
+        id: age
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/spec-sync/aging-nudge.sh '${{ matrix.branch }}'
+      - name: Slack — sync PR is aging
+        if: steps.age.outputs.nudge == 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          status: warning
+          title: "spec-sync ${{ matrix.branch == 'spec-sync/v2' && 'V2' || 'V1' }}: sync PR open ${{ steps.age.outputs.age_days }} days"
+          text: 'The <${{ steps.age.outputs.pr_url }}|sync PR> has been open ${{ steps.age.outputs.age_days }} days. Review and merge or close it — further drift is held until it clears.'
+          thread_ts: ${{ steps.age.outputs.thread_ts }}
