@@ -64,3 +64,5 @@ fi
 out "notify=true"
 out "pr_url=$(gh pr view "$pr" --json url --jq .url)"
 out "hash=${hash}"
+# The Slack thread root for this PR (empty if it predates threading) so the caller can reply in-thread.
+out "thread_ts=$("$(dirname "$0")/thread-ts.sh" get "$pr")"

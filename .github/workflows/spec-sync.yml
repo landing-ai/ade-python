@@ -88,10 +88,12 @@ jobs:
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true' && steps.behind.outputs.notify == 'true'
         uses: ./.github/actions/slack-notify
         with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
           webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
           status: warning
           title: 'spec-sync ${{ env.SPEC_LABEL }}: new drift behind the open PR'
           text: 'New ${{ env.SPEC_LABEL }} spec drift appeared beyond the <${{ steps.behind.outputs.pr_url }}|open sync PR> (live-spec `${{ steps.behind.outputs.hash }}`). Merge or close it and the next run opens a fresh one covering the rest.'
+          thread_ts: ${{ steps.behind.outputs.thread_ts }}
 
       # ---- Phase 1: mechanical (deterministic) ----
       - name: Mechanical commit + push
@@ -117,6 +119,27 @@ jobs:
             --title "spec-sync: track V1 spec drift" \
             --body $'Automated spec-sync PR.\n\n- **Commit 1 (mechanical):** normalized spec snapshot + regenerated reference models.\n- **Commit 2 (AI):** resources/methods/tests/docs wired from the spec diff (added after this PR opened).\n\nGates (surface-lock, contract tests, lint/test/typecheck) must pass. **Human review required before merge.**')"
           echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # Post the Slack thread ROOT now — right after the PR exists, before AI wiring — so every later
+      # event (AI outcome, new drift, gates, merge) replies under it. Persist its ts on the PR body
+      # so other runs/workflows can find the thread. (Editing the body doesn't re-trigger pr-gates,
+      # which only fires on opened/synchronize/reopened.)
+      - name: Slack — PR opened (thread root)
+        id: root
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: info
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: new spec drift → PR opened'
+          text: '<${{ steps.open_pr.outputs.url }}|Open the PR> — mechanical spec snapshot committed; wiring the SDK next. Human review required before merge.'
+
+      - name: Save thread root on the PR
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+        run: ./scripts/spec-sync/thread-ts.sh set "${{ steps.open_pr.outputs.url }}" "${{ steps.root.outputs.ts }}"
 
       # ---- Phase 2: AI wiring — edits ONLY. The agent holds no git/push capability, so a
       # prompt-injected spec description cannot route around review to push to a branch. ----
@@ -164,16 +187,17 @@ jobs:
             echo "summary=Mechanical snapshot + AI wiring committed. Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
 
-      # Case 1: fresh drift -> a new PR was opened above. Announce it once, noting whether AI wiring
-      # landed a second commit or the PR is mechanical-only.
-      - name: Slack — new drift, PR opened
+      # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
+      - name: Slack — AI wiring result
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         uses: ./.github/actions/slack-notify
         with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
           webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
           status: info
-          title: 'spec-sync ${{ env.SPEC_LABEL }}: new spec drift → PR opened'
-          text: '<${{ steps.open_pr.outputs.url }}|Open the PR> — ${{ steps.ai_push.outputs.summary }}'
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: AI wiring'
+          text: ${{ steps.ai_push.outputs.summary }}
+          thread_ts: ${{ steps.root.outputs.ts }}
 
       # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
       # calling out — a spec fetch/normalize error (often the staging cluster being unbooked) and an
@@ -182,6 +206,7 @@ jobs:
         if: failure()
         uses: ./.github/actions/slack-notify
         with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
           webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
           status: failure
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
@@ -192,6 +217,7 @@ jobs:
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}
             · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+          thread_ts: ${{ steps.root.outputs.ts }}
 
   # V2 loop. Same machinery as the V1 job above, pointed at the V2 spec on the AIDE gateway
   # and a separate sync branch, with a V2-tailored wiring prompt. Kept as a distinct job (not a
@@ -275,10 +301,12 @@ jobs:
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true' && steps.behind.outputs.notify == 'true'
         uses: ./.github/actions/slack-notify
         with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
           webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
           status: warning
           title: 'spec-sync ${{ env.SPEC_LABEL }}: new drift behind the open PR'
           text: 'New ${{ env.SPEC_LABEL }} spec drift appeared beyond the <${{ steps.behind.outputs.pr_url }}|open sync PR> (live-spec `${{ steps.behind.outputs.hash }}`). Merge or close it and the next run opens a fresh one covering the rest.'
+          thread_ts: ${{ steps.behind.outputs.thread_ts }}
 
       # ---- Phase 1: mechanical (deterministic) ----
       - name: Mechanical commit + push
@@ -302,6 +330,27 @@ jobs:
             --title "spec-sync: track V2 spec drift" \
             --body $'Automated V2 spec-sync PR (`client.v2`).\n\n- **Commit 1 (mechanical):** normalized V2 spec snapshot + regenerated reference models.\n- **Commit 2 (AI, only if the spec diff needs SDK changes):** client.v2 resources/methods/tests/docs wired from the diff, added after this PR opened. Workflow-only drift is excluded and an AI no-op is skipped, so some drifts produce a **mechanical-only PR with no second commit**.\n\nGates (surface-lock, V2 contract tests, lint/test/typecheck) must pass. When present, the AI commit is a **draft a human finishes** (the V2 ergonomic layer — unified Job, dual-host, schema coercion — is not in the spec). **Human review required before merge.**')"
           echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      # Post the Slack thread ROOT now — right after the PR exists, before AI wiring — so every later
+      # event (AI outcome, new drift, gates, merge) replies under it. Persist its ts on the PR body
+      # so other runs/workflows can find the thread. (Editing the body doesn't re-trigger pr-gates,
+      # which only fires on opened/synchronize/reopened.)
+      - name: Slack — PR opened (thread root)
+        id: root
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: info
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: new spec drift → PR opened'
+          text: '<${{ steps.open_pr.outputs.url }}|Open the PR> — mechanical spec snapshot committed; wiring the SDK next. Human review required before merge.'
+
+      - name: Save thread root on the PR
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+        run: ./scripts/spec-sync/thread-ts.sh set "${{ steps.open_pr.outputs.url }}" "${{ steps.root.outputs.ts }}"
 
       # ---- Phase 2: AI wiring — edits ONLY (no git/push; a later step commits). ----
       - name: AI wiring (edits only)
@@ -403,16 +452,17 @@ jobs:
             echo "summary=Mechanical snapshot + AI wiring committed (a draft a human finishes). Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
 
-      # Case 1: fresh drift -> a new PR was opened above. Announce it once, noting whether AI wiring
-      # landed a second commit or the PR is mechanical-only.
-      - name: Slack — new drift, PR opened
+      # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
+      - name: Slack — AI wiring result
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         uses: ./.github/actions/slack-notify
         with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
           webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
           status: info
-          title: 'spec-sync ${{ env.SPEC_LABEL }}: new spec drift → PR opened'
-          text: '<${{ steps.open_pr.outputs.url }}|Open the PR> — ${{ steps.ai_push.outputs.summary }}'
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: AI wiring'
+          text: ${{ steps.ai_push.outputs.summary }}
+          thread_ts: ${{ steps.root.outputs.ts }}
 
       # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
       # calling out — a spec fetch/normalize error (often the staging cluster being unbooked) and an
@@ -421,6 +471,7 @@ jobs:
         if: failure()
         uses: ./.github/actions/slack-notify
         with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
           webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
           status: failure
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
@@ -431,3 +482,4 @@ jobs:
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}
             · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
+          thread_ts: ${{ steps.root.outputs.ts }}
