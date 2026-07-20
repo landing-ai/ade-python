@@ -1,0 +1,70 @@
+name: Slack notify
+description: >
+  Post a spec-sync status message to Slack via an incoming webhook. A silent
+  no-op when `webhook` is empty, so the workflow runs unchanged in forks and
+  before the secret is configured. Never fails the job: a Slack outage must not
+  turn a spec-sync run red.
+
+  Renders a single mrkdwn section — put any links inline in `text` with Slack's
+  `<url|label>` syntax. Deliberately no buttons: an `actions`/`button` block is
+  an interactive component that requires the app to configure an Interactivity
+  Request URL, which a webhook-only app has not — Slack would warn "not
+  configured to handle interactive responses" on click. Inline links don't.
+inputs:
+  webhook:
+    description: Slack incoming webhook URL. Empty -> silent no-op.
+    required: false
+    default: ''
+  status:
+    description: success | warning | failure | info (drives the emoji only).
+    required: true
+  title:
+    description: Bold first line of the message.
+    required: true
+  text:
+    description: Message body (Slack mrkdwn; use <url|label> for links).
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        WEBHOOK: ${{ inputs.webhook }}
+        STATUS: ${{ inputs.status }}
+        TITLE: ${{ inputs.title }}
+        TEXT: ${{ inputs.text }}
+      run: |
+        set -euo pipefail
+        if [ -z "${WEBHOOK}" ]; then
+          echo "slack-notify: no webhook configured; skipping."
+          exit 0
+        fi
+        case "${STATUS}" in
+          success) emoji="✅" ;;
+          warning) emoji="⚠️" ;;
+          failure) emoji="🔴" ;;
+          *)       emoji="ℹ️" ;;
+        esac
+        # jq builds (and escapes) the Block Kit payload. jq is preinstalled on GitHub-hosted runners.
+        # GITHUB_REPOSITORY is a default env var the runner sets in every step (incl. composite
+        # actions), so the context footer names the source repo — ade-typescript vs ade-python — with
+        # no input to thread through and no per-repo config.
+        payload="$(jq -n \
+          --arg header "${emoji} ${TITLE}" \
+          --arg text "${TEXT}" \
+          --arg repo "${GITHUB_REPOSITORY}" '
+          {
+            blocks: [
+              { type: "section",
+                text: { type: "mrkdwn", text: ("*" + $header + "*\n" + $text) } },
+              { type: "context",
+                elements: [ { type: "mrkdwn", text: ("📦 `" + $repo + "` · spec-sync") } ] }
+            ]
+          }')"
+        # Non-fatal by design: capture the HTTP status, never propagate a send failure.
+        code="$(curl -sS -o /dev/null -w '%{http_code}' \
+          -X POST -H 'Content-type: application/json' \
+          --data "${payload}" "${WEBHOOK}" || echo "000")"
+        if [ "${code}" != "200" ]; then
+          echo "slack-notify: webhook returned HTTP ${code} (non-fatal; continuing)."
+        fi

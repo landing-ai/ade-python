@@ -22,6 +22,7 @@ jobs:
     env:
       V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
+      SPEC_LABEL: V1   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
       - uses: actions/checkout@v6
         with:
@@ -73,9 +74,24 @@ jobs:
             echo "open=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Sync PR already open — skip
+      # A sync PR is already open. Every hourly tick still reports drift (check-drift compares against
+      # main, not the PR branch), so instead of a bare skip: detect drift that appeared BEYOND the
+      # open PR and, if any, annotate the PR + emit one Slack ping per distinct new spec (deduped).
+      - name: New drift behind the open PR
+        id: behind
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true'
-        run: echo "A spec-sync PR is already open; skipping until it is merged or closed."
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+        run: ./scripts/spec-sync/notify-new-drift.sh specs/v1-ade.json "$SYNC_BRANCH" "$SPEC_LABEL"
+
+      - name: Slack — new drift behind the open PR
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true' && steps.behind.outputs.notify == 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: warning
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: new drift behind the open PR'
+          text: 'New ${{ env.SPEC_LABEL }} spec drift appeared beyond the <${{ steps.behind.outputs.pr_url }}|open sync PR> (live-spec `${{ steps.behind.outputs.hash }}`). Merge or close it and the next run opens a fresh one covering the rest.'
 
       # ---- Phase 1: mechanical (deterministic) ----
       - name: Mechanical commit + push
@@ -92,17 +108,20 @@ jobs:
       # Open the PR now — before the AI step — so a run that dies in phase 2 leaves a visible PR
       # (with just the mechanical commit) instead of an orphan branch.
       - name: Open sync PR
+        id: open_pr
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: |
-          gh pr create --base main --head "$SYNC_BRANCH" \
+          url="$(gh pr create --base main --head "$SYNC_BRANCH" \
             --title "spec-sync: track V1 spec drift" \
-            --body $'Automated spec-sync PR.\n\n- **Commit 1 (mechanical):** normalized spec snapshot + regenerated reference models.\n- **Commit 2 (AI):** resources/methods/tests/docs wired from the spec diff (added after this PR opened).\n\nGates (surface-lock, contract tests, lint/test/typecheck) must pass. **Human review required before merge.**'
+            --body $'Automated spec-sync PR.\n\n- **Commit 1 (mechanical):** normalized spec snapshot + regenerated reference models.\n- **Commit 2 (AI):** resources/methods/tests/docs wired from the spec diff (added after this PR opened).\n\nGates (surface-lock, contract tests, lint/test/typecheck) must pass. **Human review required before merge.**')"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
       # ---- Phase 2: AI wiring — edits ONLY. The agent holds no git/push capability, so a
       # prompt-injected spec description cannot route around review to push to a branch. ----
       - name: AI wiring (edits only)
+        id: ai_wiring
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         uses: anthropics/claude-code-action@v1
         with:
@@ -132,15 +151,47 @@ jobs:
       # the AI changes actually reach the PR (the action's automation mode does not push), and it
       # is the only step with push capability.
       - name: Commit + push AI wiring
+        id: ai_push
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         run: |
           git add -A
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
+            echo "summary=Mechanical-only PR (AI wiring added no changes). Human review required before merge." >> "$GITHUB_OUTPUT"
           else
             git commit -m "feat(spec-sync): wire SDK to spec diff (AI)"
             git push origin HEAD:"$SYNC_BRANCH"
+            echo "summary=Mechanical snapshot + AI wiring committed. Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
+
+      # Case 1: fresh drift -> a new PR was opened above. Announce it once, noting whether AI wiring
+      # landed a second commit or the PR is mechanical-only.
+      - name: Slack — new drift, PR opened
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: info
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: new spec drift → PR opened'
+          text: '<${{ steps.open_pr.outputs.url }}|Open the PR> — ${{ steps.ai_push.outputs.summary }}'
+
+      # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
+      # calling out — a spec fetch/normalize error (often the staging cluster being unbooked) and an
+      # AI-wiring crash (PR left mechanical-only) — and falls back to a generic run-failed otherwise.
+      - name: Slack — spec-sync failed
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: failure
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
+          text: >-
+            ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
+            && format('Spec fetch/normalize failed (exit {0}). This targets staging — check whether the ADE cluster is unbooked (book via <https://github.com/landing-ai/finops/actions/workflows/book-ade.yml|finops book-ade.yml>) before assuming a real outage.', steps.drift.outputs.code)
+            || (steps.ai_wiring.outcome == 'failure'
+            && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
+            || 'spec-sync run failed. See the workflow run for details.') }}
+            · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
 
   # V2 loop. Same machinery as the V1 job above, pointed at the V2 spec on the AIDE gateway
   # and a separate sync branch, with a V2-tailored wiring prompt. Kept as a distinct job (not a
@@ -156,6 +207,7 @@ jobs:
     env:
       V2_SPEC_URL: https://aide.staging.landing.ai/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v2   # separate branch so V1 and V2 sync PRs never collide
+      SPEC_LABEL: V2   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
       - uses: actions/checkout@v6
         with:
@@ -209,9 +261,24 @@ jobs:
             echo "open=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Sync PR already open — skip
+      # A sync PR is already open. Every hourly tick still reports drift (check-drift compares against
+      # main, not the PR branch), so instead of a bare skip: detect drift that appeared BEYOND the
+      # open PR and, if any, annotate the PR + emit one Slack ping per distinct new spec (deduped).
+      - name: New drift behind the open PR
+        id: behind
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true'
-        run: echo "A spec-sync PR is already open; skipping until it is merged or closed."
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+        run: ./scripts/spec-sync/notify-new-drift.sh specs/v2-aide.json "$SYNC_BRANCH" "$SPEC_LABEL"
+
+      - name: Slack — new drift behind the open PR
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open == 'true' && steps.behind.outputs.notify == 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: warning
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: new drift behind the open PR'
+          text: 'New ${{ env.SPEC_LABEL }} spec drift appeared beyond the <${{ steps.behind.outputs.pr_url }}|open sync PR> (live-spec `${{ steps.behind.outputs.hash }}`). Merge or close it and the next run opens a fresh one covering the rest.'
 
       # ---- Phase 1: mechanical (deterministic) ----
       - name: Mechanical commit + push
@@ -226,16 +293,19 @@ jobs:
           git push --force origin "$SYNC_BRANCH"
 
       - name: Open sync PR
+        id: open_pr
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: |
-          gh pr create --base main --head "$SYNC_BRANCH" \
+          url="$(gh pr create --base main --head "$SYNC_BRANCH" \
             --title "spec-sync: track V2 spec drift" \
-            --body $'Automated V2 spec-sync PR (`client.v2`).\n\n- **Commit 1 (mechanical):** normalized V2 spec snapshot + regenerated reference models.\n- **Commit 2 (AI, only if the spec diff needs SDK changes):** client.v2 resources/methods/tests/docs wired from the diff, added after this PR opened. Workflow-only drift is excluded and an AI no-op is skipped, so some drifts produce a **mechanical-only PR with no second commit**.\n\nGates (surface-lock, V2 contract tests, lint/test/typecheck) must pass. When present, the AI commit is a **draft a human finishes** (the V2 ergonomic layer — unified Job, dual-host, schema coercion — is not in the spec). **Human review required before merge.**'
+            --body $'Automated V2 spec-sync PR (`client.v2`).\n\n- **Commit 1 (mechanical):** normalized V2 spec snapshot + regenerated reference models.\n- **Commit 2 (AI, only if the spec diff needs SDK changes):** client.v2 resources/methods/tests/docs wired from the diff, added after this PR opened. Workflow-only drift is excluded and an AI no-op is skipped, so some drifts produce a **mechanical-only PR with no second commit**.\n\nGates (surface-lock, V2 contract tests, lint/test/typecheck) must pass. When present, the AI commit is a **draft a human finishes** (the V2 ergonomic layer — unified Job, dual-host, schema coercion — is not in the spec). **Human review required before merge.**')"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
       # ---- Phase 2: AI wiring — edits ONLY (no git/push; a later step commits). ----
       - name: AI wiring (edits only)
+        id: ai_wiring
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         uses: anthropics/claude-code-action@v1
         with:
@@ -320,12 +390,44 @@ jobs:
           ./scripts/format
 
       - name: Commit + push AI wiring
+        id: ai_push
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         run: |
           git add -A
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
+            echo "summary=Mechanical-only PR (AI wiring added no changes — e.g. workflow-only drift). Human review required before merge." >> "$GITHUB_OUTPUT"
           else
             git commit -m "feat(spec-sync): wire client.v2 to spec diff (AI)"
             git push origin HEAD:"$SYNC_BRANCH"
+            echo "summary=Mechanical snapshot + AI wiring committed (a draft a human finishes). Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
+
+      # Case 1: fresh drift -> a new PR was opened above. Announce it once, noting whether AI wiring
+      # landed a second commit or the PR is mechanical-only.
+      - name: Slack — new drift, PR opened
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: info
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: new spec drift → PR opened'
+          text: '<${{ steps.open_pr.outputs.url }}|Open the PR> — ${{ steps.ai_push.outputs.summary }}'
+
+      # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
+      # calling out — a spec fetch/normalize error (often the staging cluster being unbooked) and an
+      # AI-wiring crash (PR left mechanical-only) — and falls back to a generic run-failed otherwise.
+      - name: Slack — spec-sync failed
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          webhook: ${{ secrets.SLACK_SPEC_SYNC_WEBHOOK }}
+          status: failure
+          title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
+          text: >-
+            ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
+            && format('Spec fetch/normalize failed (exit {0}). This targets staging — check whether the ADE cluster is unbooked (book via <https://github.com/landing-ai/finops/actions/workflows/book-ade.yml|finops book-ade.yml>) before assuming a real outage.', steps.drift.outputs.code)
+            || (steps.ai_wiring.outcome == 'failure'
+            && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
+            || 'spec-sync run failed. See the workflow run for details.') }}
+            · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
