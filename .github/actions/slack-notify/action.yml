@@ -1,0 +1,117 @@
+name: Slack notify
+description: >
+  Post a spec-sync status message to Slack. Prefers the Web API (chat.postMessage
+  with a bot token): that path can thread (via `thread_ts`) and returns the posted
+  message `ts` as an output. Falls back to an incoming webhook (flat, no ts) when
+  only `webhook` is set, and is a silent no-op when neither is configured. Never
+  fails the job: a Slack outage must not turn a spec-sync run red.
+
+  Renders a single mrkdwn section + a repo-context footer — put any links inline
+  in `text` with Slack's `<url|label>` syntax. Deliberately no buttons: a button
+  is an interactive component that needs an app Interactivity Request URL, which a
+  bot-token/webhook app has not (Slack warns "not configured to handle interactive
+  responses" on click). Inline links don't.
+inputs:
+  bot_token:
+    description: Slack bot token (xoxb-...). When set, posts via chat.postMessage and can thread.
+    required: false
+    default: ''
+  webhook:
+    description: Incoming webhook URL. Used only when bot_token is empty (flat, no threading, no ts).
+    required: false
+    default: ''
+  channel:
+    description: Channel (name or ID) for chat.postMessage. Ignored in webhook mode.
+    required: false
+    default: '#ade-sdk-pipeline'
+  status:
+    description: success | warning | failure | info (drives the emoji only).
+    required: true
+  title:
+    description: Bold first line of the message.
+    required: true
+  text:
+    description: Message body (Slack mrkdwn; use <url|label> for links).
+    required: true
+  thread_ts:
+    description: When set (bot_token mode), post as a reply under this thread root.
+    required: false
+    default: ''
+  reply_broadcast:
+    description: "'true' to also surface a threaded reply back in the channel. Only with thread_ts."
+    required: false
+    default: 'false'
+outputs:
+  ts:
+    description: The posted message ts (empty in webhook mode, on no-op, or on failure).
+    value: ${{ steps.post.outputs.ts }}
+runs:
+  using: composite
+  steps:
+    - id: post
+      shell: bash
+      env:
+        BOT_TOKEN: ${{ inputs.bot_token }}
+        WEBHOOK: ${{ inputs.webhook }}
+        CHANNEL: ${{ inputs.channel }}
+        STATUS: ${{ inputs.status }}
+        TITLE: ${{ inputs.title }}
+        TEXT: ${{ inputs.text }}
+        THREAD_TS: ${{ inputs.thread_ts }}
+        REPLY_BROADCAST: ${{ inputs.reply_broadcast }}
+      run: |
+        set -euo pipefail
+        case "${STATUS}" in
+          success) emoji="✅" ;;
+          warning) emoji="⚠️" ;;
+          failure) emoji="🔴" ;;
+          *)       emoji="ℹ️" ;;
+        esac
+        # Shared blocks: a mrkdwn section + a repo-context footer. GITHUB_REPOSITORY is a default env
+        # var the runner sets in every step, so the footer names the source repo (ade-typescript vs
+        # ade-python) with no input to thread through. jq is preinstalled on GitHub-hosted runners.
+        blocks="$(jq -n \
+          --arg header "${emoji} ${TITLE}" \
+          --arg text "${TEXT}" \
+          --arg repo "${GITHUB_REPOSITORY}" '
+          [ { type: "section", text: { type: "mrkdwn", text: ("*" + $header + "*\n" + $text) } },
+            { type: "context", elements: [ { type: "mrkdwn", text: ("📦 `" + $repo + "` · spec-sync") } ] } ]')"
+
+        # Preferred: Web API. Returns the message ts (needed to thread later events) and accepts
+        # thread_ts to reply under an existing root.
+        if [ -n "${BOT_TOKEN}" ]; then
+          payload="$(jq -n \
+            --arg channel "${CHANNEL}" \
+            --arg fallback "${emoji} ${TITLE}" \
+            --argjson blocks "${blocks}" \
+            --arg thread "${THREAD_TS}" \
+            --arg broadcast "${REPLY_BROADCAST}" '
+            { channel: $channel, text: $fallback, blocks: $blocks }
+            + (if $thread != "" then { thread_ts: $thread } else {} end)
+            + (if $thread != "" and $broadcast == "true" then { reply_broadcast: true } else {} end)')"
+          resp="$(curl -sS -X POST \
+            -H "Authorization: Bearer ${BOT_TOKEN}" \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "${payload}" https://slack.com/api/chat.postMessage \
+            || echo '{"ok":false,"error":"curl_failed"}')"
+          if [ "$(printf '%s' "${resp}" | jq -r '.ok')" = "true" ]; then
+            printf 'ts=%s\n' "$(printf '%s' "${resp}" | jq -r '.ts')" >> "$GITHUB_OUTPUT"
+          else
+            echo "slack-notify: chat.postMessage failed: $(printf '%s' "${resp}" | jq -r '.error // "unknown"') (non-fatal; continuing)."
+          fi
+          exit 0
+        fi
+
+        # Fallback: incoming webhook. Flat only — returns no ts, so threading silently degrades.
+        if [ -n "${WEBHOOK}" ]; then
+          payload="$(jq -n --argjson blocks "${blocks}" '{ blocks: $blocks }')"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -X POST -H 'Content-type: application/json' \
+            --data "${payload}" "${WEBHOOK}" || echo "000")"
+          if [ "${code}" != "200" ]; then
+            echo "slack-notify: webhook returned HTTP ${code} (non-fatal; continuing)."
+          fi
+          exit 0
+        fi
+
+        echo "slack-notify: neither bot_token nor webhook configured; skipping."
