@@ -80,24 +80,29 @@ runs:
         # Preferred: Web API. Returns the message ts (needed to thread later events) and accepts
         # thread_ts to reply under an existing root.
         if [ -n "${BOT_TOKEN}" ]; then
+          # Fallback text (notifications + screen readers) carries the body too, not just the title.
+          fallback="${emoji} ${TITLE}"
+          if [ -n "${TEXT}" ]; then fallback="${fallback}"$'\n'"${TEXT}"; fi
           payload="$(jq -n \
             --arg channel "${CHANNEL}" \
-            --arg fallback "${emoji} ${TITLE}" \
+            --arg fallback "${fallback}" \
             --argjson blocks "${blocks}" \
             --arg thread "${THREAD_TS}" \
             --arg broadcast "${REPLY_BROADCAST}" '
             { channel: $channel, text: $fallback, blocks: $blocks }
             + (if $thread != "" then { thread_ts: $thread } else {} end)
             + (if $thread != "" and $broadcast == "true" then { reply_broadcast: true } else {} end)')"
-          resp="$(curl -sS -X POST \
+          # --connect-timeout/--max-time bound a hung connection so a Slack stall can't hold the job.
+          resp="$(curl -sS --connect-timeout 10 --max-time 20 -X POST \
             -H "Authorization: Bearer ${BOT_TOKEN}" \
             -H 'Content-type: application/json; charset=utf-8' \
             --data "${payload}" https://slack.com/api/chat.postMessage \
             || echo '{"ok":false,"error":"curl_failed"}')"
-          if [ "$(printf '%s' "${resp}" | jq -r '.ok')" = "true" ]; then
-            printf 'ts=%s\n' "$(printf '%s' "${resp}" | jq -r '.ts')" >> "$GITHUB_OUTPUT"
+          # Parse defensively: an empty/non-JSON response must not fail the step (non-fatal contract).
+          if [ "$(printf '%s' "${resp}" | jq -r '.ok // false' 2>/dev/null || echo false)" = "true" ]; then
+            printf 'ts=%s\n' "$(printf '%s' "${resp}" | jq -r '.ts // empty' 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
           else
-            echo "slack-notify: chat.postMessage failed: $(printf '%s' "${resp}" | jq -r '.error // "unknown"') (non-fatal; continuing)."
+            echo "slack-notify: chat.postMessage failed: $(printf '%s' "${resp}" | jq -r '.error // "unknown"' 2>/dev/null || echo 'non-JSON response') (non-fatal; continuing)."
           fi
           exit 0
         fi
@@ -105,7 +110,7 @@ runs:
         # Fallback: incoming webhook. Flat only — returns no ts, so threading silently degrades.
         if [ -n "${WEBHOOK}" ]; then
           payload="$(jq -n --argjson blocks "${blocks}" '{ blocks: $blocks }')"
-          code="$(curl -sS -o /dev/null -w '%{http_code}' \
+          code="$(curl -sS --connect-timeout 10 --max-time 20 -o /dev/null -w '%{http_code}' \
             -X POST -H 'Content-type: application/json' \
             --data "${payload}" "${WEBHOOK}" || echo "000")"
           if [ "${code}" != "200" ]; then

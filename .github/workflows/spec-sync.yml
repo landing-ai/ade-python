@@ -137,6 +137,7 @@ jobs:
 
       - name: Save thread root on the PR
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
+        continue-on-error: true # bookkeeping only; thread-ts.sh fails closed, and a hiccup must not red the run
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: ./scripts/spec-sync/thread-ts.sh set "${{ steps.open_pr.outputs.url }}" "${{ steps.root.outputs.ts }}"
@@ -189,7 +190,7 @@ jobs:
 
       # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
       - name: Slack — AI wiring result
-        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
         uses: ./.github/actions/slack-notify
         with:
           bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -348,6 +349,7 @@ jobs:
 
       - name: Save thread root on the PR
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
+        continue-on-error: true # bookkeeping only; thread-ts.sh fails closed, and a hiccup must not red the run
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: ./scripts/spec-sync/thread-ts.sh set "${{ steps.open_pr.outputs.url }}" "${{ steps.root.outputs.ts }}"
@@ -454,7 +456,7 @@ jobs:
 
       # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
       - name: Slack — AI wiring result
-        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
         uses: ./.github/actions/slack-notify
         with:
           bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
