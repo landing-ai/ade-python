@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
+      V1_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json  # staging spec, published to S3 by vision-tools-rest-api CI (no cluster booking needed)
       SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
       SPEC_LABEL: V1   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
@@ -232,7 +232,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V2_SPEC_URL: https://aide.staging.landing.ai/openapi.json  # staging drives the loop
+      V2_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json  # staging spec, published to S3 by aide CI (no cluster booking needed)
       SYNC_BRANCH: spec-sync/v2   # separate branch so V1 and V2 sync PRs never collide
       SPEC_LABEL: V2   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
