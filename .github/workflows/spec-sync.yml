@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V1_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json  # staging spec, published to S3 by vision-tools-rest-api CI (no cluster booking needed)
+      V1_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json  # staging spec, published to S3 by vision-tools-rest-api CI
       SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
       SPEC_LABEL: V1   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
@@ -201,7 +201,7 @@ jobs:
           thread_ts: ${{ steps.root.outputs.ts }}
 
       # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
-      # calling out — a spec fetch/normalize error (often the staging cluster being unbooked) and an
+      # calling out — a spec fetch/normalize error (S3 object missing/unreadable or its publisher failing) and an
       # AI-wiring crash (PR left mechanical-only) — and falls back to a generic run-failed otherwise.
       - name: Slack — spec-sync failed
         if: failure()
@@ -213,7 +213,7 @@ jobs:
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
             ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
-            && format('Spec fetch/normalize failed (exit {0}). This targets staging — check whether the ADE cluster is unbooked (book via <https://github.com/landing-ai/finops/actions/workflows/book-ade.yml|finops book-ade.yml>) before assuming a real outage.', steps.drift.outputs.code)
+            && format('Spec fetch/normalize failed (exit {0}). spec-sync reads the V1 spec from <https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json|the S3 object>, published by vision-tools-rest-api <https://github.com/landing-ai/vision-tools-rest-api/actions/workflows/publish-openapi.yml|Publish OpenAPI>. Check the object is present and readable, and that the publisher last ran green.', steps.drift.outputs.code)
             || (steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}
@@ -233,7 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V2_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json  # staging spec, published to S3 by aide CI (no cluster booking needed)
+      V2_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json  # staging spec, published to S3 by aide CI
       SYNC_BRANCH: spec-sync/v2   # separate branch so V1 and V2 sync PRs never collide
       SPEC_LABEL: V2   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
@@ -468,7 +468,7 @@ jobs:
           thread_ts: ${{ steps.root.outputs.ts }}
 
       # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
-      # calling out — a spec fetch/normalize error (often the staging cluster being unbooked) and an
+      # calling out — a spec fetch/normalize error (S3 object missing/unreadable or its publisher failing) and an
       # AI-wiring crash (PR left mechanical-only) — and falls back to a generic run-failed otherwise.
       - name: Slack — spec-sync failed
         if: failure()
@@ -480,7 +480,7 @@ jobs:
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
             ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
-            && format('Spec fetch/normalize failed (exit {0}). This targets staging — check whether the ADE cluster is unbooked (book via <https://github.com/landing-ai/finops/actions/workflows/book-ade.yml|finops book-ade.yml>) before assuming a real outage.', steps.drift.outputs.code)
+            && format('Spec fetch/normalize failed (exit {0}). spec-sync reads the V2 spec from <https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json|the S3 object>, published by aide <https://github.com/landing-ai/aide/actions/workflows/publish-openapi.yml|Publish OpenAPI>. Check the object is present and readable, and that the publisher last ran green.', steps.drift.outputs.code)
             || (steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}
