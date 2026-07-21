@@ -224,9 +224,10 @@ jobs:
   # and a separate sync branch, with a V2-tailored wiring prompt. Kept as a distinct job (not a
   # matrix) so the proven V1 loop is untouched and the two prompts can diverge freely.
   #
-  # HOSTS (do not conflate): the V2 *spec* is published at aide.[env]/openapi.json; the V2 *API*
-  # (what the SDK and contract tests call) is api.ade.[env]. We fetch drift from aide; the SDK
-  # never talks to aide (its paths are staff-SSO-gated).
+  # HOSTS (do not conflate): the V2 *spec* originates in the AIDE gateway, but spec-sync reads it
+  # from the CI-published S3 copy (V2_SPEC_URL below) — not live from aide — so drift detection does
+  # not depend on staging being booked. The V2 *API* the SDK and contract tests call is api.ade.[env];
+  # the SDK never talks to aide (its paths are staff-SSO-gated).
   spec-sync-v2:
     if: github.repository == 'landing-ai/ade-python'
     runs-on: ubuntu-latest
