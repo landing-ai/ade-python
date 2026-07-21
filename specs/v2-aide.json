@@ -2,6 +2,7 @@
   "components": {
     "schemas": {
       "BaseElementOptions": {
+        "additionalProperties": false,
         "properties": {
           "markdown": {
             "default": true,
@@ -13,6 +14,7 @@
         "type": "object"
       },
       "BlocksOptions": {
+        "additionalProperties": false,
         "properties": {
           "attestation": {
             "$ref": "#/components/schemas/BaseElementOptions"
@@ -257,7 +259,26 @@
         "title": "Element",
         "type": "object"
       },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "description": "Stable snake_case error code (e.g. ``validation_error``, ``unknown_model_version``, ``invalid_url``, ``invalid_api_key``, ``rate_limit_exceeded``).",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable detail.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
       "FigureOptions": {
+        "additionalProperties": false,
         "properties": {
           "markdown": {
             "default": true,
@@ -606,6 +627,7 @@
         "type": "object"
       },
       "TableOptions": {
+        "additionalProperties": false,
         "properties": {
           "format": {
             "default": "html",
@@ -628,32 +650,6 @@
       "V2Billing": {
         "description": "Billing summary: the service tier the request ran in and the credits\ncharged.",
         "properties": {
-          "input_markdown_chars": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge. Extract responses only.",
-            "title": "Input Markdown Chars"
-          },
-          "output_extraction_chars": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Characters in the serialized extraction output — the output basis of the credit charge. Extract responses only.",
-            "title": "Output Extraction Chars"
-          },
           "service_tier": {
             "anyOf": [
               {
@@ -702,12 +698,6 @@
             ],
             "description": "Billing summary: the service tier the request ran in and the credits charged."
           },
-          "credit_usage": {
-            "default": 0.0,
-            "description": "Credits billed for this request.",
-            "title": "Credit Usage",
-            "type": "number"
-          },
           "doc_id": {
             "anyOf": [
               {
@@ -726,6 +716,19 @@
             "title": "Duration Ms",
             "type": "integer"
           },
+          "input_markdown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Characters (Unicode code points) in the input markdown as submitted — the input basis of the credit charge.",
+            "title": "Input Markdown Chars"
+          },
           "job_id": {
             "description": "Gateway job id (workflow id). Matches the ``x-request-id`` the gateway minted for this request and the billing row id in vision-agent.",
             "title": "Job Id",
@@ -739,6 +742,19 @@
           "openapi_spec": {
             "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
             "type": "string"
+          },
+          "output_extraction_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Characters in the serialized extraction output — the output basis of the credit charge.",
+            "title": "Output Extraction Chars"
           },
           "range_units": {
             "const": "unicode_codepoints",
@@ -759,16 +775,54 @@
         "type": "object"
       },
       "V2ExtractOptions": {
+        "additionalProperties": false,
         "description": "Extraction options (``docs/extract-v2-proposal.md`` → Options).",
         "properties": {
           "strict": {
             "default": false,
-            "description": "When ``true``, returns HTTP 422 if the schema contains fields the model cannot extract. When ``false`` (default), unsupported fields are skipped and extraction continues.",
+            "description": "When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job (``status: \"failed\"``) on the async ``/jobs`` route. When ``false`` (default), unsupported fields are skipped and extraction continues.",
             "title": "Strict",
             "type": "boolean"
           }
         },
         "title": "V2ExtractOptions",
+        "type": "object"
+      },
+      "V2GroundMetadata": {
+        "description": "Response metadata for a v2 ground call.",
+        "properties": {
+          "billing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2Billing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Billing summary: the service tier the request ran in and the credits charged."
+          },
+          "duration_ms": {
+            "description": "End-to-end request duration in milliseconds.",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "job_id": {
+            "description": "Gateway job id (workflow id). Matches the ``x-request-id`` the gateway minted for this request.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "openapi_spec": {
+            "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "duration_ms",
+          "openapi_spec"
+        ],
+        "title": "V2GroundMetadata",
         "type": "object"
       },
       "V2WorkflowMetadata": {
@@ -784,12 +838,6 @@
               }
             ],
             "description": "Billing summary: the service tier the request ran in and the credits charged."
-          },
-          "credit_usage": {
-            "default": 0.0,
-            "description": "Combined credits billed for this request (parse + extract).",
-            "title": "Credit Usage",
-            "type": "number"
           },
           "duration_ms": {
             "description": "Total end-to-end duration across all stages in milliseconds.",
@@ -910,7 +958,7 @@
           },
           "strict": {
             "default": false,
-            "description": "When ``true``, returns 422 if the schema contains fields the model cannot extract. When ``false``, unsupported fields are skipped.",
+            "description": "When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job on the async ``/jobs`` route. When ``false``, unsupported fields are skipped.",
             "title": "Strict",
             "type": "boolean"
           }
@@ -1170,9 +1218,9 @@
                     },
                     "metadata": {
                       "$ref": "#/components/schemas/V2ExtractMetadata",
-                      "description": "Request metadata (job_id, model_version, duration_ms, doc_id, credit_usage)."
+                      "description": "Request metadata (job_id, model_version, duration_ms, doc_id, billing)."
                     },
-                    "output_ref": {
+                    "schema_violation_error": {
                       "anyOf": [
                         {
                           "type": "string"
@@ -1182,7 +1230,17 @@
                         }
                       ],
                       "default": null,
-                      "title": "Output Ref"
+                      "description": "Set when ``options.strict`` is false and the schema contained fields the model could not extract — the extraction is partial.",
+                      "title": "Schema Violation Error"
+                    },
+                    "warnings": {
+                      "description": "Non-fatal warnings emitted during extraction.",
+                      "items": {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      "title": "Warnings",
+                      "type": "array"
                     }
                   },
                   "required": [
@@ -1202,11 +1260,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Extract",
@@ -1337,11 +1395,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE List Extract Jobs",
@@ -1408,6 +1466,19 @@
                     ],
                     "default": null,
                     "description": "Extraction options (``strict``). Omit for defaults."
+                  },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.",
+                    "title": "Output Save Url"
                   },
                   "schema": {
                     "additionalProperties": true,
@@ -1505,6 +1576,19 @@
                     "default": null,
                     "description": "Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data."
                   },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.",
+                    "title": "Output Save Url"
+                  },
                   "schema": {
                     "additionalProperties": true,
                     "description": "JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions. JSON-serialized string in form data.",
@@ -1580,6 +1664,16 @@
               }
             },
             "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Extract Jobs",
@@ -1638,8 +1732,18 @@
                       "description": "The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "progress": {
-                      "description": "Best-effort progress, present while processing only for jobs that report it."
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
                     "result": {
                       "anyOf": [
@@ -1665,9 +1769,9 @@
                             },
                             "metadata": {
                               "$ref": "#/components/schemas/V2ExtractMetadata",
-                              "description": "Request metadata (job_id, model_version, duration_ms, doc_id, credit_usage)."
+                              "description": "Request metadata (job_id, model_version, duration_ms, doc_id, billing)."
                             },
-                            "output_ref": {
+                            "schema_violation_error": {
                               "anyOf": [
                                 {
                                   "type": "string"
@@ -1677,7 +1781,17 @@
                                 }
                               ],
                               "default": null,
-                              "title": "Output Ref"
+                              "description": "Set when ``options.strict`` is false and the schema contained fields the model could not extract — the extraction is partial.",
+                              "title": "Schema Violation Error"
+                            },
+                            "warnings": {
+                              "description": "Non-fatal warnings emitted during extraction.",
+                              "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                              },
+                              "title": "Warnings",
+                              "type": "array"
                             }
                           },
                           "required": [
@@ -1687,6 +1801,564 @@
                             "metadata"
                           ],
                           "title": "V2ExtractResult",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/ground": {
+      "post": {
+        "description": "Map extracted fields to the document blocks they were quoted from. Takes the extraction_metadata from an extract call and the structure tree from the parse call the markdown came from, and returns, for every extracted field, the overlapping blocks with their ids, page numbers, and bounding boxes. Runs synchronously and returns the result inline.",
+        "operationId": "v2-ground_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2GroundOperationWorkflow — the ``/v2/ground`` request body.\n\nA pure, stateless join: each ``extraction_metadata`` leaf's ``ranges``\n(char offsets into the markdown both artifacts were produced from) is\noverlapped against the ``grounding.range`` carried on every ``structure``\nblock, and the matching blocks are returned. Nothing is stored server-side,\nso block ids in the response resolve only against the ``structure`` tree\nsupplied here — pairing an extraction with the parse result it actually\ncame from is the caller's responsibility.",
+                "properties": {
+                  "extraction_metadata": {
+                    "additionalProperties": true,
+                    "description": "The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown.",
+                    "example": {
+                      "invoice_number": {
+                        "ranges": [
+                          {
+                            "end": 31,
+                            "start": 13
+                          }
+                        ],
+                        "value": "INV-042"
+                      }
+                    },
+                    "title": "Extraction Metadata",
+                    "type": "object"
+                  },
+                  "structure": {
+                    "additionalProperties": true,
+                    "description": "The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree.",
+                    "title": "Structure",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "extraction_metadata",
+                  "structure"
+                ],
+                "title": "V2GroundRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "extraction_metadata": {
+                    "additionalProperties": true,
+                    "description": "The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown. JSON-serialized string in form data.",
+                    "example": {
+                      "invoice_number": {
+                        "ranges": [
+                          {
+                            "end": 31,
+                            "start": 13
+                          }
+                        ],
+                        "value": "INV-042"
+                      }
+                    },
+                    "title": "Extraction Metadata",
+                    "type": "object"
+                  },
+                  "structure": {
+                    "additionalProperties": true,
+                    "description": "The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree. JSON-serialized string in form data.",
+                    "title": "Structure",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "extraction_metadata",
+                  "structure"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Result returned by V2GroundOperationWorkflow — the ``/v2/ground``\nresponse body.\n\n``grounding`` MIRRORS the ``extraction_metadata`` tree: nested objects and\narrays keep their shape, and each ``{value, ranges}`` leaf is replaced by\nthe list of structure blocks its ranges overlap (the block-hit shape\ndocumented on the field). It is NOT a flat map — a nested schema field like\n``issuer.name`` resolves to ``grounding[\"issuer\"][\"name\"]``.",
+                  "properties": {
+                    "grounding": {
+                      "additionalProperties": true,
+                      "description": "A tree mirroring ``extraction_metadata``: nested objects and arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by the list of blocks its ranges overlap, in reading order. Each entry carries ``block_id`` and ``type`` identifying the matched ``structure`` block, ``parent_id`` naming the enclosing block for nested blocks (table cells), and the block's own ``grounding`` object (``{page, range, box}``) verbatim. When the block itself carries ``atomic_grounding``, the entry also lists the overlapping subset as ``{index, page, range, box}`` objects, where ``index`` is the position in the block's own ``atomic_grounding`` array; ``[]`` means the block matched but no individual entry did, and the key is omitted for blocks that carry no ``atomic_grounding``. A leaf is ``null`` when its ``ranges`` was ``null`` (a synthesised value, with no supporting passage to look up) and ``[]`` when valid ranges overlapped no block (which usually indicates a mismatched extraction/structure pair).",
+                      "example": {
+                        "invoice_number": [
+                          {
+                            "atomic_grounding": [],
+                            "block_id": "text-1",
+                            "grounding": {
+                              "box": {
+                                "xmax": 0.42,
+                                "xmin": 0.1,
+                                "ymax": 0.15,
+                                "ymin": 0.12
+                              },
+                              "page": 1,
+                              "range": {
+                                "end": 31,
+                                "start": 13
+                              }
+                            },
+                            "type": "text"
+                          }
+                        ]
+                      },
+                      "title": "Grounding",
+                      "type": "object"
+                    },
+                    "metadata": {
+                      "$ref": "#/components/schemas/V2GroundMetadata",
+                      "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                    }
+                  },
+                  "required": [
+                    "grounding",
+                    "metadata"
+                  ],
+                  "title": "V2GroundResult",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v2-ground result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Ground",
+        "tags": [
+          "Ground"
+        ]
+      }
+    },
+    "/v2/ground/jobs": {
+      "get": {
+        "description": "List your Ground jobs, newest first.",
+        "operationId": "v2-ground_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Ground Jobs",
+        "tags": [
+          "Ground"
+        ]
+      },
+      "post": {
+        "description": "Map extracted fields to the document blocks they were quoted from. Takes the extraction_metadata from an extract call and the structure tree from the parse call the markdown came from, and returns, for every extracted field, the overlapping blocks with their ids, page numbers, and bounding boxes. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "v2-ground_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2GroundOperationWorkflow — the ``/v2/ground`` request body.\n\nA pure, stateless join: each ``extraction_metadata`` leaf's ``ranges``\n(char offsets into the markdown both artifacts were produced from) is\noverlapped against the ``grounding.range`` carried on every ``structure``\nblock, and the matching blocks are returned. Nothing is stored server-side,\nso block ids in the response resolve only against the ``structure`` tree\nsupplied here — pairing an extraction with the parse result it actually\ncame from is the caller's responsibility.",
+                "properties": {
+                  "extraction_metadata": {
+                    "additionalProperties": true,
+                    "description": "The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown.",
+                    "example": {
+                      "invoice_number": {
+                        "ranges": [
+                          {
+                            "end": 31,
+                            "start": 13
+                          }
+                        ],
+                        "value": "INV-042"
+                      }
+                    },
+                    "title": "Extraction Metadata",
+                    "type": "object"
+                  },
+                  "structure": {
+                    "additionalProperties": true,
+                    "description": "The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree.",
+                    "title": "Structure",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "extraction_metadata",
+                  "structure"
+                ],
+                "title": "V2GroundRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "extraction_metadata": {
+                    "additionalProperties": true,
+                    "description": "The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown. JSON-serialized string in form data.",
+                    "example": {
+                      "invoice_number": {
+                        "ranges": [
+                          {
+                            "end": 31,
+                            "start": 13
+                          }
+                        ],
+                        "value": "INV-042"
+                      }
+                    },
+                    "title": "Extraction Metadata",
+                    "type": "object"
+                  },
+                  "structure": {
+                    "additionalProperties": true,
+                    "description": "The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree. JSON-serialized string in form data.",
+                    "title": "Structure",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "extraction_metadata",
+                  "structure"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Ground Jobs",
+        "tags": [
+          "Ground"
+        ]
+      }
+    },
+    "/v2/ground/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Ground job, including its result once the job has completed.",
+        "operationId": "v2-ground_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by V2GroundOperationWorkflow — the ``/v2/ground``\nresponse body.\n\n``grounding`` MIRRORS the ``extraction_metadata`` tree: nested objects and\narrays keep their shape, and each ``{value, ranges}`` leaf is replaced by\nthe list of structure blocks its ranges overlap (the block-hit shape\ndocumented on the field). It is NOT a flat map — a nested schema field like\n``issuer.name`` resolves to ``grounding[\"issuer\"][\"name\"]``.",
+                          "properties": {
+                            "grounding": {
+                              "additionalProperties": true,
+                              "description": "A tree mirroring ``extraction_metadata``: nested objects and arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by the list of blocks its ranges overlap, in reading order. Each entry carries ``block_id`` and ``type`` identifying the matched ``structure`` block, ``parent_id`` naming the enclosing block for nested blocks (table cells), and the block's own ``grounding`` object (``{page, range, box}``) verbatim. When the block itself carries ``atomic_grounding``, the entry also lists the overlapping subset as ``{index, page, range, box}`` objects, where ``index`` is the position in the block's own ``atomic_grounding`` array; ``[]`` means the block matched but no individual entry did, and the key is omitted for blocks that carry no ``atomic_grounding``. A leaf is ``null`` when its ``ranges`` was ``null`` (a synthesised value, with no supporting passage to look up) and ``[]`` when valid ranges overlapped no block (which usually indicates a mismatched extraction/structure pair).",
+                              "example": {
+                                "invoice_number": [
+                                  {
+                                    "atomic_grounding": [],
+                                    "block_id": "text-1",
+                                    "grounding": {
+                                      "box": {
+                                        "xmax": 0.42,
+                                        "xmin": 0.1,
+                                        "ymax": 0.15,
+                                        "ymin": 0.12
+                                      },
+                                      "page": 1,
+                                      "range": {
+                                        "end": 31,
+                                        "start": 13
+                                      }
+                                    },
+                                    "type": "text"
+                                  }
+                                ]
+                              },
+                              "title": "Grounding",
+                              "type": "object"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V2GroundMetadata",
+                              "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                            }
+                          },
+                          "required": [
+                            "grounding",
+                            "metadata"
+                          ],
+                          "title": "V2GroundResult",
                           "type": "object"
                         },
                         {
@@ -1711,20 +2383,30 @@
             },
             "description": "Job status / result"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
-        "summary": "ADE Get Extract Jobs",
+        "summary": "ADE Get Ground Jobs",
         "tags": [
-          "Extract"
+          "Ground"
         ]
       }
     },
@@ -1751,6 +2433,7 @@
                     "type": "string"
                   },
                   "options": {
+                    "additionalProperties": false,
                     "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
                     "properties": {
                       "atomic_grounding": {
@@ -1832,11 +2515,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Parse",
@@ -1934,6 +2617,13 @@
                             "description": "The unique identifier for the parse job. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                             "type": "string"
                           },
+                          "model_version": {
+                            "description": "The model snapshot used to parse the document.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "status": {
                             "description": "The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
                             "enum": [
@@ -1943,13 +2633,6 @@
                               "failed"
                             ],
                             "type": "string"
-                          },
-                          "version": {
-                            "description": "The model snapshot used to parse the document.",
-                            "type": [
-                              "string",
-                              "null"
-                            ]
                           }
                         },
                         "type": "object"
@@ -1975,11 +2658,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE List Parse Jobs",
@@ -2009,6 +2692,7 @@
                     "type": "string"
                   },
                   "options": {
+                    "additionalProperties": false,
                     "description": "Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.",
                     "properties": {
                       "atomic_grounding": {
@@ -2115,6 +2799,16 @@
               }
             },
             "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Parse Jobs",
@@ -2214,17 +2908,24 @@
             "description": "Job status / result"
           },
           "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
             "description": "Job not found"
           },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "ADE Get Parse Jobs",
@@ -2272,7 +2973,7 @@
                     "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``.",
                     "example": {
                       "revenue": "$output.parse-extract.extract.extraction.revenue",
-                      "revenue_box": "$output.parse-extract.ground.revenue"
+                      "revenue_blocks": "$output.parse-extract.ground.revenue"
                     },
                     "title": "Output"
                   },
@@ -2339,7 +3040,7 @@
                     "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``. JSON-serialized string in form data.",
                     "example": {
                       "revenue": "$output.parse-extract.extract.extraction.revenue",
-                      "revenue_box": "$output.parse-extract.ground.revenue"
+                      "revenue_blocks": "$output.parse-extract.ground.revenue"
                     },
                     "title": "Output"
                   },
@@ -2381,29 +3082,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure with per-node grounding inline, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, ranges}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
+                  "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure with per-node grounding inline, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, ranges}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its\n  resolved block-hit list (``[{block_id, type, parent_id?, grounding,\n  atomic_grounding?}]`` — the same shape ``/v2/ground`` returns; see\n  ``V2GroundResult.grounding`` for the full field-level contract), or\n  ``null`` for a synthesised value. Nested objects and arrays keep their\n  shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no\n  client-side span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
                   "properties": {
                     "metadata": {
                       "$ref": "#/components/schemas/V2WorkflowMetadata",
-                      "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                      "description": "Request metadata (job_id, duration_ms, billing)."
                     },
                     "output": {
                       "additionalProperties": true,
                       "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
                       "title": "Output",
                       "type": "object"
-                    },
-                    "output_ref": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Output Ref"
                     }
                   },
                   "required": [
@@ -2421,11 +3110,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "Run v2-workflow (sync)",
@@ -2555,11 +3244,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "List v2-workflow jobs",
@@ -2604,7 +3293,7 @@
                     "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``.",
                     "example": {
                       "revenue": "$output.parse-extract.extract.extraction.revenue",
-                      "revenue_box": "$output.parse-extract.ground.revenue"
+                      "revenue_blocks": "$output.parse-extract.ground.revenue"
                     },
                     "title": "Output"
                   },
@@ -2686,7 +3375,7 @@
                     "description": "Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``. JSON-serialized string in form data.",
                     "example": {
                       "revenue": "$output.parse-extract.extract.extraction.revenue",
-                      "revenue_box": "$output.parse-extract.ground.revenue"
+                      "revenue_blocks": "$output.parse-extract.ground.revenue"
                     },
                     "title": "Output"
                   },
@@ -2769,6 +3458,16 @@
               }
             },
             "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
           }
         },
         "summary": "Create v2-workflow job",
@@ -2828,34 +3527,25 @@
                       "type": "string"
                     },
                     "progress": {
-                      "description": "Best-effort progress, present while processing only for jobs that report it."
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
                     },
                     "result": {
                       "anyOf": [
                         {
-                          "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure with per-node grounding inline, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, ranges}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its\n  resolved ``[{page, box}]`` list (or ``null`` for a synthesised value). Nested\n  objects and arrays keep their shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no client-side\n  span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
+                          "description": "Result returned by V2WorkflowOperationWorkflow.\n\n``output`` is keyed by step name (or by caller-chosen projection keys when\n``output`` was provided in the request). For the ``\"parse-extract\"`` pipeline\nwith no projection, the keys are ``\"parse-extract\"`` → ``{parse, extract, ground}``:\n\n* ``output[\"parse-extract\"][\"parse\"]`` — full parse response (markdown,\n  structure with per-node grounding inline, metadata).\n* ``output[\"parse-extract\"][\"extract\"]`` — extraction + ``extraction_metadata``\n  with ``{value, ranges}`` leaves.\n* ``output[\"parse-extract\"][\"ground\"]`` — a tree MIRRORING\n  ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its\n  resolved block-hit list (``[{block_id, type, parent_id?, grounding,\n  atomic_grounding?}]`` — the same shape ``/v2/ground`` returns; see\n  ``V2GroundResult.grounding`` for the full field-level contract), or\n  ``null`` for a synthesised value. Nested objects and arrays keep their\n  shape, so ``ground.issuer.name`` parallels\n  ``extraction_metadata.issuer.name``. Resolved server-side — no\n  client-side span lookup needed.\n\nReferences into the results use the ``$output.<step>.<field>...`` grammar\n(see ``output`` field of the request).",
                           "properties": {
                             "metadata": {
                               "$ref": "#/components/schemas/V2WorkflowMetadata",
-                              "description": "Request metadata (job_id, duration_ms, credit_usage)."
+                              "description": "Request metadata (job_id, duration_ms, billing)."
                             },
                             "output": {
                               "additionalProperties": true,
                               "description": "Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{\"parse-extract\": {parse, extract, ground}}``.",
                               "title": "Output",
                               "type": "object"
-                            },
-                            "output_ref": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Output Ref"
                             }
                           },
                           "required": [
@@ -2887,15 +3577,25 @@
             },
             "description": "Job status / result"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed."
           }
         },
         "summary": "Get v2-workflow job",
