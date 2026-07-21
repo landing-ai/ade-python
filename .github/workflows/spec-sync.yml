@@ -213,7 +213,7 @@ jobs:
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
             ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
-            && format('Spec fetch/normalize failed (exit {0}). The {1} spec is read from a CI-published S3 object (see *_SPEC_URL in this job) — check the object is present and readable, and that its upstream Publish OpenAPI workflow last ran green.', steps.drift.outputs.code, env.SPEC_LABEL)
+            && format('Spec fetch/normalize failed (exit {0}). spec-sync reads the V1 spec from <https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json|the S3 object>, published by vision-tools-rest-api <https://github.com/landing-ai/vision-tools-rest-api/actions/workflows/publish-openapi.yml|Publish OpenAPI>. Check the object is present and readable, and that the publisher last ran green.', steps.drift.outputs.code)
             || (steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}
@@ -480,7 +480,7 @@ jobs:
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
             ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
-            && format('Spec fetch/normalize failed (exit {0}). The {1} spec is read from a CI-published S3 object (see *_SPEC_URL in this job) — check the object is present and readable, and that its upstream Publish OpenAPI workflow last ran green.', steps.drift.outputs.code, env.SPEC_LABEL)
+            && format('Spec fetch/normalize failed (exit {0}). spec-sync reads the V2 spec from <https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json|the S3 object>, published by aide <https://github.com/landing-ai/aide/actions/workflows/publish-openapi.yml|Publish OpenAPI>. Check the object is present and readable, and that the publisher last ran green.', steps.drift.outputs.code)
             || (steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}
