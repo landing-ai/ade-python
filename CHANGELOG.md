@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.15.0 (2026-07-22)
+
+Full Changelog: [v1.14.0...v1.15.0](https://github.com/landing-ai/ade-python/compare/v1.14.0...v1.15.0)
+
+### Features
+
+* **v2:** wire client.v2.ground + extract output_save_url from spec drift (#122) ([342870f](https://github.com/landing-ai/ade-python/commit/342870f27d8f68b2396ea3249c8c5469430aa77d))
+* **spec-sync:** read specs from S3 instead of live staging (#120) ([96c5962](https://github.com/landing-ai/ade-python/commit/96c5962564f531b727240dc00c15dffb558e3dbf))
+* **spec-sync:** Phase 2 lifecycle notifications (gates, merge, aging) (#119) ([546dd88](https://github.com/landing-ai/ade-python/commit/546dd8885f8c732c5537d285bcd5db869b475a75))
+* **spec-sync:** notify Slack on drift PRs and failures (#118) ([139360f](https://github.com/landing-ai/ade-python/commit/139360fecbccbc1d474586f336c796190e14dc92))
+
+### Documentation
+
+* add Copilot code-review instructions for spec-sync PRs (#123) ([820a1dc](https://github.com/landing-ai/ade-python/commit/820a1dc8a03db9d90b9a50ed8e206a13cadbe102))
+* **spec-sync:** drop staging-booking remediation from failure alerts (#121) ([b162191](https://github.com/landing-ai/ade-python/commit/b1621916f3ad5a8e85a454e49d418826ad758772))
+
 ## 1.14.0 (2026-07-17)
 
 Full Changelog: [v1.13.0...v1.14.0](https://github.com/landing-ai/ade-python/compare/v1.13.0...v1.14.0)
