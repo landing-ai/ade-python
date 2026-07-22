@@ -10,12 +10,13 @@ from pydantic import BaseModel
 from ._base import V2ResourceMixin
 from ..._types import Body, Omit, Query, Headers, NotGiven, FileTypes, omit, not_given
 from ..._compat import cached_property
-from ...types.v2 import V2ExtractResult, V2ParseResponse
+from ...types.v2 import V2GroundResult, V2ExtractResult, V2ParseResponse
 from ..._resource import SyncAPIResource, AsyncAPIResource
 
 if TYPE_CHECKING:
     from .files import FilesResource, AsyncFilesResource
     from .parse import ParseResource, ParseJobsResource, AsyncParseResource, AsyncParseJobsResource
+    from .ground import GroundResource, GroundJobsResource, AsyncGroundResource, AsyncGroundJobsResource
     from .extract import ExtractResource, ExtractJobsResource, AsyncExtractResource, AsyncExtractJobsResource
 
 __all__ = ["V2Resource", "AsyncV2Resource"]
@@ -24,7 +25,7 @@ __all__ = ["V2Resource", "AsyncV2Resource"]
 class V2Resource(SyncAPIResource, V2ResourceMixin):
     """Container for the V2 (ADE) surface: ``client.v2.<resource>``.
 
-    ``files``, ``parse``, and ``extract`` are wired up; each sub-resource does its
+    ``files``, ``parse``, ``extract``, and ``ground`` are wired up; each sub-resource does its
     own lazy import inside its cached property body -- mirroring
     ``LandingAIADE.parse_jobs`` -- so that this module keeps importing standalone
     regardless of which sub-resources exist yet. Remaining job-polling resources
@@ -121,6 +122,40 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
             timeout=timeout,
         )
 
+    @cached_property
+    def _ground(self) -> GroundResource:
+        from .ground import GroundResource
+
+        return GroundResource(self._client)
+
+    @cached_property
+    def ground_jobs(self) -> GroundJobsResource:
+        from .ground import GroundJobsResource
+
+        return GroundJobsResource(self._client)
+
+    def ground(
+        self,
+        *,
+        extraction_metadata: Union[Mapping[str, object], BaseModel],
+        structure: Union[Mapping[str, object], BaseModel],
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2GroundResult:
+        """Ground extracted fields to document blocks synchronously. See ``GroundResource.run`` for full documentation."""
+        return self._ground.run(
+            extraction_metadata=extraction_metadata,
+            structure=structure,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
 
 class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
     """Async mirror of :class:`V2Resource`."""
@@ -209,6 +244,40 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
             model=model,
             strict=strict,
             save_to=save_to,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _ground(self) -> AsyncGroundResource:
+        from .ground import AsyncGroundResource
+
+        return AsyncGroundResource(self._client)
+
+    @cached_property
+    def ground_jobs(self) -> AsyncGroundJobsResource:
+        from .ground import AsyncGroundJobsResource
+
+        return AsyncGroundJobsResource(self._client)
+
+    async def ground(
+        self,
+        *,
+        extraction_metadata: Union[Mapping[str, object], BaseModel],
+        structure: Union[Mapping[str, object], BaseModel],
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2GroundResult:
+        """Async mirror of :meth:`V2Resource.ground`."""
+        return await self._ground.run(
+            extraction_metadata=extraction_metadata,
+            structure=structure,
             extra_headers=extra_headers,
             extra_query=extra_query,
             extra_body=extra_body,

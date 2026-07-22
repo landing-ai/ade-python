@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Type, Union, Mapping, Callable, Optional, cast
-from pathlib import Path
-from typing_extensions import Literal
+from typing import Any, Dict, Union, Mapping, Callable, Optional, cast
 
 import httpx
 from pydantic import BaseModel
@@ -11,95 +9,73 @@ from pydantic import BaseModel
 from ._base import DEFAULT_WAIT_TIMEOUT, JobList, V2ResourceMixin, poll_until_terminal, apoll_until_terminal
 from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
 from ..._utils import is_given
-from ...types.v2 import Job, V2ExtractResult
-from ._normalize import normalize_extract_job
+from ..._compat import model_dump
+from ...types.v2 import Job, V2GroundResult
+from ._normalize import normalize_ground_job
 from ..._resource import SyncAPIResource, AsyncAPIResource
 from ..._exceptions import APIStatusError
 from ..._base_client import make_request_options
 from ...lib.v2_errors import raise_if_sync_timeout
-from ...lib.schema_utils import coerce_schema_to_dict
 
-__all__ = ["ExtractResource", "AsyncExtractResource", "ExtractJobsResource", "AsyncExtractJobsResource"]
+__all__ = ["GroundResource", "AsyncGroundResource", "GroundJobsResource", "AsyncGroundJobsResource"]
 
 
-def _build_extract_body(
-    schema: Union[str, Mapping[str, object], Type[BaseModel]],
-    markdown: object,
-    markdown_url: object,
-    model: object,
-    strict: object,
-    service_tier: object = omit,
+def _as_object(value: Union[Mapping[str, object], BaseModel]) -> Dict[str, Any]:
+    """Coerce a mapping or a pydantic model (e.g. a `V2ParseResponse.structure`) to a plain dict."""
+    if isinstance(value, BaseModel):
+        return model_dump(value)
+    return dict(value)
+
+
+def _build_ground_body(
+    extraction_metadata: Union[Mapping[str, object], BaseModel],
+    structure: Union[Mapping[str, object], BaseModel],
+    output_save_url: object = omit,
 ) -> Dict[str, Any]:
-    provided = [
-        name
-        for name, value in (
-            ("markdown", markdown),
-            ("markdown_url", markdown_url),
-        )
-        if value is not omit and value is not None
-    ]
-    if len(provided) != 1:
-        raise ValueError(
-            "extract requires exactly one markdown source: provide one of "
-            "`markdown` or `markdown_url`" + (f" (received: {', '.join(provided)})" if provided else "") + "."
-        )
-    body: Dict[str, Any] = {"schema": coerce_schema_to_dict(schema)}
-    for key, value in (
-        ("markdown", markdown),
-        ("markdown_url", markdown_url),
-        ("model", model),
-        ("service_tier", service_tier),
-    ):
-        if value is not omit and value is not None:
-            body[key] = value
-    if strict is not omit and strict is not None:
-        body["options"] = {"strict": bool(strict)}
+    body: Dict[str, Any] = {
+        "extraction_metadata": _as_object(extraction_metadata),
+        "structure": _as_object(structure),
+    }
+    if is_given(output_save_url) and output_save_url is not None:
+        body["output_save_url"] = output_save_url
     return body
 
 
-class ExtractResource(V2ResourceMixin, SyncAPIResource):
+class GroundResource(V2ResourceMixin, SyncAPIResource):
     def run(
         self,
         *,
-        schema: Union[str, Mapping[str, object], Type[BaseModel]],
-        markdown: Optional[str] | Omit = omit,
-        markdown_url: Optional[str] | Omit = omit,
-        model: Optional[str] | Omit = omit,
-        strict: Optional[bool] | Omit = omit,
-        save_to: str | Path | None = None,
+        extraction_metadata: Union[Mapping[str, object], BaseModel],
+        structure: Union[Mapping[str, object], BaseModel],
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
-    ) -> V2ExtractResult:
-        """Extract structured data from markdown synchronously against the V2 (ADE)
-        `/v2/extract` endpoint (JSON body).
+    ) -> V2GroundResult:
+        """Map extracted fields to the document blocks they were quoted from against
+        the V2 (ADE) `/v2/ground` endpoint (JSON body).
+
+        A pure, stateless join: each `extraction_metadata` leaf's `ranges` are
+        overlapped against the `grounding.range` carried on every `structure`
+        block, and the matching blocks are returned. Block ids in the response
+        resolve only against the `structure` tree supplied here, so pairing an
+        extraction with the parse result it actually came from is the caller's
+        responsibility.
 
         Raises `V2SyncTimeoutError` when the server times out the synchronous
-        request (HTTP 504); use the async jobs route for long-running documents
-        in that case.
+        request (HTTP 504); use the async jobs route for long-running inputs in
+        that case.
 
         Args:
-          schema: JSON schema for field extraction. Accepts a pydantic `BaseModel`
-              subclass, a dict, or a JSON-encoded string; it is coerced to a JSON
-              object and sent as `schema` in the request body.
+          extraction_metadata: The `extraction_metadata` tree returned by
+              `POST /v2/extract` (or `client.v2.extract(...).extraction_metadata`).
+              Accepts a dict or a pydantic model.
 
-          markdown: Markdown content to extract data from.
-
-          markdown_url: The URL to the markdown file to extract data from.
-
-          model: The version of the model to use for extraction.
-
-          strict: If True, reject schemas with unsupported fields (HTTP 422). If
-              False, prune unsupported fields and continue. Sent as
-              `options.strict`.
-
-          save_to: Optional output path. If a directory, auto-generates the filename
-              (e.g. {input_file}_extract_output.json, or extract_output.json when no
-              input filename is available). If a full path ending in .json, saves there
-              directly. Parent directories are created automatically.
+          structure: The `structure` tree from the parse response the extraction was
+              produced from (e.g. `client.v2.parse(...).structure`). Accepts a dict or
+              a pydantic model.
 
           extra_headers: Send extra headers
 
@@ -109,77 +85,57 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict)
+        body = _build_ground_body(extraction_metadata, structure)
         try:
-            result = self._post(
-                self._v2_url("/v2/extract"),
+            return self._post(
+                self._v2_url("/v2/ground"),
                 body=body,
                 options=make_request_options(
                     extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
                 ),
-                cast_to=V2ExtractResult,
+                cast_to=V2GroundResult,
             )
         except APIStatusError as exc:
             raise_if_sync_timeout(exc)
             raise
-        if save_to:
-            from ..._client import _save_response, _get_input_filename
-
-            filename = _get_input_filename(None, markdown_url if isinstance(markdown_url, str) else None)
-            _save_response(save_to, filename, "extract", result)
-        return result
 
 
-class AsyncExtractResource(V2ResourceMixin, AsyncAPIResource):
+class AsyncGroundResource(V2ResourceMixin, AsyncAPIResource):
     async def run(
         self,
         *,
-        schema: Union[str, Mapping[str, object], Type[BaseModel]],
-        markdown: Optional[str] | Omit = omit,
-        markdown_url: Optional[str] | Omit = omit,
-        model: Optional[str] | Omit = omit,
-        strict: Optional[bool] | Omit = omit,
-        save_to: str | Path | None = None,
+        extraction_metadata: Union[Mapping[str, object], BaseModel],
+        structure: Union[Mapping[str, object], BaseModel],
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
-    ) -> V2ExtractResult:
-        """Async mirror of `ExtractResource.run`. See there for full documentation."""
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict)
+    ) -> V2GroundResult:
+        """Async mirror of `GroundResource.run`. See there for full documentation."""
+        body = _build_ground_body(extraction_metadata, structure)
         try:
-            result = await self._post(
-                self._v2_url("/v2/extract"),
+            return await self._post(
+                self._v2_url("/v2/ground"),
                 body=body,
                 options=make_request_options(
                     extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
                 ),
-                cast_to=V2ExtractResult,
+                cast_to=V2GroundResult,
             )
         except APIStatusError as exc:
             raise_if_sync_timeout(exc)
             raise
-        if save_to:
-            from ..._client import _save_response, _get_input_filename
-
-            filename = _get_input_filename(None, markdown_url if isinstance(markdown_url, str) else None)
-            _save_response(save_to, filename, "extract", result)
-        return result
 
 
-class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
+class GroundJobsResource(V2ResourceMixin, SyncAPIResource):
     def create(
         self,
         *,
-        schema: Union[str, Mapping[str, object], Type[BaseModel]],
-        markdown: Optional[str] | Omit = omit,
-        markdown_url: Optional[str] | Omit = omit,
-        model: Optional[str] | Omit = omit,
-        strict: Optional[bool] | Omit = omit,
+        extraction_metadata: Union[Mapping[str, object], BaseModel],
+        structure: Union[Mapping[str, object], BaseModel],
         output_save_url: Optional[str] | Omit = omit,
-        service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -187,32 +143,22 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Job:
-        """Create an asynchronous extract job against `/v2/extract/jobs`.
+        """Create an asynchronous ground job against `/v2/ground/jobs`.
 
         Returns a normalized `Job` immediately (typically `pending`). Poll for
         completion via `.get(job_id)`, or block until the job is terminal with
         `.wait(job_id)`.
 
         Args:
-          schema: JSON schema for field extraction. Accepts a pydantic `BaseModel`
-              subclass, a dict, or a JSON-encoded string; it is coerced to a JSON
-              object and sent as `schema` in the request body.
+          extraction_metadata: The `extraction_metadata` tree returned by
+              `POST /v2/extract`. Accepts a dict or a pydantic model.
 
-          markdown: Markdown content to extract data from.
-
-          markdown_url: The URL to the markdown file to extract data from.
-
-          model: The version of the model to use for extraction.
-
-          strict: If True, reject schemas with unsupported fields (HTTP 422). If
-              False, prune unsupported fields and continue. Sent as
-              `options.strict`.
+          structure: The `structure` tree from the parse response the extraction was
+              produced from. Accepts a dict or a pydantic model.
 
           output_save_url: URL the result should be saved to (e.g. a presigned S3 PUT
-              URL) instead of being returned inline. Async jobs only. When set, the
-              completed job reports `output_url` instead of an inline `result`.
-
-          service_tier: Service tier for the job: ``standard`` or ``priority``.
+              URL) instead of being returned inline. When set, the completed job reports
+              `output_url` instead of an inline `result`.
 
           extra_headers: Send extra headers
 
@@ -222,18 +168,16 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict, service_tier)
-        if is_given(output_save_url) and output_save_url is not None:
-            body["output_save_url"] = output_save_url
+        body = _build_ground_body(extraction_metadata, structure, output_save_url)
         raw = self._post(
-            self._v2_url("/v2/extract/jobs"),
+            self._v2_url("/v2/ground/jobs"),
             body=body,
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=cast("type[Any]", object),
         )
-        return normalize_extract_job(cast(Mapping[str, Any], raw))
+        return normalize_ground_job(cast(Mapping[str, Any], raw))
 
     def get(
         self,
@@ -244,17 +188,17 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Job:
-        """Get the current status of an async extract job by `job_id`."""
+        """Get the current status of an async ground job by `job_id`."""
         if not job_id:
             raise ValueError(f"Expected a non-empty value for `job_id` but received {job_id!r}")
         raw = self._get(
-            self._v2_url(f"/v2/extract/jobs/{job_id}"),
+            self._v2_url(f"/v2/ground/jobs/{job_id}"),
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=cast("type[Any]", object),
         )
-        return normalize_extract_job(cast(Mapping[str, Any], raw))
+        return normalize_ground_job(cast(Mapping[str, Any], raw))
 
     def list(
         self,
@@ -267,14 +211,14 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
-        """List async extract jobs associated with your API key, newest first."""
+        """List async ground jobs associated with your API key, newest first."""
         query = {
             key: value
             for key, value in {"page": page, "page_size": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = self._get(
-            self._v2_url("/v2/extract/jobs"),
+            self._v2_url("/v2/ground/jobs"),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
@@ -285,7 +229,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
             cast_to=cast("type[Any]", object),
         )
         env = cast(Mapping[str, Any], raw)
-        jobs = [normalize_extract_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
+        jobs = [normalize_ground_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
         return JobList.build(jobs, has_more=env.get("has_more"), page=env.get("page"), page_size=env.get("page_size"))
 
     def wait(
@@ -301,7 +245,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
         Raises `JobWaitTimeoutError` if `timeout` seconds elapse before the job
         reaches a terminal state, and `JobFailedError` if `raise_on_failure` is
-        set and the job ends failed with an error attached. Extract jobs have no
+        set and the job ends failed with an error attached. Ground jobs have no
         `cancelled` status.
 
         `_monotonic` is a test seam for injecting a fake clock; production
@@ -317,17 +261,13 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         )
 
 
-class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
+class AsyncGroundJobsResource(V2ResourceMixin, AsyncAPIResource):
     async def create(
         self,
         *,
-        schema: Union[str, Mapping[str, object], Type[BaseModel]],
-        markdown: Optional[str] | Omit = omit,
-        markdown_url: Optional[str] | Omit = omit,
-        model: Optional[str] | Omit = omit,
-        strict: Optional[bool] | Omit = omit,
+        extraction_metadata: Union[Mapping[str, object], BaseModel],
+        structure: Union[Mapping[str, object], BaseModel],
         output_save_url: Optional[str] | Omit = omit,
-        service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -335,19 +275,17 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Job:
-        """Async mirror of `ExtractJobsResource.create`. See there for full documentation."""
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict, service_tier)
-        if is_given(output_save_url) and output_save_url is not None:
-            body["output_save_url"] = output_save_url
+        """Async mirror of `GroundJobsResource.create`. See there for full documentation."""
+        body = _build_ground_body(extraction_metadata, structure, output_save_url)
         raw = await self._post(
-            self._v2_url("/v2/extract/jobs"),
+            self._v2_url("/v2/ground/jobs"),
             body=body,
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=cast("type[Any]", object),
         )
-        return normalize_extract_job(cast(Mapping[str, Any], raw))
+        return normalize_ground_job(cast(Mapping[str, Any], raw))
 
     async def get(
         self,
@@ -358,17 +296,17 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Job:
-        """Async mirror of `ExtractJobsResource.get`. See there for full documentation."""
+        """Async mirror of `GroundJobsResource.get`. See there for full documentation."""
         if not job_id:
             raise ValueError(f"Expected a non-empty value for `job_id` but received {job_id!r}")
         raw = await self._get(
-            self._v2_url(f"/v2/extract/jobs/{job_id}"),
+            self._v2_url(f"/v2/ground/jobs/{job_id}"),
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
             cast_to=cast("type[Any]", object),
         )
-        return normalize_extract_job(cast(Mapping[str, Any], raw))
+        return normalize_ground_job(cast(Mapping[str, Any], raw))
 
     async def list(
         self,
@@ -381,14 +319,14 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
-        """Async mirror of `ExtractJobsResource.list`. See there for full documentation."""
+        """Async mirror of `GroundJobsResource.list`. See there for full documentation."""
         query = {
             key: value
             for key, value in {"page": page, "page_size": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = await self._get(
-            self._v2_url("/v2/extract/jobs"),
+            self._v2_url("/v2/ground/jobs"),
             options=make_request_options(
                 extra_headers=extra_headers,
                 extra_query=extra_query,
@@ -399,7 +337,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
             cast_to=cast("type[Any]", object),
         )
         env = cast(Mapping[str, Any], raw)
-        jobs = [normalize_extract_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
+        jobs = [normalize_ground_job(cast(Mapping[str, Any], item)) for item in env.get("jobs", [])]
         return JobList.build(jobs, has_more=env.get("has_more"), page=env.get("page"), page_size=env.get("page_size"))
 
     async def wait(
@@ -411,7 +349,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         raise_on_failure: bool = False,
         _monotonic: Optional[Callable[[], float]] = None,
     ) -> Job:
-        """Async mirror of `ExtractJobsResource.wait`; sleeps via `anyio.sleep` instead of blocking."""
+        """Async mirror of `GroundJobsResource.wait`; sleeps via `anyio.sleep` instead of blocking."""
         return await apoll_until_terminal(
             lambda: self.get(job_id),
             monotonic=_monotonic or time.monotonic,

@@ -146,6 +146,41 @@ def test_extract_sync_parses_billing_metadata() -> None:
 
 
 @respx.mock
+def test_extract_sync_parses_char_counts_and_warnings() -> None:
+    # `input_markdown_chars`/`output_extraction_chars` moved onto `metadata`
+    # (from `billing`) upstream, and `schema_violation_error`/`warnings` were
+    # added to the result.
+    client = LandingAIADE(apikey=APIKEY)
+    body: Dict[str, Any] = dict(EXTRACT_BODY)
+    metadata: Dict[str, Any] = dict(EXTRACT_BODY["metadata"])
+    metadata["input_markdown_chars"] = 42
+    metadata["output_extraction_chars"] = 7
+    body["metadata"] = metadata
+    body["schema_violation_error"] = "unsupported field skipped"
+    body["warnings"] = [{"code": "partial", "message": "heads up"}]
+    respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(200, json=body))
+    result = client.v2.extract(schema={"type": "object"}, markdown="x")
+    assert result.metadata.input_markdown_chars == 42
+    assert result.metadata.output_extraction_chars == 7
+    assert result.schema_violation_error == "unsupported field skipped"
+    assert result.warnings is not None and result.warnings[0]["code"] == "partial"
+
+
+def test_extract_job_create_sends_output_save_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The async job create body carries `output_save_url` (async jobs only).
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_post(path: str, *, cast_to: Any, body: Any = None, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["body"] = body
+        return {"job_id": "e1", "status": "pending"}
+
+    monkeypatch.setattr(client.v2.extract_jobs, "_post", fake_post)
+    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", output_save_url="https://example.com/put")
+    assert captured["body"]["output_save_url"] == "https://example.com/put"
+
+
+@respx.mock
 def test_extract_job_get_failed_maps_error_object() -> None:
     client = LandingAIADE(apikey=APIKEY)
     respx.get("https://api.ade.landing.ai/v2/extract/jobs/e2").mock(

@@ -16,6 +16,11 @@ from .parse_response import (
     V2ParseGroundingEntry as V2ParseGroundingEntry,
     V2ParseGroundingElement as V2ParseGroundingElement,
 )
+from .ground_response import (
+    V2GroundResult as V2GroundResult,
+    V2GroundBilling as V2GroundBilling,
+    V2GroundMetadata as V2GroundMetadata,
+)
 from .extract_response import (
     V2ExtractResult as V2ExtractResult,
     V2ExtractBilling as V2ExtractBilling,

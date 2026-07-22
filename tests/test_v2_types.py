@@ -7,6 +7,7 @@ from landingai_ade.types.v2 import (
     Job,
     JobError,
     JobStatus,
+    V2GroundResult,
     V2ExtractResult,
     V2ParseResponse,
     V2FileUploadResponse,
@@ -210,6 +211,62 @@ def test_parse_response_inline_grounding_and_metadata() -> None:
     assert r.metadata.output_markdown_chars == 4
     assert r.metadata.range_units == "unicode_codepoints"
     assert r.metadata.openapi_spec is not None
+
+
+def test_extract_result_metadata_char_counts_warnings_and_schema_violation() -> None:
+    # The char counters moved onto `metadata` (from `billing`) upstream, and
+    # `schema_violation_error` / `warnings` were added to the result.
+    r = V2ExtractResult(
+        extraction={},
+        extraction_metadata={},
+        markdown="d",
+        metadata={  # type: ignore[arg-type]
+            "job_id": "e1",
+            "model_version": "dpt-3",
+            "duration_ms": 5,
+            "input_markdown_chars": 100,
+            "output_extraction_chars": 20,
+        },
+        schema_violation_error="field 'foo' skipped",
+        warnings=[{"code": "partial", "message": "heads up"}],
+    )
+    assert r.metadata.input_markdown_chars == 100
+    assert r.metadata.output_extraction_chars == 20
+    assert r.schema_violation_error == "field 'foo' skipped"
+    assert r.warnings is not None and r.warnings[0]["code"] == "partial"
+
+
+def test_ground_result_builds_from_dicts() -> None:
+    r = V2GroundResult(
+        grounding={
+            "invoice_number": [
+                {
+                    "block_id": "text-1",
+                    "type": "text",
+                    "grounding": {"page": 1, "range": {"start": 13, "end": 31}},
+                }
+            ]
+        },
+        metadata={  # type: ignore[arg-type]
+            "job_id": "ground-1",
+            "duration_ms": 5,
+            "openapi_spec": "https://api.example/openapi.json",
+            "billing": {"service_tier": "priority", "total_credits": 2.5},
+        },
+    )
+    assert r.metadata.job_id == "ground-1"
+    assert r.metadata.duration_ms == 5
+    assert r.metadata.billing is not None and r.metadata.billing.total_credits == 2.5
+    assert "invoice_number" in r.grounding
+
+
+def test_ground_result_retains_unknown_fields() -> None:
+    r = V2GroundResult(
+        grounding={},
+        metadata={"job_id": "g", "duration_ms": 1},  # type: ignore[arg-type]
+        surprise=1,  # type: ignore[call-arg]
+    )
+    assert r.to_dict()["surprise"] == 1
 
 
 def test_file_upload_response() -> None:

@@ -8,8 +8,8 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 
 | Layer | Location | What it covers |
 | --- | --- | --- |
-| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_ground_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
 | Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
@@ -54,15 +54,42 @@ responses omit it in favor of the inline `grounding` above.
 
 `POST /v2/extract` (and the completed `extract_jobs` result) returns a
 `V2ExtractResult` with `extraction`, `extraction_metadata`, `markdown`,
-`output_ref` (set when the output was delivered out-of-band), and `metadata`
-(`V2ExtractMetadata`): `job_id`, `model_version`, `duration_ms`, `doc_id`,
-`credit_usage`, `range_units`, `openapi_spec`, and `billing` (`V2ExtractBilling`
-with `input_markdown_chars` / `output_extraction_chars`).
+`output_ref` (deprecated; renamed to `schema_violation_error` upstream),
+`schema_violation_error` (set when `options.strict` is false and the schema had
+fields the model could not extract — the extraction is partial), `warnings`
+(non-fatal warnings), and `metadata` (`V2ExtractMetadata`): `job_id`,
+`model_version`, `duration_ms`, `doc_id`, `input_markdown_chars`,
+`output_extraction_chars`, `credit_usage` (deprecated), `range_units`,
+`openapi_spec`, and `billing` (`V2ExtractBilling`). The `input_markdown_chars` /
+`output_extraction_chars` char counts moved from `billing` onto `metadata`
+upstream; both are retained on `V2ExtractBilling` for backward compatibility.
+
+The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
+when set, the finished result is delivered to that URL and the completed job
+reports `output_url` (on `Job.raw`) instead of an inline `result`.
+
+## Current ground-response shape
+
+`POST /v2/ground` (and the completed `ground_jobs` result) returns a
+`V2GroundResult` — a pure, stateless join that maps each extracted field back to
+the `structure` blocks it was quoted from:
+
+- `grounding` — a tree mirroring the input `extraction_metadata`: nested objects
+  and arrays keep their shape, and each `{value, ranges}` leaf is replaced by the
+  list of `structure` blocks its ranges overlap (block ids resolve only against
+  the `structure` supplied in the request).
+- `metadata` (`V2GroundMetadata`) — `job_id`, `duration_ms`, `openapi_spec`, and
+  `billing` (`V2GroundBilling`).
+
+`client.v2.ground(...)` takes `extraction_metadata` and `structure`, each of which
+accepts a plain `dict` or a pydantic model (so a parse response's `.structure` can
+be passed directly). `ground_jobs.create` additionally accepts `output_save_url`.
 
 ## Async job envelopes
 
-`normalize_parse_job` and `normalize_extract_job` fold the upstream job envelopes
-into the unified `Job`. Both are tolerant of field-name drift:
+`normalize_parse_job`, `normalize_extract_job`, and `normalize_ground_job` fold
+the upstream job envelopes into the unified `Job`. All are tolerant of field-name
+drift:
 
 - The parse response lives under `result` (older envelopes used `data`).
 - Failures arrive as a structured `error` object (`{code, message}`); older parse
