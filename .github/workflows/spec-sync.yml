@@ -188,6 +188,19 @@ jobs:
             echo "summary=Mechanical snapshot + AI wiring committed. Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
 
+      # Rewrite the PR description: keep the static process/safety preamble from "Open sync PR" and
+      # APPEND an LLM "## What changed" summary of the actual PR diff. Logic is shared by both jobs
+      # in scripts/spec-sync/summarize-pr.sh. Best-effort — the static body stands if it degrades;
+      # the script only edits the PR body via SPEC_SYNC_TOKEN, so an injected spec description in
+      # the diff can't escalate past text.
+      - name: Summarize the PR diff into the description
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        continue-on-error: true   # a summary is nice-to-have; never red the run over it
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: ./scripts/spec-sync/summarize-pr.sh "${{ steps.open_pr.outputs.url }}"
+
       # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
       - name: Slack — AI wiring result
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.root.outputs.ts != ''
@@ -454,6 +467,23 @@ jobs:
             git push origin HEAD:"$SYNC_BRANCH"
             echo "summary=Mechanical snapshot + AI wiring committed (a draft a human finishes). Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
+
+      # Rewrite the PR description: keep the static process/safety preamble from "Open sync PR" and
+      # APPEND an LLM "## What changed" summary of the actual PR diff. Logic is shared by both jobs
+      # in scripts/spec-sync/summarize-pr.sh. Best-effort — the static body stands if it degrades;
+      # the script only edits the PR body via SPEC_SYNC_TOKEN, so an injected spec description in
+      # the diff can't escalate past text.
+      - name: Summarize the PR diff into the description
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        continue-on-error: true   # a summary is nice-to-have; never red the run over it
+        env:
+          GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # /v2/workflow* is intentionally NOT wired (see the AI-wiring prompt above), so keep it out
+          # of "What changed" — else a workflow-only drift would advertise SDK endpoints the PR never
+          # implemented.
+          SUMMARY_SCOPE_NOTE: 'Scope: this SDK intentionally does NOT implement /v2/workflow, /v2/workflow/jobs, or /v2/workflow/jobs/{job_id}; that surface is deferred and is not wired into the client. Do not describe any /v2/workflow* route as a client/SDK change. If the diff touches only workflow, say the spec snapshot was updated but no client surface changed.'
+        run: ./scripts/spec-sync/summarize-pr.sh "${{ steps.open_pr.outputs.url }}"
 
       # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
       - name: Slack — AI wiring result
