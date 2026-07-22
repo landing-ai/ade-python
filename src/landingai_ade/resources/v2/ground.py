@@ -24,9 +24,7 @@ def _as_object(value: Union[Mapping[str, object], BaseModel]) -> Dict[str, Any]:
     """Coerce a mapping or a pydantic model (e.g. a `V2ParseResponse.structure`) to a plain dict."""
     if isinstance(value, BaseModel):
         return model_dump(value)
-    if isinstance(value, Mapping):
-        return dict(value)
-    raise TypeError(f"expected a mapping or pydantic model, received {type(value)!r}")
+    return dict(value)
 
 
 def _build_ground_body(
