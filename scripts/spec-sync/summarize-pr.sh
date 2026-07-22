@@ -41,6 +41,11 @@ summary="$(curl -sS --connect-timeout 10 --max-time 60 https://api.anthropic.com
   -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" \
   -H "content-type: application/json" -d "$payload" | jq -r '.content[0].text // empty' || true)"
 
+# The summary is derived from untrusted spec descriptions. Strip HTML-comment delimiters so it can
+# never inject the reserved `<!-- spec-sync-slack-thread: <ts> -->` marker that thread-ts.sh trusts
+# to route Slack lifecycle notifications; the "What changed" bullets never legitimately need them.
+summary="${summary//<!--/}"; summary="${summary//-->/}"
+
 if [ -z "$summary" ]; then
   echo "No summary produced; keeping the static PR body."
   exit 0
