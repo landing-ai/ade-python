@@ -4,11 +4,18 @@ from __future__ import annotations
 from typing import Any, Dict
 from datetime import datetime, timezone
 
-from landingai_ade.types.v2 import JobStatus, V2GroundResult, V2ExtractResult, V2ParseResponse
+from landingai_ade.types.v2 import (
+    JobStatus,
+    V2GroundResult,
+    V2ExtractResult,
+    V2ParseResponse,
+    V2BuildSchemaResponse,
+)
 from landingai_ade.resources.v2._normalize import (
     normalize_parse_job,
     normalize_ground_job,
     normalize_extract_job,
+    normalize_build_schema_job,
 )
 
 
@@ -108,6 +115,44 @@ def test_normalize_extract_job_error_object() -> None:
     job = normalize_extract_job(raw)
     assert job.status is JobStatus.FAILED
     assert job.error is not None and job.error.code == "internal_error"
+
+
+def test_normalize_build_schema_job_iso_and_result() -> None:
+    raw: Dict[str, Any] = {
+        "job_id": "extract-bs1",
+        "status": "completed",
+        "created_at": "2026-01-02T03:04:05Z",
+        "completed_at": "2026-01-02T03:04:09Z",
+        "result": {
+            "extraction_schema": '{"type": "object"}',
+            "metadata": {"job_id": "extract-bs1", "duration_ms": 10, "openapi_spec": "https://x/openapi.json"},
+        },
+    }
+    job = normalize_build_schema_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.created_at is not None and job.created_at.year == 2026
+    assert job.completed_at is not None
+    assert isinstance(job.result, V2BuildSchemaResponse)
+    assert job.result.extraction_schema == '{"type": "object"}'
+    assert job.result.metadata.job_id == "extract-bs1"
+
+
+def test_normalize_build_schema_job_failure_reason() -> None:
+    # The build-schema *list* envelope reports failures via `failure_reason`.
+    raw = {"job_id": "extract-bs2", "status": "failed", "failure_reason": "bad markdown"}
+    job = normalize_build_schema_job(raw)
+    assert job.status is JobStatus.FAILED
+    assert job.error is not None and job.error.message == "bad markdown"
+    assert job.result is None
+
+
+def test_normalize_build_schema_job_minimal_create_envelope_defaults_to_pending() -> None:
+    raw = {"job_id": "extract-bs3"}
+    job = normalize_build_schema_job(raw)
+    assert job.job_id == "extract-bs3"
+    assert job.status is JobStatus.PENDING
+    assert job.result is None
+    assert job.error is None
 
 
 def test_normalize_parse_job_minimal_create_envelope_defaults_to_pending() -> None:

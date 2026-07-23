@@ -7,7 +7,7 @@ import respx
 import pytest
 
 from landingai_ade import AsyncLandingAIADE
-from landingai_ade.types.v2 import Job, JobStatus, V2ExtractResult, V2ParseResponse
+from landingai_ade.types.v2 import Job, JobStatus, V2ExtractResult, V2ParseResponse, V2BuildSchemaResponse
 
 APIKEY = "My Apikey"
 
@@ -42,6 +42,27 @@ async def test_async_extract() -> None:
     respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(200, json=EXTRACT_BODY))
     r = await client.v2.extract(schema={"type": "object"}, markdown="m")
     assert isinstance(r, V2ExtractResult)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_build_schema_and_jobs() -> None:
+    client = AsyncLandingAIADE(apikey=APIKEY)
+    build_schema_body: Dict[str, Any] = {
+        "extraction_schema": '{"type": "object"}',
+        "metadata": {"job_id": "bs1", "openapi_spec": "https://x/openapi.json"},
+    }
+    respx.post("https://api.ade.landing.ai/v2/extract/build-schema").mock(
+        return_value=httpx.Response(200, json=build_schema_body)
+    )
+    r = await client.v2.build_schema(prompt="build me a schema")
+    assert isinstance(r, V2BuildSchemaResponse)
+
+    respx.post("https://api.ade.landing.ai/v2/extract/build-schema/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "bs1", "status": "pending"})
+    )
+    job = await client.v2.build_schema_jobs.create(prompt="build me a schema")
+    assert isinstance(job, Job) and job.status is JobStatus.PENDING
 
 
 @respx.mock

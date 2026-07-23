@@ -9,7 +9,7 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 | Layer | Location | What it covers |
 | --- | --- | --- |
 | Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_ground_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job` / `normalize_ground_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
 | Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
@@ -68,6 +68,27 @@ The async `extract_jobs.create` also accepts `output_save_url` (async jobs only)
 when set, the finished result is delivered to that URL and the completed job
 reports `output_url` (on `Job.raw`) instead of an inline `result`.
 
+## Current build-schema-response shape
+
+`POST /v2/extract/build-schema` (and the completed `build_schema_jobs` result)
+returns a `V2BuildSchemaResponse` — it generates or refines an extraction JSON
+Schema from source markdown and/or a natural-language prompt:
+
+- `extraction_schema` — the generated JSON Schema serialized as a **string**
+  (VTRA parity; the field is a string, not an object). It is suitable for passing
+  straight to `client.v2.extract(schema=...)`.
+- `metadata` (`V2BuildSchemaMetadata`) — `job_id`, `duration_ms`, `filename`,
+  `org_id`, `version`, `openapi_spec`, `billing` (`V2BuildSchemaBilling`), and
+  `warnings` (a list of `V2BuildSchemaWarning` `{code, msg}` objects, e.g. code
+  `nonconformant_schema`). `filename` and `version` are retained for v1
+  compatibility but always `None` in this version.
+
+`client.v2.build_schema(...)` takes `markdowns` (inline content or file text),
+`markdown_urls`, `prompt`, and `schema` (an existing schema to iterate on;
+accepts a pydantic model, a `dict`, or a JSON string, coerced to a JSON string) —
+**at least one** must be provided or the SDK raises `ValueError` client-side.
+`build_schema_jobs.create` additionally accepts `service_tier`.
+
 ## Current ground-response shape
 
 `POST /v2/ground` (and the completed `ground_jobs` result) returns a
@@ -87,9 +108,9 @@ be passed directly). `ground_jobs.create` additionally accepts `output_save_url`
 
 ## Async job envelopes
 
-`normalize_parse_job`, `normalize_extract_job`, and `normalize_ground_job` fold
-the upstream job envelopes into the unified `Job`. All are tolerant of field-name
-drift:
+`normalize_parse_job`, `normalize_extract_job`, `normalize_build_schema_job`, and
+`normalize_ground_job` fold the upstream job envelopes into the unified `Job`. All
+are tolerant of field-name drift:
 
 - The parse response lives under `result` (older envelopes used `data`).
 - Failures arrive as a structured `error` object (`{code, message}`); older parse
