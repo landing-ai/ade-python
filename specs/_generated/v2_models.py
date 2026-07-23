@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
@@ -14,10 +14,6 @@ class BaseElementOptions(BaseModel):
         extra='forbid',
     )
     markdown: Optional[bool] = Field(True, title='Markdown')
-
-
-class BodyStageFileV1FilesPost(BaseModel):
-    file: str = Field(..., title='File')
 
 
 class Box(BaseModel):
@@ -50,6 +46,25 @@ class Box(BaseModel):
         ...,
         description='Top edge as a fraction of the page height, in `[0, 1]`.',
         title='Ymin',
+    )
+
+
+class BuildSchemaWarning(BaseModel):
+    """
+    A structured warning from the schema-generation process (VTRA
+    ``ExtractWarning``). ``code`` classifies the warning (e.g.
+    ``nonconformant_schema``); ``msg`` is the human-readable description.
+    """
+
+    code: str = Field(
+        ...,
+        description='The type of warning, used to translate to a status code downstream.',
+        title='Code',
+    )
+    msg: str = Field(
+        ...,
+        description='Human-readable description of the warning with more details.',
+        title='Msg',
     )
 
 
@@ -213,6 +228,48 @@ class V2Billing(BaseModel):
     )
 
 
+class V2BuildSchemaMetadata(BaseModel):
+    """
+    Response metadata for a v2 build-schema call (VTRA
+    ``BuildSchemaMetadata``).
+    """
+
+    billing: Optional[V2Billing] = Field(
+        None,
+        description='Billing summary: the service tier the request ran in and the credits charged.',
+    )
+    duration_ms: Optional[int] = Field(
+        0,
+        description='End-to-end request duration in milliseconds.',
+        title='Duration Ms',
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="Name of the first source document. Retained for v1 compatibility but NOT populated in this version — always null (the source is staged as an opaque ref, so the original name isn't carried through). Do not depend on it.",
+        title='Filename',
+    )
+    job_id: Optional[str] = Field(
+        '',
+        description='Gateway job id (workflow id). Matches the billing row id in vision-agent.',
+        title='Job Id',
+    )
+    openapi_spec: str = Field(
+        ...,
+        description='URL of the OpenAPI spec covering this API, for inspection and client generation.',
+    )
+    org_id: Optional[str] = Field(None, description='Organization ID.', title='Org Id')
+    version: Optional[str] = Field(
+        None,
+        description='Model version used for generation. build-schema is version-free (no ``model``/``version`` input), so this is always null. Retained for v1 response-shape compatibility.',
+        title='Version',
+    )
+    warnings: Optional[list[BuildSchemaWarning]] = Field(
+        None,
+        description='Structured warnings from the schema-generation process. Each is a ``{code, msg}`` object (e.g. code ``nonconformant_schema``).',
+        title='Warnings',
+    )
+
+
 class V2ExtractMetadata(BaseModel):
     """
     Response metadata for a v2 extract call.
@@ -325,14 +382,6 @@ class V2WorkflowMetadata(BaseModel):
     )
 
 
-class ValidationError(BaseModel):
-    ctx: Optional[dict[str, Any]] = Field(None, title='Context')
-    input: Optional[Any] = Field(None, title='Input')
-    loc: list[Union[str, int]] = Field(..., title='Location')
-    msg: str = Field(..., title='Message')
-    type: str = Field(..., title='Error Type')
-
-
 class WorkflowDocumentInput(BaseModel):
     """
     One declared document input in the ``inputs`` map.
@@ -418,10 +467,6 @@ class Grounding(BaseModel):
         ...,
         description='`[start, end)` offsets into the top-level `markdown` string covered by this node or segment.',
     )
-
-
-class HTTPValidationError(BaseModel):
-    detail: Optional[list[ValidationError]] = Field(None, title='Detail')
 
 
 class PrebuiltWorkflowStep(BaseModel):
