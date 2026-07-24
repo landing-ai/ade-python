@@ -50,7 +50,7 @@ def _prepare_build_schema(
     if is_given(markdown_urls) and markdown_urls is not None:
         urls_list = list(cast(Sequence[str], markdown_urls))
 
-    prompt_val: Optional[str] = prompt if (is_given(prompt) and prompt is not None) else None
+    prompt_val: Optional[str] = cast(str, prompt) if (is_given(prompt) and prompt is not None) else None
 
     schema_val: Optional[str] = None
     if is_given(schema) and schema is not None:
