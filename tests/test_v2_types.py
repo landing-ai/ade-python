@@ -297,7 +297,8 @@ def test_build_schema_response_parses_nested_metadata() -> None:
 def test_build_schema_response_retains_unknown_fields() -> None:
     r = V2BuildSchemaResponse(
         extraction_schema="{}",
-        metadata={"job_id": "b"},  # type: ignore[arg-type]
+        # `openapi_spec` is required and non-null per the spec.
+        metadata={"job_id": "b", "openapi_spec": "https://x/openapi.json"},  # type: ignore[arg-type]
         surprise=1,  # type: ignore[call-arg]
     )
     assert r.to_dict()["surprise"] == 1

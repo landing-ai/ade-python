@@ -143,7 +143,7 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
     def build_schema(
         self,
         *,
-        markdowns: Optional[List[str]] | Omit = omit,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
         markdown_urls: Optional[List[str]] | Omit = omit,
         prompt: Optional[str] | Omit = omit,
         schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
@@ -309,7 +309,7 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
     async def build_schema(
         self,
         *,
-        markdowns: Optional[List[str]] | Omit = omit,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
         markdown_urls: Optional[List[str]] | Omit = omit,
         prompt: Optional[str] | Omit = omit,
         schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,

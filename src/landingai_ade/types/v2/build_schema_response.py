@@ -16,10 +16,11 @@ class V2BuildSchemaWarning(BaseModel):
     """A structured warning from the schema-generation process (`{code, msg}`)."""
 
     # The type of warning, used to translate to a status code downstream
-    # (e.g. `nonconformant_schema`).
-    code: Optional[str] = None
-    # Human-readable description of the warning with more details.
-    msg: Optional[str] = None
+    # (e.g. `nonconformant_schema`). Required and non-null per the spec.
+    code: str
+    # Human-readable description of the warning with more details. Required and
+    # non-null per the spec.
+    msg: str
 
 
 class V2BuildSchemaBilling(BaseModel):
@@ -33,9 +34,10 @@ class V2BuildSchemaMetadata(BaseModel):
     """Response metadata for a v2 build-schema call."""
 
     # Gateway job id (workflow id). Matches the billing row id in vision-agent.
-    job_id: Optional[str] = None
-    # End-to-end request duration in milliseconds.
-    duration_ms: Optional[int] = None
+    # Spec default is the empty string, not null.
+    job_id: Optional[str] = ""
+    # End-to-end request duration in milliseconds. Spec default is 0, not null.
+    duration_ms: Optional[int] = 0
     # Name of the first source document. Retained for v1 compatibility but NOT
     # populated in this version -- always None.
     filename: Optional[str] = None
@@ -44,8 +46,8 @@ class V2BuildSchemaMetadata(BaseModel):
     # Model version used for generation. build-schema is version-free, so this is
     # always None; retained for v1 response-shape compatibility.
     version: Optional[str] = None
-    # URL of the OpenAPI spec covering this API.
-    openapi_spec: Optional[str] = None
+    # URL of the OpenAPI spec covering this API. Required and non-null per the spec.
+    openapi_spec: str
     billing: Optional[V2BuildSchemaBilling] = None
     # Structured warnings from the schema-generation process, each a `{code, msg}`.
     warnings: Optional[List[V2BuildSchemaWarning]] = None

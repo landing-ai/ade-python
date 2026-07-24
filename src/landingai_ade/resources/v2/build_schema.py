@@ -9,8 +9,9 @@ import httpx
 from pydantic import BaseModel
 
 from ._base import DEFAULT_WAIT_TIMEOUT, JobList, V2ResourceMixin, poll_until_terminal, apoll_until_terminal
-from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
-from ..._utils import is_given
+from ..._files import deepcopy_with_paths
+from ..._types import Body, Omit, Query, Headers, NotGiven, FileTypes, omit, not_given
+from ..._utils import is_given, extract_files
 from ...types.v2 import Job, V2BuildSchemaResponse
 from ._normalize import normalize_build_schema_job
 from ..._resource import SyncAPIResource, AsyncAPIResource
@@ -45,7 +46,7 @@ def _build_build_schema_body(
 ) -> Dict[str, Any]:
     body: Dict[str, Any] = {}
     if markdowns is not omit and markdowns is not None:
-        body["markdowns"] = list(cast(List[str], markdowns))
+        body["markdowns"] = list(cast("List[Any]", markdowns))
     if markdown_urls is not omit and markdown_urls is not None:
         body["markdown_urls"] = list(cast(List[str], markdown_urls))
     if prompt is not omit and prompt is not None:
@@ -62,11 +63,50 @@ def _build_build_schema_body(
     return body
 
 
+# The `markdowns` array is the only file-capable field: the spec's
+# `multipart/form-data` variant types each entry as `str | binary`.
+_MARKDOWNS_FILE_PATHS = [["markdowns", "<array>"]]
+
+
+def _markdowns_has_file(markdowns: object) -> bool:
+    """True when any `markdowns` entry is a file upload rather than inline text.
+
+    A plain `str` is inline markdown content (JSON-capable); anything else
+    (`Path`, `bytes`, a file object, or a `(filename, content)` tuple) is a file
+    upload, which forces the multipart request variant. Decided from the value's
+    type per the spec's `format: binary` markdowns item -- never from a generated
+    model's class name.
+    """
+    if not is_given(markdowns) or markdowns is None:
+        return False
+    return any(not isinstance(item, str) for item in cast("List[Any]", markdowns))
+
+
+def _prepare_build_schema_request(
+    body: Dict[str, Any],
+    markdowns: object,
+    extra_headers: Headers | None,
+) -> tuple[Dict[str, Any], Optional[List[tuple[str, FileTypes]]], Headers | None]:
+    """Route the request through multipart when `markdowns` carries a file.
+
+    Returns `(body, files, extra_headers)`. When no markdown is a file this is a
+    no-op and the caller sends JSON (`files` is `None`); otherwise the markdown
+    entries are pulled out as `multipart/form-data` parts, mirroring how
+    `parse.py` uploads its `document`.
+    """
+    if not _markdowns_has_file(markdowns):
+        return body, None, extra_headers
+    body = deepcopy_with_paths(body, _MARKDOWNS_FILE_PATHS)
+    files = extract_files(cast(Mapping[str, object], body), paths=_MARKDOWNS_FILE_PATHS)
+    extra_headers = {"Content-Type": "multipart/form-data", **(extra_headers or {})}
+    return body, files, extra_headers
+
+
 class BuildSchemaResource(V2ResourceMixin, SyncAPIResource):
     def run(
         self,
         *,
-        markdowns: Optional[List[str]] | Omit = omit,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
         markdown_urls: Optional[List[str]] | Omit = omit,
         prompt: Optional[str] | Omit = omit,
         schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
@@ -78,8 +118,10 @@ class BuildSchemaResource(V2ResourceMixin, SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> V2BuildSchemaResponse:
         """Generate or refine a JSON Schema for extraction synchronously against the
-        V2 (ADE) `/v2/extract/build-schema` endpoint (JSON body).
+        V2 (ADE) `/v2/extract/build-schema` endpoint.
 
+        Sends a JSON body, or `multipart/form-data` when any `markdowns` entry is a
+        file upload (a `Path`/`bytes`/file object rather than an inline string).
         At least one of `markdowns`, `markdown_urls`, `prompt`, or `schema` must be
         provided. Raises `V2SyncTimeoutError` when the server times out the
         synchronous request (HTTP 504); use the async jobs route for long-running
@@ -106,10 +148,12 @@ class BuildSchemaResource(V2ResourceMixin, SyncAPIResource):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         body = _build_build_schema_body(markdowns, markdown_urls, prompt, schema)
+        body, files, extra_headers = _prepare_build_schema_request(body, markdowns, extra_headers)
         try:
             return self._post(
                 self._v2_url("/v2/extract/build-schema"),
                 body=body,
+                files=files,
                 options=make_request_options(
                     extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
                 ),
@@ -124,7 +168,7 @@ class AsyncBuildSchemaResource(V2ResourceMixin, AsyncAPIResource):
     async def run(
         self,
         *,
-        markdowns: Optional[List[str]] | Omit = omit,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
         markdown_urls: Optional[List[str]] | Omit = omit,
         prompt: Optional[str] | Omit = omit,
         schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
@@ -137,10 +181,12 @@ class AsyncBuildSchemaResource(V2ResourceMixin, AsyncAPIResource):
     ) -> V2BuildSchemaResponse:
         """Async mirror of `BuildSchemaResource.run`. See there for full documentation."""
         body = _build_build_schema_body(markdowns, markdown_urls, prompt, schema)
+        body, files, extra_headers = _prepare_build_schema_request(body, markdowns, extra_headers)
         try:
             return await self._post(
                 self._v2_url("/v2/extract/build-schema"),
                 body=body,
+                files=files,
                 options=make_request_options(
                     extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
                 ),
@@ -155,7 +201,7 @@ class BuildSchemaJobsResource(V2ResourceMixin, SyncAPIResource):
     def create(
         self,
         *,
-        markdowns: Optional[List[str]] | Omit = omit,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
         markdown_urls: Optional[List[str]] | Omit = omit,
         prompt: Optional[str] | Omit = omit,
         schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
@@ -195,9 +241,11 @@ class BuildSchemaJobsResource(V2ResourceMixin, SyncAPIResource):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         body = _build_build_schema_body(markdowns, markdown_urls, prompt, schema, service_tier)
+        body, files, extra_headers = _prepare_build_schema_request(body, markdowns, extra_headers)
         raw = self._post(
             self._v2_url("/v2/extract/build-schema/jobs"),
             body=body,
+            files=files,
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),
@@ -291,7 +339,7 @@ class AsyncBuildSchemaJobsResource(V2ResourceMixin, AsyncAPIResource):
     async def create(
         self,
         *,
-        markdowns: Optional[List[str]] | Omit = omit,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
         markdown_urls: Optional[List[str]] | Omit = omit,
         prompt: Optional[str] | Omit = omit,
         schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
@@ -305,9 +353,11 @@ class AsyncBuildSchemaJobsResource(V2ResourceMixin, AsyncAPIResource):
     ) -> Job:
         """Async mirror of `BuildSchemaJobsResource.create`. See there for full documentation."""
         body = _build_build_schema_body(markdowns, markdown_urls, prompt, schema, service_tier)
+        body, files, extra_headers = _prepare_build_schema_request(body, markdowns, extra_headers)
         raw = await self._post(
             self._v2_url("/v2/extract/build-schema/jobs"),
             body=body,
+            files=files,
             options=make_request_options(
                 extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
             ),

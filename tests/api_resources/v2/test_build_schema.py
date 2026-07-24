@@ -48,9 +48,29 @@ def test_build_schema_sync_sends_markdowns_and_urls() -> None:
         return_value=httpx.Response(200, json=BUILD_SCHEMA_BODY)
     )
     client.v2.build_schema(markdowns=["# a", "# b"], markdown_urls=["https://x/y.md"])
+    # All-string markdowns stay on the JSON path.
+    assert route.calls.last.request.headers["content-type"].startswith("application/json")
     req = json.loads(route.calls.last.request.content)
     assert req["markdowns"] == ["# a", "# b"]
     assert req["markdown_urls"] == ["https://x/y.md"]
+
+
+@respx.mock
+def test_build_schema_sync_uploads_markdown_file_as_multipart() -> None:
+    # A file entry (here raw bytes; a Path/file object behaves the same) must
+    # switch the request to the spec's multipart/form-data variant instead of
+    # being JSON-serialized. Detected from the value type, not a model name.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/extract/build-schema").mock(
+        return_value=httpx.Response(200, json=BUILD_SCHEMA_BODY)
+    )
+    result = client.v2.build_schema(markdowns=[b"# uploaded markdown"], prompt="tighten it up")
+    assert isinstance(result, V2BuildSchemaResponse)
+    req = route.calls.last.request
+    assert req.headers["content-type"].startswith("multipart/form-data")
+    # The uploaded bytes and the string form fields both ride in the multipart body.
+    assert b"# uploaded markdown" in req.content
+    assert b"tighten it up" in req.content
 
 
 @respx.mock
