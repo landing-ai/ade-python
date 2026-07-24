@@ -409,8 +409,9 @@ jobs:
               lib/v2_errors.raise_if_sync_timeout, passing THIS endpoint's own async route as
               `jobs_resource` — e.g. `build_schema_jobs` — so the 504 remediation names the right
               resource; never let it fall back to a parse/extract-specific message, and if the
-              helper doesn't yet take a per-endpoint `jobs_resource`, extend it rather than reusing
-              another endpoint's wording) and, for an async route, a *JobsResource with
+              helper doesn't yet take a per-endpoint `jobs_resource`, extend it and update every
+              existing call site and helper test to pass its own matching resource rather than
+              reusing another endpoint's wording) and, for an async route, a *JobsResource with
               create / get / wait / list. Decide multipart-vs-JSON from the SPEC, not from a
               generated class name: an operation accepts file uploads iff its
               `requestBody.content` has a `multipart/form-data` variant with a property (or array
