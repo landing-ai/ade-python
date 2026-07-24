@@ -44,7 +44,7 @@ def _prepare_build_schema(
     """
     md_list: Optional[List[FileTypes]] = None
     if is_given(markdowns) and markdowns is not None:
-        md_list = list(cast(Sequence[FileTypes], markdowns))
+        md_list = [markdowns] if isinstance(markdowns, str) else list(cast(Sequence[FileTypes], markdowns))
 
     urls_list: Optional[List[str]] = None
     if is_given(markdown_urls) and markdown_urls is not None:
