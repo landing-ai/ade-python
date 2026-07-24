@@ -1,7 +1,7 @@
 # src/landingai_ade/resources/v2/v2.py
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Type, Union, Mapping, Optional
+from typing import TYPE_CHECKING, List, Type, Union, Mapping, Optional
 from pathlib import Path
 
 import httpx
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from ._base import V2ResourceMixin
 from ..._types import Body, Omit, Query, Headers, NotGiven, FileTypes, omit, not_given
 from ..._compat import cached_property
-from ...types.v2 import V2GroundResult, V2ExtractResult, V2ParseResponse
+from ...types.v2 import V2GroundResult, V2ExtractResult, V2ParseResponse, V2BuildSchemaResponse
 from ..._resource import SyncAPIResource, AsyncAPIResource
 
 if TYPE_CHECKING:
@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     from .parse import ParseResource, ParseJobsResource, AsyncParseResource, AsyncParseJobsResource
     from .ground import GroundResource, GroundJobsResource, AsyncGroundResource, AsyncGroundJobsResource
     from .extract import ExtractResource, ExtractJobsResource, AsyncExtractResource, AsyncExtractJobsResource
+    from .build_schema import (
+        BuildSchemaResource,
+        BuildSchemaJobsResource,
+        AsyncBuildSchemaResource,
+        AsyncBuildSchemaJobsResource,
+    )
 
 __all__ = ["V2Resource", "AsyncV2Resource"]
 
@@ -116,6 +122,44 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
             model=model,
             strict=strict,
             save_to=save_to,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _build_schema(self) -> BuildSchemaResource:
+        from .build_schema import BuildSchemaResource
+
+        return BuildSchemaResource(self._client)
+
+    @cached_property
+    def build_schema_jobs(self) -> BuildSchemaJobsResource:
+        from .build_schema import BuildSchemaJobsResource
+
+        return BuildSchemaJobsResource(self._client)
+
+    def build_schema(
+        self,
+        *,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
+        markdown_urls: Optional[List[str]] | Omit = omit,
+        prompt: Optional[str] | Omit = omit,
+        schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2BuildSchemaResponse:
+        """Generate or refine an extraction JSON Schema synchronously. See ``BuildSchemaResource.run`` for full documentation."""
+        return self._build_schema.run(
+            markdowns=markdowns,
+            markdown_urls=markdown_urls,
+            prompt=prompt,
+            schema=schema,
             extra_headers=extra_headers,
             extra_query=extra_query,
             extra_body=extra_body,
@@ -244,6 +288,44 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
             model=model,
             strict=strict,
             save_to=save_to,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _build_schema(self) -> AsyncBuildSchemaResource:
+        from .build_schema import AsyncBuildSchemaResource
+
+        return AsyncBuildSchemaResource(self._client)
+
+    @cached_property
+    def build_schema_jobs(self) -> AsyncBuildSchemaJobsResource:
+        from .build_schema import AsyncBuildSchemaJobsResource
+
+        return AsyncBuildSchemaJobsResource(self._client)
+
+    async def build_schema(
+        self,
+        *,
+        markdowns: Optional[List[FileTypes]] | Omit = omit,
+        markdown_urls: Optional[List[str]] | Omit = omit,
+        prompt: Optional[str] | Omit = omit,
+        schema: Optional[Union[str, Mapping[str, object], Type[BaseModel]]] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2BuildSchemaResponse:
+        """Async mirror of :meth:`V2Resource.build_schema`."""
+        return await self._build_schema.run(
+            markdowns=markdowns,
+            markdown_urls=markdown_urls,
+            prompt=prompt,
+            schema=schema,
             extra_headers=extra_headers,
             extra_query=extra_query,
             extra_body=extra_body,
