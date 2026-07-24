@@ -404,7 +404,15 @@ jobs:
             - Add a resource module under src/landingai_ade/resources/v2/ with a sync run()
               (multipart or JSON per the spec; route a 504 through
               lib/v2_errors.raise_if_sync_timeout) and, for an async route, a *JobsResource with
-              create / get / wait / list.
+              create / get / wait / list. Decide multipart-vs-JSON from the SPEC, not from a
+              generated class name: an operation accepts file uploads iff its
+              `requestBody.content` has a `multipart/form-data` variant with a property (or array
+              item) of `format: binary`. For such a field, accept file inputs (FileTypes: a str for
+              inline content, or a Path/bytes/file object for uploads) and send multipart when any
+              value is a file, keeping JSON when every value is a string. Identify the file-capable
+              request model by that `bytes`/binary field type — the generated `*PostRequest` /
+              `*PostRequest1` variants are ordered by content-type and the suffix can flip if the
+              spec reorders them, so NEVER key off the numeric suffix.
             - Register it on the V2Resource/AsyncV2Resource container in
               src/landingai_ade/resources/v2/v2.py exactly as parse/extract are wired (lazy
               cached_property + an explicit-signature top-level delegator). Do NOT re-export the
