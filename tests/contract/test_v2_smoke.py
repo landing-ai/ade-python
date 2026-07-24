@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from typing import Iterator
 from pathlib import Path
 
@@ -8,7 +9,13 @@ import pytest
 from pydantic import Field, BaseModel
 
 from landingai_ade import LandingAIADE
-from landingai_ade.types.v2 import JobStatus, V2GroundResult, V2ExtractResult, V2ParseResponse
+from landingai_ade.types.v2 import (
+    JobStatus,
+    V2GroundResult,
+    V2ExtractResult,
+    V2ParseResponse,
+    V2BuildSchemaResponse,
+)
 
 pytestmark = pytest.mark.contract
 
@@ -55,6 +62,28 @@ def test_extract_jobs(staging_client: LandingAIADE) -> None:
     done = staging_client.v2.extract_jobs.wait(job.job_id, timeout=300)
     assert done.status is JobStatus.COMPLETED
     assert isinstance(done.result, V2ExtractResult)
+
+
+def test_build_schema_sync(staging_client: LandingAIADE) -> None:
+    # Generate a JSON Schema from a source markdown document and a prompt.
+    res = staging_client.v2.build_schema(
+        markdowns=[SAMPLE_MARKDOWN],
+        prompt="Capture the total revenue figure and the company name.",
+    )
+    assert isinstance(res, V2BuildSchemaResponse)
+    assert isinstance(res.extraction_schema, str) and res.extraction_schema
+    # The generated schema is a JSON Schema serialized as a string.
+    assert isinstance(json.loads(res.extraction_schema), dict)
+
+
+def test_build_schema_jobs(staging_client: LandingAIADE) -> None:
+    job = staging_client.v2.build_schema_jobs.create(
+        markdowns=[SAMPLE_MARKDOWN],
+        prompt="Capture the total revenue figure and the company name.",
+    )
+    done = staging_client.v2.build_schema_jobs.wait(job.job_id, timeout=300)
+    assert done.status is JobStatus.COMPLETED
+    assert isinstance(done.result, V2BuildSchemaResponse)
 
 
 def test_parse_sync(staging_client: LandingAIADE) -> None:

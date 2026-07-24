@@ -6,9 +6,22 @@ from datetime import datetime
 
 from ..._types import StrBytesIntFloat
 from ..._utils import parse_datetime
-from ...types.v2 import Job, JobError, JobStatus, V2GroundResult, V2ExtractResult, V2ParseResponse
+from ...types.v2 import (
+    Job,
+    JobError,
+    JobStatus,
+    V2GroundResult,
+    V2ExtractResult,
+    V2ParseResponse,
+    V2BuildSchemaResponse,
+)
 
-__all__ = ["normalize_parse_job", "normalize_extract_job", "normalize_ground_job"]
+__all__ = [
+    "normalize_parse_job",
+    "normalize_extract_job",
+    "normalize_ground_job",
+    "normalize_build_schema_job",
+]
 
 
 def _ts(value: Optional[Union[datetime, StrBytesIntFloat]]) -> Optional[datetime]:
@@ -85,6 +98,33 @@ def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
         err = cast(Dict[str, Any], err)
         error = JobError(code=err.get("code"), message=err.get("message"))
     elif raw.get("failure_reason"):  # extract *list* uses failure_reason
+        error = JobError(message=str(raw["failure_reason"]))
+
+    return Job(
+        job_id=str(raw["job_id"]),
+        status=status,
+        created_at=_ts(raw.get("created_at")),
+        completed_at=_ts(raw.get("completed_at")),
+        progress=_progress(raw.get("progress")),
+        result=result,
+        error=error,
+        raw=dict(raw),
+    )
+
+
+def normalize_build_schema_job(raw: Mapping[str, Any]) -> Job:
+    status = _status(raw)
+    payload = raw.get("result")
+    # Build leniently (like the sync-response path) so unexpected upstream drift
+    # doesn't fail construction.
+    result = V2BuildSchemaResponse.construct(**cast(Dict[str, Any], payload)) if isinstance(payload, Mapping) else None
+
+    error = None
+    err = raw.get("error")
+    if isinstance(err, Mapping):
+        err = cast(Dict[str, Any], err)
+        error = JobError(code=err.get("code"), message=err.get("message"))
+    elif raw.get("failure_reason"):  # build-schema *list* uses failure_reason
         error = JobError(message=str(raw["failure_reason"]))
 
     return Job(
