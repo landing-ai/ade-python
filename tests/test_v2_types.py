@@ -10,7 +10,6 @@ from landingai_ade.types.v2 import (
     V2GroundResult,
     V2ExtractResult,
     V2ParseResponse,
-    V2FileUploadResponse,
     V2BuildSchemaResponse,
 )
 
@@ -294,7 +293,3 @@ def test_build_schema_response_retains_unknown_fields() -> None:
         surprise=1,  # type: ignore[call-arg]
     )
     assert r.to_dict()["surprise"] == 1
-
-
-def test_file_upload_response() -> None:
-    assert V2FileUploadResponse(file_ref="abc").file_ref == "abc"

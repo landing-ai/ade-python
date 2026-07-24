@@ -14,9 +14,8 @@ from ...types.v2 import V2GroundResult, V2ExtractResult, V2ParseResponse, V2Buil
 from ..._resource import SyncAPIResource, AsyncAPIResource
 
 if TYPE_CHECKING:
-    from .files import FilesResource, AsyncFilesResource
     from .parse import ParseResource, ParseJobsResource, AsyncParseResource, AsyncParseJobsResource
-    from .ground import GroundResource, GroundJobsResource, AsyncGroundResource, AsyncGroundJobsResource
+    from .ground import GroundResource, AsyncGroundResource
     from .extract import ExtractResource, ExtractJobsResource, AsyncExtractResource, AsyncExtractJobsResource
     from .build_schema import (
         BuildSchemaResource,
@@ -31,18 +30,11 @@ __all__ = ["V2Resource", "AsyncV2Resource"]
 class V2Resource(SyncAPIResource, V2ResourceMixin):
     """Container for the V2 (ADE) surface: ``client.v2.<resource>``.
 
-    ``files``, ``parse``, ``extract``, and ``ground`` are wired up; each sub-resource does its
-    own lazy import inside its cached property body -- mirroring
+    ``parse``, ``extract``, ``build_schema``, and ``ground`` are wired up; each sub-resource
+    does its own lazy import inside its cached property body -- mirroring
     ``LandingAIADE.parse_jobs`` -- so that this module keeps importing standalone
-    regardless of which sub-resources exist yet. Remaining job-polling resources
-    are attached by later tasks following the same pattern.
+    regardless of which sub-resources exist yet.
     """
-
-    @cached_property
-    def files(self) -> FilesResource:
-        from .files import FilesResource
-
-        return FilesResource(self._client)
 
     @cached_property
     def _parse(self) -> ParseResource:
@@ -172,12 +164,6 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
 
         return GroundResource(self._client)
 
-    @cached_property
-    def ground_jobs(self) -> GroundJobsResource:
-        from .ground import GroundJobsResource
-
-        return GroundJobsResource(self._client)
-
     def ground(
         self,
         *,
@@ -203,12 +189,6 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
 
 class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
     """Async mirror of :class:`V2Resource`."""
-
-    @cached_property
-    def files(self) -> AsyncFilesResource:
-        from .files import AsyncFilesResource
-
-        return AsyncFilesResource(self._client)
 
     @cached_property
     def _parse(self) -> AsyncParseResource:
@@ -337,12 +317,6 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         from .ground import AsyncGroundResource
 
         return AsyncGroundResource(self._client)
-
-    @cached_property
-    def ground_jobs(self) -> AsyncGroundJobsResource:
-        from .ground import AsyncGroundJobsResource
-
-        return AsyncGroundJobsResource(self._client)
 
     async def ground(
         self,

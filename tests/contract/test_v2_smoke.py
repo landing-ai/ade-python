@@ -41,12 +41,6 @@ def staging_client() -> Iterator[LandingAIADE]:
         yield client
 
 
-def test_files_upload(staging_client: LandingAIADE) -> None:
-    file_ref = staging_client.v2.files.upload(file=("doc.md", SAMPLE_MARKDOWN.encode(), "text/markdown"))
-    assert isinstance(file_ref, str)
-    assert file_ref
-
-
 def test_extract_sync(staging_client: LandingAIADE) -> None:
     res = staging_client.v2.extract(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN)
     assert isinstance(res, V2ExtractResult)
@@ -123,19 +117,6 @@ def test_ground_sync(staging_client: LandingAIADE) -> None:
     assert isinstance(grounded, V2GroundResult)
     assert isinstance(grounded.grounding, dict)
     assert grounded.metadata.job_id
-
-
-def test_ground_jobs(staging_client: LandingAIADE) -> None:
-    parsed = staging_client.v2.parse(document=Path(__file__).parent / "sample.pdf")
-    assert parsed.structure is not None
-    extracted = staging_client.v2.extract(schema=RevenueSchema, markdown=parsed.markdown or "")
-    job = staging_client.v2.ground_jobs.create(
-        extraction_metadata=extracted.extraction_metadata,
-        structure=parsed.structure,
-    )
-    done = staging_client.v2.ground_jobs.wait(job.job_id, timeout=300)
-    assert done.status is JobStatus.COMPLETED
-    assert isinstance(done.result, V2GroundResult)
 
 
 def test_parse_jobs(staging_client: LandingAIADE) -> None:

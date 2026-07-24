@@ -26,7 +26,6 @@ from .extract_response import (
     V2ExtractBilling as V2ExtractBilling,
     V2ExtractMetadata as V2ExtractMetadata,
 )
-from .file_upload_response import V2FileUploadResponse as V2FileUploadResponse
 from .build_schema_response import (
     V2BuildSchemaBilling as V2BuildSchemaBilling,
     V2BuildSchemaWarning as V2BuildSchemaWarning,
