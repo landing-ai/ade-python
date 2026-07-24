@@ -406,7 +406,11 @@ jobs:
 
             - Add a resource module under src/landingai_ade/resources/v2/ with a sync run()
               (multipart or JSON per the spec; route a 504 through
-              lib/v2_errors.raise_if_sync_timeout) and, for an async route, a *JobsResource with
+              lib/v2_errors.raise_if_sync_timeout, passing THIS endpoint's own async route as
+              `jobs_resource` — e.g. `build_schema_jobs` — so the 504 remediation names the right
+              resource; never let it fall back to a parse/extract-specific message, and if the
+              helper doesn't yet take a per-endpoint `jobs_resource`, extend it rather than reusing
+              another endpoint's wording) and, for an async route, a *JobsResource with
               create / get / wait / list. Decide multipart-vs-JSON from the SPEC, not from a
               generated class name: an operation accepts file uploads iff its
               `requestBody.content` has a `multipart/form-data` variant with a property (or array
