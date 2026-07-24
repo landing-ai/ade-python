@@ -517,6 +517,42 @@ class ValidationError(BaseModel):
     type: str = Field(..., title='Error Type')
 
 
+class Status(Enum):
+    """
+    Filter by job status.
+    """
+
+    cancelled = 'cancelled'
+    completed = 'completed'
+    failed = 'failed'
+    pending = 'pending'
+    processing = 'processing'
+
+
+class V1AdeExtractJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed)', ge=0, title='Page'
+    )
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page', ge=1, le=100, title='Pagesize'
+    )
+    status: Optional[Status] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class V1AdeParseJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed)', ge=0, title='Page'
+    )
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page', ge=1, le=100, title='Pagesize'
+    )
+    status: Optional[Status] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
 class AsyncParseRequestWithEncryptedPassword(BaseModel):
     custom_prompts: Optional[str] = Field(
         None,

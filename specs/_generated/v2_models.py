@@ -382,6 +382,888 @@ class WorkflowStepOptions(BaseModel):
     )
 
 
+class V1FilesPostResponse(RootModel[dict[str, str]]):
+    root: dict[str, str]
+
+
+class V2ExtractPostRequest(BaseModel):
+    """
+    Input to V2ExtractOperationWorkflow.
+
+    Provide the markdown as an inline ``markdown`` string, as a multipart file
+    part named ``markdown`` (for large inputs — the gateway stages the upload
+    internally), or via a public ``markdown_url``. Exactly one source must be
+    supplied.
+    """
+
+    markdown: Optional[str] = Field(
+        None,
+        description='Markdown string to extract from, or a multipart FILE part carrying the markdown (large inputs — uploads are staged by the gateway). Can come from any source — LandingAI parse output, a third-party parser, or hand-authored text. When the markdown was produced by ``POST /v2/parse``, it ends with a ``<!-- doc_id=<id> -->`` comment that the service reads automatically and echoes as ``metadata.doc_id``.',
+        title='Markdown',
+    )
+    markdown_url: Optional[str] = Field(
+        None,
+        description='URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.',
+        title='Markdown Url',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The version of the model to use for extraction. Use ``extract-latest`` to use the latest version.',
+        title='Model',
+    )
+    options: Optional[V2ExtractOptions] = Field(
+        None, description='Extraction options (``strict``). Omit for defaults.'
+    )
+    schema_: dict[str, Any] = Field(
+        ...,
+        alias='schema',
+        description='JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions.',
+        examples=[
+            {
+                'properties': {
+                    'revenue': {'description': 'Q1 revenue figure', 'type': 'string'},
+                    'summary': {'description': 'Executive summary', 'type': 'string'},
+                },
+                'type': 'object',
+            }
+        ],
+        title='Schema',
+    )
+
+
+class V2ExtractPostRequest1(BaseModel):
+    markdown: Optional[Union[str, bytes]] = None
+    markdown_url: Optional[str] = Field(
+        None,
+        description='URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.',
+        title='Markdown Url',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The version of the model to use for extraction. Use ``extract-latest`` to use the latest version. JSON-serialized string in form data.',
+        title='Model',
+    )
+    options: Optional[V2ExtractOptions] = Field(
+        None,
+        description='Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data.',
+    )
+    schema_: dict[str, Any] = Field(
+        ...,
+        alias='schema',
+        description='JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions. JSON-serialized string in form data.',
+        examples=[
+            {
+                'properties': {
+                    'revenue': {'description': 'Q1 revenue figure', 'type': 'string'},
+                    'summary': {'description': 'Executive summary', 'type': 'string'},
+                },
+                'type': 'object',
+            }
+        ],
+        title='Schema',
+    )
+
+
+class V2ExtractPostResponse(BaseModel):
+    """
+    Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``
+    response body (``docs/extract-v2-proposal.md`` → Response).
+
+    ``extraction`` and ``extraction_metadata`` mirror each other structurally:
+    leaf values in ``extraction`` are replaced by ``ExtractionFieldMetadata``
+    objects in ``extraction_metadata``.
+    """
+
+    extraction: dict[str, Any] = Field(
+        ...,
+        description='Extracted values conforming to the request ``schema``.',
+        title='Extraction',
+    )
+    extraction_metadata: dict[str, Any] = Field(
+        ...,
+        description='Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, ranges}`` objects.',
+        title='Extraction Metadata',
+    )
+    markdown: str = Field(..., description='Echoed input markdown.', title='Markdown')
+    metadata: V2ExtractMetadata = Field(
+        ...,
+        description='Request metadata (job_id, model_version, duration_ms, doc_id, billing).',
+    )
+    schema_violation_error: Optional[str] = Field(
+        None,
+        description='Set when ``options.strict`` is false and the schema contained fields the model could not extract — the extraction is partial.',
+        title='Schema Violation Error',
+    )
+    warnings: Optional[list[dict[str, Any]]] = Field(
+        None,
+        description='Non-fatal warnings emitted during extraction.',
+        title='Warnings',
+    )
+
+
+class V2ExtractJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Status1(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class Job(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status1] = None
+
+
+class V2ExtractJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class ServiceTier2(Enum):
+    """
+    Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
+    """
+
+    standard = 'standard'
+    priority = 'priority'
+
+
+class V2ExtractJobsPostRequest(BaseModel):
+    """
+    Input to V2ExtractOperationWorkflow.
+
+    Provide the markdown as an inline ``markdown`` string, as a multipart file
+    part named ``markdown`` (for large inputs — the gateway stages the upload
+    internally), or via a public ``markdown_url``. Exactly one source must be
+    supplied.
+    """
+
+    markdown: Optional[str] = Field(
+        None,
+        description='Markdown string to extract from, or a multipart FILE part carrying the markdown (large inputs — uploads are staged by the gateway). Can come from any source — LandingAI parse output, a third-party parser, or hand-authored text. When the markdown was produced by ``POST /v2/parse``, it ends with a ``<!-- doc_id=<id> -->`` comment that the service reads automatically and echoes as ``metadata.doc_id``.',
+        title='Markdown',
+    )
+    markdown_url: Optional[str] = Field(
+        None,
+        description='URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.',
+        title='Markdown Url',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The version of the model to use for extraction. Use ``extract-latest`` to use the latest version.',
+        title='Model',
+    )
+    options: Optional[V2ExtractOptions] = Field(
+        None, description='Extraction options (``strict``). Omit for defaults.'
+    )
+    output_save_url: Optional[str] = Field(
+        None,
+        description='URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.',
+        title='Output Save Url',
+    )
+    schema_: dict[str, Any] = Field(
+        ...,
+        alias='schema',
+        description='JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions.',
+        examples=[
+            {
+                'properties': {
+                    'revenue': {'description': 'Q1 revenue figure', 'type': 'string'},
+                    'summary': {'description': 'Executive summary', 'type': 'string'},
+                },
+                'type': 'object',
+            }
+        ],
+        title='Schema',
+    )
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class V2ExtractJobsPostRequest1(BaseModel):
+    markdown: Optional[Union[str, bytes]] = None
+    markdown_url: Optional[str] = Field(
+        None,
+        description='URL to fetch the markdown from. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.',
+        title='Markdown Url',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The version of the model to use for extraction. Use ``extract-latest`` to use the latest version. JSON-serialized string in form data.',
+        title='Model',
+    )
+    options: Optional[V2ExtractOptions] = Field(
+        None,
+        description='Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data.',
+    )
+    output_save_url: Optional[str] = Field(
+        None,
+        description='URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.',
+        title='Output Save Url',
+    )
+    schema_: dict[str, Any] = Field(
+        ...,
+        alias='schema',
+        description='JSON Schema describing the fields to extract. The schema must be an object type with a ``properties`` map of field names to their types and descriptions. JSON-serialized string in form data.',
+        examples=[
+            {
+                'properties': {
+                    'revenue': {'description': 'Q1 revenue figure', 'type': 'string'},
+                    'summary': {'description': 'Executive summary', 'type': 'string'},
+                },
+                'type': 'object',
+            }
+        ],
+        title='Schema',
+    )
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class V2ExtractJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status1] = None
+
+
+class Error(BaseModel):
+    """
+    Present once status is ``failed``.
+    """
+
+    code: Optional[str] = Field(
+        None, description='Stable error code (``internal_error`` when unmapped).'
+    )
+    message: Optional[str] = None
+
+
+class Result(BaseModel):
+    """
+    Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``
+    response body (``docs/extract-v2-proposal.md`` → Response).
+
+    ``extraction`` and ``extraction_metadata`` mirror each other structurally:
+    leaf values in ``extraction`` are replaced by ``ExtractionFieldMetadata``
+    objects in ``extraction_metadata``.
+    """
+
+    extraction: dict[str, Any] = Field(
+        ...,
+        description='Extracted values conforming to the request ``schema``.',
+        title='Extraction',
+    )
+    extraction_metadata: dict[str, Any] = Field(
+        ...,
+        description='Per-field metadata, mirroring ``extraction`` with leaf values replaced by ``{value, ranges}`` objects.',
+        title='Extraction Metadata',
+    )
+    markdown: str = Field(..., description='Echoed input markdown.', title='Markdown')
+    metadata: V2ExtractMetadata = Field(
+        ...,
+        description='Request metadata (job_id, model_version, duration_ms, doc_id, billing).',
+    )
+    schema_violation_error: Optional[str] = Field(
+        None,
+        description='Set when ``options.strict`` is false and the schema contained fields the model could not extract — the extraction is partial.',
+        title='Schema Violation Error',
+    )
+    warnings: Optional[list[dict[str, Any]]] = Field(
+        None,
+        description='Non-fatal warnings emitted during extraction.',
+        title='Warnings',
+    )
+
+
+class V2ExtractJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    output_url: Optional[str] = Field(
+        None,
+        description='The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result] = Field(
+        None,
+        description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
+    )
+    status: Optional[Status1] = None
+
+
+class V2GroundPostRequest(BaseModel):
+    """
+    Input to V2GroundOperationWorkflow — the ``/v2/ground`` request body.
+
+    A pure, stateless join: each ``extraction_metadata`` leaf's ``ranges``
+    (char offsets into the markdown both artifacts were produced from) is
+    overlapped against the ``grounding.range`` carried on every ``structure``
+    block, and the matching blocks are returned. Nothing is stored server-side,
+    so block ids in the response resolve only against the ``structure`` tree
+    supplied here — pairing an extraction with the parse result it actually
+    came from is the caller's responsibility.
+    """
+
+    extraction_metadata: dict[str, Any] = Field(
+        ...,
+        description="The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown.",
+        examples=[
+            {
+                'invoice_number': {
+                    'ranges': [{'end': 31, 'start': 13}],
+                    'value': 'INV-042',
+                }
+            }
+        ],
+        title='Extraction Metadata',
+    )
+    structure: dict[str, Any] = Field(
+        ...,
+        description='The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree.',
+        title='Structure',
+    )
+
+
+class V2GroundPostRequest1(BaseModel):
+    extraction_metadata: dict[str, Any] = Field(
+        ...,
+        description="The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown. JSON-serialized string in form data.",
+        examples=[
+            {
+                'invoice_number': {
+                    'ranges': [{'end': 31, 'start': 13}],
+                    'value': 'INV-042',
+                }
+            }
+        ],
+        title='Extraction Metadata',
+    )
+    structure: dict[str, Any] = Field(
+        ...,
+        description='The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree. JSON-serialized string in form data.',
+        title='Structure',
+    )
+
+
+class V2GroundPostResponse(BaseModel):
+    """
+    Result returned by V2GroundOperationWorkflow — the ``/v2/ground``
+    response body.
+
+    ``grounding`` MIRRORS the ``extraction_metadata`` tree: nested objects and
+    arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by
+    the list of structure blocks its ranges overlap (the block-hit shape
+    documented on the field). It is NOT a flat map — a nested schema field like
+    ``issuer.name`` resolves to ``grounding["issuer"]["name"]``.
+    """
+
+    grounding: dict[str, Any] = Field(
+        ...,
+        description="A tree mirroring ``extraction_metadata``: nested objects and arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by the list of blocks its ranges overlap, in reading order. Each entry carries ``block_id`` and ``type`` identifying the matched ``structure`` block, ``parent_id`` naming the enclosing block for nested blocks (table cells), and the block's own ``grounding`` object (``{page, range, box}``) verbatim. When the block itself carries ``atomic_grounding``, the entry also lists the overlapping subset as ``{index, page, range, box}`` objects, where ``index`` is the position in the block's own ``atomic_grounding`` array; ``[]`` means the block matched but no individual entry did, and the key is omitted for blocks that carry no ``atomic_grounding``. A leaf is ``null`` when its ``ranges`` was ``null`` (a synthesised value, with no supporting passage to look up) and ``[]`` when valid ranges overlapped no block (which usually indicates a mismatched extraction/structure pair).",
+        examples=[
+            {
+                'invoice_number': [
+                    {
+                        'atomic_grounding': [],
+                        'block_id': 'text-1',
+                        'grounding': {
+                            'box': {
+                                'xmax': 0.42,
+                                'xmin': 0.1,
+                                'ymax': 0.15,
+                                'ymin': 0.12,
+                            },
+                            'page': 1,
+                            'range': {'end': 31, 'start': 13},
+                        },
+                        'type': 'text',
+                    }
+                ]
+            }
+        ],
+        title='Grounding',
+    )
+    metadata: V2GroundMetadata = Field(
+        ..., description='Request metadata (job_id, duration_ms, credit_usage).'
+    )
+
+
+class V2GroundJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Job1(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status1] = None
+
+
+class V2GroundJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job1]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class V2GroundJobsPostRequest(BaseModel):
+    """
+    Input to V2GroundOperationWorkflow — the ``/v2/ground`` request body.
+
+    A pure, stateless join: each ``extraction_metadata`` leaf's ``ranges``
+    (char offsets into the markdown both artifacts were produced from) is
+    overlapped against the ``grounding.range`` carried on every ``structure``
+    block, and the matching blocks are returned. Nothing is stored server-side,
+    so block ids in the response resolve only against the ``structure`` tree
+    supplied here — pairing an extraction with the parse result it actually
+    came from is the caller's responsibility.
+    """
+
+    extraction_metadata: dict[str, Any] = Field(
+        ...,
+        description="The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown.",
+        examples=[
+            {
+                'invoice_number': {
+                    'ranges': [{'end': 31, 'start': 13}],
+                    'value': 'INV-042',
+                }
+            }
+        ],
+        title='Extraction Metadata',
+    )
+    structure: dict[str, Any] = Field(
+        ...,
+        description='The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree.',
+        title='Structure',
+    )
+
+
+class V2GroundJobsPostRequest1(BaseModel):
+    extraction_metadata: dict[str, Any] = Field(
+        ...,
+        description="The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown. JSON-serialized string in form data.",
+        examples=[
+            {
+                'invoice_number': {
+                    'ranges': [{'end': 31, 'start': 13}],
+                    'value': 'INV-042',
+                }
+            }
+        ],
+        title='Extraction Metadata',
+    )
+    structure: dict[str, Any] = Field(
+        ...,
+        description='The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree. JSON-serialized string in form data.',
+        title='Structure',
+    )
+
+
+class V2GroundJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status1] = None
+
+
+class Result1(BaseModel):
+    """
+    Result returned by V2GroundOperationWorkflow — the ``/v2/ground``
+    response body.
+
+    ``grounding`` MIRRORS the ``extraction_metadata`` tree: nested objects and
+    arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by
+    the list of structure blocks its ranges overlap (the block-hit shape
+    documented on the field). It is NOT a flat map — a nested schema field like
+    ``issuer.name`` resolves to ``grounding["issuer"]["name"]``.
+    """
+
+    grounding: dict[str, Any] = Field(
+        ...,
+        description="A tree mirroring ``extraction_metadata``: nested objects and arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by the list of blocks its ranges overlap, in reading order. Each entry carries ``block_id`` and ``type`` identifying the matched ``structure`` block, ``parent_id`` naming the enclosing block for nested blocks (table cells), and the block's own ``grounding`` object (``{page, range, box}``) verbatim. When the block itself carries ``atomic_grounding``, the entry also lists the overlapping subset as ``{index, page, range, box}`` objects, where ``index`` is the position in the block's own ``atomic_grounding`` array; ``[]`` means the block matched but no individual entry did, and the key is omitted for blocks that carry no ``atomic_grounding``. A leaf is ``null`` when its ``ranges`` was ``null`` (a synthesised value, with no supporting passage to look up) and ``[]`` when valid ranges overlapped no block (which usually indicates a mismatched extraction/structure pair).",
+        examples=[
+            {
+                'invoice_number': [
+                    {
+                        'atomic_grounding': [],
+                        'block_id': 'text-1',
+                        'grounding': {
+                            'box': {
+                                'xmax': 0.42,
+                                'xmin': 0.1,
+                                'ymax': 0.15,
+                                'ymin': 0.12,
+                            },
+                            'page': 1,
+                            'range': {'end': 31, 'start': 13},
+                        },
+                        'type': 'text',
+                    }
+                ]
+            }
+        ],
+        title='Grounding',
+    )
+    metadata: V2GroundMetadata = Field(
+        ..., description='Request metadata (job_id, duration_ms, credit_usage).'
+    )
+
+
+class V2GroundJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result1] = Field(
+        None, description='Present once status is ``completed``.'
+    )
+    status: Optional[Status1] = None
+
+
+class V2ParseJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Status7(Enum):
+    """
+    The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
+    """
+
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class Job2(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='ISO-8601 timestamp for when the job finished, if terminal.'
+    )
+    created_at: Optional[str] = Field(
+        None, description='ISO-8601 timestamp for when the job was created.'
+    )
+    failure_reason: Optional[str] = Field(
+        None,
+        description='The reason the job failed. Present only when ``status`` is ``failed``.',
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for the parse job. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = Field(
+        None, description='The model snapshot used to parse the document.'
+    )
+    status: Optional[Status7] = Field(
+        None,
+        description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
+    )
+
+
+class V2ParseJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = Field(
+        None,
+        description='Whether more jobs exist beyond this page; request the next ``page`` to fetch them.',
+    )
+    jobs: Optional[list[Job2]] = Field(
+        None, description="The caller's parse jobs for this page, newest first."
+    )
+    page: Optional[int] = Field(None, description='The 0-indexed page number.')
+    page_size: Optional[int] = Field(None, description='Items per page.')
+
+
+class ServiceTier4(Enum):
+    """
+    Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
+    """
+
+    standard = 'standard'
+    priority = 'priority'
+
+
+class Status8(Enum):
+    """
+    The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.
+    """
+
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class V2ParseJobsPostResponse(BaseModel):
+    created_at: Optional[str] = Field(
+        ..., description='ISO-8601 timestamp for when the job was created.'
+    )
+    job_id: str = Field(
+        ...,
+        description='The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Status8 = Field(
+        ...,
+        description="The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.",
+    )
+
+
+class Error2(BaseModel):
+    """
+    Present once the job has ``failed`` — the failure code + message.
+    """
+
+    code: Optional[str] = Field(None, description='Stable error code.')
+    message: Optional[str] = None
+
+
+class Status9(Enum):
+    """
+    The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
+    """
+
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class V2WorkflowPostResponse(BaseModel):
+    """
+    Result returned by V2WorkflowOperationWorkflow.
+
+    ``output`` is keyed by step name (or by caller-chosen projection keys when
+    ``output`` was provided in the request). For the ``"parse-extract"`` pipeline
+    with no projection, the keys are ``"parse-extract"`` → ``{parse, extract, ground}``:
+
+    * ``output["parse-extract"]["parse"]`` — full parse response (markdown,
+      structure with per-node grounding inline, metadata).
+    * ``output["parse-extract"]["extract"]`` — extraction + ``extraction_metadata``
+      with ``{value, ranges}`` leaves.
+    * ``output["parse-extract"]["ground"]`` — a tree MIRRORING
+      ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its
+      resolved block-hit list (``[{block_id, type, parent_id?, grounding,
+      atomic_grounding?}]`` — the same shape ``/v2/ground`` returns; see
+      ``V2GroundResult.grounding`` for the full field-level contract), or
+      ``null`` for a synthesised value. Nested objects and arrays keep their
+      shape, so ``ground.issuer.name`` parallels
+      ``extraction_metadata.issuer.name``. Resolved server-side — no
+      client-side span lookup needed.
+
+    References into the results use the ``$output.<step>.<field>...`` grammar
+    (see ``output`` field of the request).
+    """
+
+    metadata: V2WorkflowMetadata = Field(
+        ..., description='Request metadata (job_id, duration_ms, billing).'
+    )
+    output: dict[str, Any] = Field(
+        ...,
+        description='Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{"parse-extract": {parse, extract, ground}}``.',
+        title='Output',
+    )
+
+
+class V2WorkflowJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Status10(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class Job3(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status10] = None
+
+
+class V2WorkflowJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job3]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class ServiceTier5(Enum):
+    """
+    Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
+    """
+
+    standard = 'standard'
+    priority = 'priority'
+
+
+class V2WorkflowJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status10] = None
+
+
+class Error3(BaseModel):
+    """
+    Present once status is ``failed``.
+    """
+
+    code: Optional[str] = Field(
+        None, description='Stable error code (``internal_error`` when unmapped).'
+    )
+    message: Optional[str] = None
+
+
+class Result2(BaseModel):
+    """
+    Result returned by V2WorkflowOperationWorkflow.
+
+    ``output`` is keyed by step name (or by caller-chosen projection keys when
+    ``output`` was provided in the request). For the ``"parse-extract"`` pipeline
+    with no projection, the keys are ``"parse-extract"`` → ``{parse, extract, ground}``:
+
+    * ``output["parse-extract"]["parse"]`` — full parse response (markdown,
+      structure with per-node grounding inline, metadata).
+    * ``output["parse-extract"]["extract"]`` — extraction + ``extraction_metadata``
+      with ``{value, ranges}`` leaves.
+    * ``output["parse-extract"]["ground"]`` — a tree MIRRORING
+      ``extraction_metadata``: each ``{value, ranges}`` leaf is replaced by its
+      resolved block-hit list (``[{block_id, type, parent_id?, grounding,
+      atomic_grounding?}]`` — the same shape ``/v2/ground`` returns; see
+      ``V2GroundResult.grounding`` for the full field-level contract), or
+      ``null`` for a synthesised value. Nested objects and arrays keep their
+      shape, so ``ground.issuer.name`` parallels
+      ``extraction_metadata.issuer.name``. Resolved server-side — no
+      client-side span lookup needed.
+
+    References into the results use the ``$output.<step>.<field>...`` grammar
+    (see ``output`` field of the request).
+    """
+
+    metadata: V2WorkflowMetadata = Field(
+        ..., description='Request metadata (job_id, duration_ms, billing).'
+    )
+    output: dict[str, Any] = Field(
+        ...,
+        description='Step results keyed by step name, or a caller-defined projection. For ``parse-extract`` with no projection: ``{"parse-extract": {parse, extract, ground}}``.',
+        title='Output',
+    )
+
+
+class V2WorkflowJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error3] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result2] = Field(
+        None, description='Present once status is ``completed``.'
+    )
+    status: Optional[Status10] = None
+
+
 class BlocksOptions(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -453,6 +1335,289 @@ class PrebuiltWorkflowStep(BaseModel):
         description='JSON Schema for fields to extract.',
         examples=[{'properties': {'revenue': {'type': 'string'}}, 'type': 'object'}],
         title='Schema',
+    )
+
+
+class Options(BaseModel):
+    """
+    Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    atomic_grounding: Optional[bool] = Field(
+        True,
+        description='Include the fine-grained `atomic_grounding` array on leaf elements. Set `false` to omit the field entirely from every node.',
+        title='Atomic Grounding',
+    )
+    blocks: Optional[BlocksOptions] = None
+    inline_markdown: Optional[bool] = Field(
+        False,
+        description="Include each node's slice of the document `markdown` inline as a `markdown` field on every structure node: the document root, each page, and each element (including table cells). `atomic_grounding` entries do not carry it.",
+        title='Inline Markdown',
+    )
+    pages: Optional[list[int]] = Field(None, title='Pages')
+    password: Optional[str] = Field(
+        None,
+        description='Password for encrypted PDFs. Not currently supported — providing a value returns a 422 error; decrypt the file before uploading.',
+        title='Password',
+    )
+
+
+class V2ParsePostRequest(BaseModel):
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.',
+    )
+    options: Optional[Options] = Field(
+        None,
+        description='Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.',
+        title='ParseOptions',
+    )
+
+
+class V2ParseJobsPostRequest(BaseModel):
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to parse. The file must be a PDF or image; see the list of [supported file types](https://docs.landing.ai/dpt3/file-types). Provide either `document` or `document_url`, not both.',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.',
+    )
+    options: Optional[Options] = Field(
+        None,
+        description='Optional object that customizes the parse. Use it to select which pages to process, adjust how content appears in the Markdown, or control how much detail the response includes. Sent as a JSON-serialized string in form data.',
+        title='ParseOptions',
+    )
+    output_save_url: Optional[str] = Field(
+        None,
+        description='Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data.',
+    )
+    service_tier: Optional[ServiceTier4] = Field(
+        None,
+        description='Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class V2WorkflowPostRequest(BaseModel):
+    """
+    Input to V2WorkflowOperationWorkflow.
+
+    Phase 1 API design (``docs/pipeline-v2-proposal.md``):
+
+    ``inputs`` declares named document sources. Each entry binds a logical name
+    to a binary upload (via ``document``, the multipart field name) or a URL
+    (via ``document_url``). The gateway stages uploads internally before the
+    workflow runs.
+
+    ``steps`` is a one-element array containing a prebuilt step. Its ``document``
+    field references an entry from ``inputs`` (``"$inputs.<name>"``). The ``schema``
+    field carries the JSON Schema for the extract stage.
+
+    ``output`` is an optional projection map. Each key maps to a ``$output.``
+    reference into the step results. Omitted → the full results tree is returned
+    under ``output``.
+
+    Example — minimal request (parse-extract, default options)::
+
+        inputs = {"report": {"document": "report_pdf"}}
+        steps  = [{"name": "parse-extract", "document": "$inputs.report",
+                   "schema": {"type": "object", "properties": {"revenue": {"type": "string"}}}}]
+        report_pdf = [binary]
+    """
+
+    inputs: dict[str, WorkflowDocumentInput] = Field(
+        ...,
+        description='Named document sources. Each key is a logical name referenced from steps as ``"$inputs.<name>"``. The gateway stages binary multipart uploads internally before the workflow runs.',
+        examples=[{'report': {'document': 'report_pdf'}}],
+        title='Inputs',
+    )
+    output: Optional[dict[str, str]] = Field(
+        None,
+        description='Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``.',
+        examples=[
+            {
+                'revenue': '$output.parse-extract.extract.extraction.revenue',
+                'revenue_blocks': '$output.parse-extract.ground.revenue',
+            }
+        ],
+        title='Output',
+    )
+    steps: list[PrebuiltWorkflowStep] = Field(
+        ...,
+        description='Phase 1: a single prebuilt-pipeline step (name must be ``"parse-extract"``). Its result appears in ``output`` under the step\'s name.',
+        examples=[
+            [
+                {
+                    'document': '$inputs.report',
+                    'name': 'parse-extract',
+                    'schema': {
+                        'properties': {'revenue': {'type': 'string'}},
+                        'type': 'object',
+                    },
+                }
+            ]
+        ],
+        title='Steps',
+    )
+
+
+class V2WorkflowPostRequest1(BaseModel):
+    inputs: dict[str, WorkflowDocumentInput] = Field(
+        ...,
+        description='Named document sources. Each key is a logical name referenced from steps as ``"$inputs.<name>"``. The gateway stages binary multipart uploads internally before the workflow runs. JSON-serialized string in form data.',
+        examples=[{'report': {'document': 'report_pdf'}}],
+        title='Inputs',
+    )
+    output: Optional[dict[str, str]] = Field(
+        None,
+        description='Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``. JSON-serialized string in form data.',
+        examples=[
+            {
+                'revenue': '$output.parse-extract.extract.extraction.revenue',
+                'revenue_blocks': '$output.parse-extract.ground.revenue',
+            }
+        ],
+        title='Output',
+    )
+    steps: list[PrebuiltWorkflowStep] = Field(
+        ...,
+        description='Phase 1: a single prebuilt-pipeline step (name must be ``"parse-extract"``). Its result appears in ``output`` under the step\'s name. JSON-serialized string in form data.',
+        examples=[
+            [
+                {
+                    'document': '$inputs.report',
+                    'name': 'parse-extract',
+                    'schema': {
+                        'properties': {'revenue': {'type': 'string'}},
+                        'type': 'object',
+                    },
+                }
+            ]
+        ],
+        title='Steps',
+    )
+
+
+class V2WorkflowJobsPostRequest(BaseModel):
+    """
+    Input to V2WorkflowOperationWorkflow.
+
+    Phase 1 API design (``docs/pipeline-v2-proposal.md``):
+
+    ``inputs`` declares named document sources. Each entry binds a logical name
+    to a binary upload (via ``document``, the multipart field name) or a URL
+    (via ``document_url``). The gateway stages uploads internally before the
+    workflow runs.
+
+    ``steps`` is a one-element array containing a prebuilt step. Its ``document``
+    field references an entry from ``inputs`` (``"$inputs.<name>"``). The ``schema``
+    field carries the JSON Schema for the extract stage.
+
+    ``output`` is an optional projection map. Each key maps to a ``$output.``
+    reference into the step results. Omitted → the full results tree is returned
+    under ``output``.
+
+    Example — minimal request (parse-extract, default options)::
+
+        inputs = {"report": {"document": "report_pdf"}}
+        steps  = [{"name": "parse-extract", "document": "$inputs.report",
+                   "schema": {"type": "object", "properties": {"revenue": {"type": "string"}}}}]
+        report_pdf = [binary]
+    """
+
+    inputs: dict[str, WorkflowDocumentInput] = Field(
+        ...,
+        description='Named document sources. Each key is a logical name referenced from steps as ``"$inputs.<name>"``. The gateway stages binary multipart uploads internally before the workflow runs.',
+        examples=[{'report': {'document': 'report_pdf'}}],
+        title='Inputs',
+    )
+    output: Optional[dict[str, str]] = Field(
+        None,
+        description='Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``.',
+        examples=[
+            {
+                'revenue': '$output.parse-extract.extract.extraction.revenue',
+                'revenue_blocks': '$output.parse-extract.ground.revenue',
+            }
+        ],
+        title='Output',
+    )
+    service_tier: Optional[ServiceTier5] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+    steps: list[PrebuiltWorkflowStep] = Field(
+        ...,
+        description='Phase 1: a single prebuilt-pipeline step (name must be ``"parse-extract"``). Its result appears in ``output`` under the step\'s name.',
+        examples=[
+            [
+                {
+                    'document': '$inputs.report',
+                    'name': 'parse-extract',
+                    'schema': {
+                        'properties': {'revenue': {'type': 'string'}},
+                        'type': 'object',
+                    },
+                }
+            ]
+        ],
+        title='Steps',
+    )
+
+
+class V2WorkflowJobsPostRequest1(BaseModel):
+    inputs: dict[str, WorkflowDocumentInput] = Field(
+        ...,
+        description='Named document sources. Each key is a logical name referenced from steps as ``"$inputs.<name>"``. The gateway stages binary multipart uploads internally before the workflow runs. JSON-serialized string in form data.',
+        examples=[{'report': {'document': 'report_pdf'}}],
+        title='Inputs',
+    )
+    output: Optional[dict[str, str]] = Field(
+        None,
+        description='Optional projection map. Keys are caller-chosen response field names; values are ``$output.<step>.<field>...`` references. Omitted → full results tree returned under ``output``. JSON-serialized string in form data.',
+        examples=[
+            {
+                'revenue': '$output.parse-extract.extract.extraction.revenue',
+                'revenue_blocks': '$output.parse-extract.ground.revenue',
+            }
+        ],
+        title='Output',
+    )
+    service_tier: Optional[ServiceTier5] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+    steps: list[PrebuiltWorkflowStep] = Field(
+        ...,
+        description='Phase 1: a single prebuilt-pipeline step (name must be ``"parse-extract"``). Its result appears in ``output`` under the step\'s name. JSON-serialized string in form data.',
+        examples=[
+            [
+                {
+                    'document': '$inputs.report',
+                    'name': 'parse-extract',
+                    'schema': {
+                        'properties': {'revenue': {'type': 'string'}},
+                        'type': 'object',
+                    },
+                }
+            ]
+        ],
+        title='Steps',
     )
 
 
@@ -584,6 +1749,39 @@ class ParseResponse(BaseModel):
     structure: Document = Field(
         ...,
         description="The document's hierarchical structure: pages and the elements detected on each page. Every node below the root carries its spatial data inline in a `grounding` object (`{page, range, box}`, normalized page coordinates); leaf elements additionally carry `atomic_grounding`.",
+    )
+
+
+class V2ParseJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='ISO-8601 timestamp; present once the job is terminal.'
+    )
+    created_at: Optional[str] = Field(
+        None, description='ISO-8601 timestamp for when the job was created.'
+    )
+    error: Optional[Error2] = Field(
+        None,
+        description='Present once the job has ``failed`` — the failure code + message.',
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this parse job. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    output_url: Optional[str] = Field(
+        None,
+        description='The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.',
+    )
+    result: Optional[ParseResponse] = Field(
+        None,
+        description='The parse response, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
+    )
+    status: Optional[Status9] = Field(
+        None,
+        description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
 
 

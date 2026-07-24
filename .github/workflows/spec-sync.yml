@@ -411,8 +411,12 @@ jobs:
               generated class name: an operation accepts file uploads iff its
               `requestBody.content` has a `multipart/form-data` variant with a property (or array
               item) of `format: binary`. For such a field, accept file inputs (FileTypes: a str for
-              inline content, or a Path/bytes/file object for uploads) and send multipart when any
-              value is a file, keeping JSON when every value is a string. Identify the file-capable
+              inline content, or a Path/bytes/file object for uploads). Pick the content type from
+              what the operation DECLARES, not a fixed JSON default: send `multipart/form-data` when
+              any value is a file OR the operation declares only multipart (no `application/json`
+              variant — e.g. `/v2/parse`, where even an all-string `document_url` call must be
+              multipart); send JSON only when the operation declares an `application/json` variant
+              AND every value is a string. Identify the file-capable
               request model by that `bytes`/binary field type — the generated `*PostRequest` /
               `*PostRequest1` variants are ordered by content-type and the suffix can flip if the
               spec reorders them, so NEVER key off the numeric suffix.
