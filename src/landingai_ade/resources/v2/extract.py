@@ -120,7 +120,7 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
                 cast_to=V2ExtractResult,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="extract_jobs")
             raise
         if save_to:
             from ..._client import _save_response, _get_input_filename
@@ -159,7 +159,7 @@ class AsyncExtractResource(V2ResourceMixin, AsyncAPIResource):
                 cast_to=V2ExtractResult,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="extract_jobs")
             raise
         if save_to:
             from ..._client import _save_response, _get_input_filename

@@ -10,7 +10,7 @@ from landingai_ade.types.v2 import (
     V2GroundResult,
     V2ExtractResult,
     V2ParseResponse,
-    V2FileUploadResponse,
+    V2BuildSchemaResponse,
 )
 
 
@@ -269,5 +269,27 @@ def test_ground_result_retains_unknown_fields() -> None:
     assert r.to_dict()["surprise"] == 1
 
 
-def test_file_upload_response() -> None:
-    assert V2FileUploadResponse(file_ref="abc").file_ref == "abc"
+def test_build_schema_response_builds_from_dicts() -> None:
+    r = V2BuildSchemaResponse(
+        extraction_schema='{"type": "object", "properties": {"revenue": {"type": "string"}}}',
+        metadata={  # type: ignore[arg-type]
+            "job_id": "extract-bs1",
+            "duration_ms": 7,
+            "openapi_spec": "https://api.example/openapi.json",
+            "warnings": [{"code": "nonconformant_schema", "msg": "heads up"}],
+            "billing": {"service_tier": "priority", "total_credits": 1.5},
+        },
+    )
+    assert isinstance(r.extraction_schema, str)
+    assert r.metadata.job_id == "extract-bs1"
+    assert r.metadata.warnings is not None and r.metadata.warnings[0].code == "nonconformant_schema"
+    assert r.metadata.billing is not None and r.metadata.billing.total_credits == 1.5
+
+
+def test_build_schema_response_retains_unknown_fields() -> None:
+    r = V2BuildSchemaResponse(
+        extraction_schema="{}",
+        metadata={"job_id": "bs", "duration_ms": 1},  # type: ignore[arg-type]
+        surprise=1,  # type: ignore[call-arg]
+    )
+    assert r.to_dict()["surprise"] == 1
