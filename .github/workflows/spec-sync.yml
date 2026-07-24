@@ -167,7 +167,10 @@ jobs:
             surface-lock CI job will fail the PR). `git diff` (read-only, to inspect the change)
             is fine; do NOT stage, commit, push, or run any other git command — a later workflow
             step commits and pushes your edits.
+          # Pin the model: the action otherwise inherits Claude Code's default, which floats
+          # across CLI releases and makes spec-sync output non-reproducible. `[1m]` = 1M context.
           claude_args: |
+            --model "claude-opus-4-8[1m]"
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
 
@@ -444,7 +447,10 @@ jobs:
             surface-lock will fail the PR on any of those. `git diff` (read-only, to inspect the
             change) is fine; do NOT stage, commit, push, or run any other git command — a later
             workflow step commits and pushes your edits.
+          # Pin the model: the action otherwise inherits Claude Code's default, which floats
+          # across CLI releases and makes spec-sync output non-reproducible. `[1m]` = 1M context.
           claude_args: |
+            --model "claude-opus-4-8[1m]"
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git diff:*)"
 
