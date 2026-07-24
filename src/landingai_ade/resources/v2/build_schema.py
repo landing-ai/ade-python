@@ -183,7 +183,7 @@ class BuildSchemaResource(V2ResourceMixin, SyncAPIResource):
                 cast_to=V2BuildSchemaResponse,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="build_schema_jobs")
             raise
 
 
@@ -229,7 +229,7 @@ class AsyncBuildSchemaResource(V2ResourceMixin, AsyncAPIResource):
                 cast_to=V2BuildSchemaResponse,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="build_schema_jobs")
             raise
 
 

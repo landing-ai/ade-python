@@ -96,7 +96,7 @@ class GroundResource(V2ResourceMixin, SyncAPIResource):
                 cast_to=V2GroundResult,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="ground_jobs")
             raise
 
 
@@ -125,7 +125,7 @@ class AsyncGroundResource(V2ResourceMixin, AsyncAPIResource):
                 cast_to=V2GroundResult,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="ground_jobs")
             raise
 
 
