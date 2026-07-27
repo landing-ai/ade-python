@@ -16,10 +16,11 @@ class V2BuildSchemaWarning(BaseModel):
     """A structured warning from the schema-generation process."""
 
     # The type of warning (e.g. `nonconformant_schema`), used to translate to a
-    # status code downstream.
-    code: Optional[str] = None
-    # Human-readable description of the warning with more details.
-    msg: Optional[str] = None
+    # status code downstream. Required and non-null per the spec.
+    code: str
+    # Human-readable description of the warning with more details. Required and
+    # non-null per the spec.
+    msg: str
 
 
 class V2BuildSchemaBilling(BaseModel):
@@ -42,8 +43,8 @@ class V2BuildSchemaMetadata(BaseModel):
     # Model version used for generation. build-schema is version-free, so this is
     # always None; retained for v1 response-shape compatibility.
     version: Optional[str] = None
-    # URL of the OpenAPI spec covering this API.
-    openapi_spec: Optional[str] = None
+    # URL of the OpenAPI spec covering this API. Required and non-null per the spec.
+    openapi_spec: str
     # Structured warnings from the schema-generation process.
     warnings: Optional[List[V2BuildSchemaWarning]] = None
     billing: Optional[V2BuildSchemaBilling] = None

@@ -289,7 +289,8 @@ def test_build_schema_response_builds_from_dicts() -> None:
 def test_build_schema_response_retains_unknown_fields() -> None:
     r = V2BuildSchemaResponse(
         extraction_schema="{}",
-        metadata={"job_id": "bs", "duration_ms": 1},  # type: ignore[arg-type]
+        # `openapi_spec` is required and non-null per the spec.
+        metadata={"job_id": "bs", "duration_ms": 1, "openapi_spec": "https://x/openapi.json"},  # type: ignore[arg-type]
         surprise=1,  # type: ignore[call-arg]
     )
     assert r.to_dict()["surprise"] == 1

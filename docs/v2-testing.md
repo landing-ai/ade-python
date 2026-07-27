@@ -9,7 +9,7 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 | Layer | Location | What it covers |
 | --- | --- | --- |
 | Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job` / `normalize_ground_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
 | Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
@@ -93,9 +93,8 @@ and sent as a JSON-encoded string. `build_schema_jobs.create` additionally accep
 
 ## Current ground-response shape
 
-`POST /v2/ground` (and the completed `ground_jobs` result) returns a
-`V2GroundResult` — a pure, stateless join that maps each extracted field back to
-the `structure` blocks it was quoted from:
+`POST /v2/ground` returns a `V2GroundResult` — a pure, stateless join that maps
+each extracted field back to the `structure` blocks it was quoted from:
 
 - `grounding` — a tree mirroring the input `extraction_metadata`: nested objects
   and arrays keep their shape, and each `{value, ranges}` leaf is replaced by the
@@ -106,13 +105,13 @@ the `structure` blocks it was quoted from:
 
 `client.v2.ground(...)` takes `extraction_metadata` and `structure`, each of which
 accepts a plain `dict` or a pydantic model (so a parse response's `.structure` can
-be passed directly). `ground_jobs.create` additionally accepts `output_save_url`.
+be passed directly). `/v2/ground` is synchronous-only (no async jobs route).
 
 ## Async job envelopes
 
-`normalize_parse_job`, `normalize_extract_job`, `normalize_build_schema_job`, and
-`normalize_ground_job` fold the upstream job envelopes into the unified `Job`. All
-are tolerant of field-name drift:
+`normalize_parse_job`, `normalize_extract_job`, and `normalize_build_schema_job`
+fold the upstream job envelopes into the unified `Job`. All are tolerant of
+field-name drift:
 
 - The parse response lives under `result` (older envelopes used `data`).
 - Failures arrive as a structured `error` object (`{code, message}`); older parse

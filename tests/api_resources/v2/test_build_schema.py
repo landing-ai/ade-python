@@ -103,6 +103,27 @@ def test_build_schema_requires_at_least_one_input() -> None:
 
 
 @respx.mock
+def test_build_schema_empty_inputs_count_as_absent() -> None:
+    # Empty containers / a blank prompt carry no usable input and must raise here,
+    # not slip through to the API as a no-op request.
+    client = LandingAIADE(apikey=APIKEY)
+    with pytest.raises(ValueError, match="at least one"):
+        client.v2.build_schema(markdowns=[], markdown_urls=[], prompt="")
+
+
+@respx.mock
+def test_build_schema_markdown_url_string_is_one_url() -> None:
+    # A bare string is a single URL, not a sequence of one-character URLs.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/extract/build-schema").mock(
+        return_value=httpx.Response(200, json=BUILD_SCHEMA_BODY)
+    )
+    client.v2.build_schema(markdown_urls="https://x/y.md")
+    req = json.loads(route.calls.last.request.content)
+    assert req["markdown_urls"] == ["https://x/y.md"]
+
+
+@respx.mock
 def test_build_schema_job_create_requires_at_least_one_input() -> None:
     client = LandingAIADE(apikey=APIKEY)
     with pytest.raises(ValueError, match="at least one"):

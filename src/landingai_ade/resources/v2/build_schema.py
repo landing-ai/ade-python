@@ -48,7 +48,8 @@ def _prepare_build_schema(
 
     urls_list: Optional[List[str]] = None
     if is_given(markdown_urls) and markdown_urls is not None:
-        urls_list = list(cast(Sequence[str], markdown_urls))
+        # A bare string is one URL, not a sequence of single-character URLs.
+        urls_list = [markdown_urls] if isinstance(markdown_urls, str) else list(cast(Sequence[str], markdown_urls))
 
     prompt_val: Optional[str] = cast(str, prompt) if (is_given(prompt) and prompt is not None) else None
 
@@ -59,6 +60,15 @@ def _prepare_build_schema(
         )
 
     tier_val: Optional[str] = cast(str, service_tier) if (is_given(service_tier) and service_tier is not None) else None
+
+    # An empty list or a blank prompt carries no usable input; treat it as absent so
+    # the guard below rejects it here instead of sending a no-op request to the server.
+    if not md_list:
+        md_list = None
+    if not urls_list:
+        urls_list = None
+    if not prompt_val:
+        prompt_val = None
 
     if md_list is None and urls_list is None and prompt_val is None and schema_val is None:
         raise ValueError("build_schema requires at least one of `markdowns`, `markdown_urls`, `prompt`, or `schema`.")
