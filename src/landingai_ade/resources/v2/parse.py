@@ -135,7 +135,7 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
                 cast_to=V2ParseResponse,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="parse_jobs")
             raise
         if save_to:
             from ..._client import _save_response, _get_input_filename
@@ -182,7 +182,7 @@ class AsyncParseResource(V2ResourceMixin, AsyncAPIResource):
                 cast_to=V2ParseResponse,
             )
         except APIStatusError as exc:
-            raise_if_sync_timeout(exc)
+            raise_if_sync_timeout(exc, jobs_resource="parse_jobs")
             raise
         if save_to:
             from ..._client import _save_response, _get_input_filename

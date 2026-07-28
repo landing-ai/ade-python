@@ -8,8 +8,8 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 
 | Layer | Location | What it covers |
 | --- | --- | --- |
-| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_ground_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
 | Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
@@ -68,11 +68,33 @@ The async `extract_jobs.create` also accepts `output_save_url` (async jobs only)
 when set, the finished result is delivered to that URL and the completed job
 reports `output_url` (on `Job.raw`) instead of an inline `result`.
 
+## Current build-schema-response shape
+
+`POST /v2/extract/build-schema` (and the completed `build_schema_jobs` result)
+returns a `V2BuildSchemaResponse` with:
+
+- `extraction_schema` — the generated JSON Schema serialized as a **string** (VTRA
+  parity — a string, not an object). Parse it with `json.loads(...)` to get the
+  schema dict.
+- `metadata` (`V2BuildSchemaMetadata`) — `job_id`, `duration_ms`, `openapi_spec`,
+  `filename` / `org_id` / `version` (retained for v1 compatibility, unpopulated in
+  this version), a `warnings` list of `V2BuildSchemaWarning` (`{code, msg}`, e.g.
+  code `nonconformant_schema`), and `billing` (`V2BuildSchemaBilling`).
+
+`client.v2.build_schema(...)` generates or edits a JSON Schema from one or more
+source Markdown documents and/or a natural-language `prompt`, optionally iterating
+on an existing `schema`. At least one of `markdowns`, `markdown_urls`, `prompt`, or
+`schema` must be provided. `markdowns` entries are each either an inline markdown
+string or a file upload (`Path`/`bytes`/file object); the request is sent as
+`multipart/form-data` when any entry is a file and as JSON otherwise. `schema`
+accepts a pydantic model, a `dict`, or a JSON string — all coerced to a JSON Schema
+and sent as a JSON-encoded string. `build_schema_jobs.create` additionally accepts
+`service_tier`.
+
 ## Current ground-response shape
 
-`POST /v2/ground` (and the completed `ground_jobs` result) returns a
-`V2GroundResult` — a pure, stateless join that maps each extracted field back to
-the `structure` blocks it was quoted from:
+`POST /v2/ground` returns a `V2GroundResult` — a pure, stateless join that maps
+each extracted field back to the `structure` blocks it was quoted from:
 
 - `grounding` — a tree mirroring the input `extraction_metadata`: nested objects
   and arrays keep their shape, and each `{value, ranges}` leaf is replaced by the
@@ -83,13 +105,13 @@ the `structure` blocks it was quoted from:
 
 `client.v2.ground(...)` takes `extraction_metadata` and `structure`, each of which
 accepts a plain `dict` or a pydantic model (so a parse response's `.structure` can
-be passed directly). `ground_jobs.create` additionally accepts `output_save_url`.
+be passed directly). `/v2/ground` is synchronous-only (no async jobs route).
 
 ## Async job envelopes
 
-`normalize_parse_job`, `normalize_extract_job`, and `normalize_ground_job` fold
-the upstream job envelopes into the unified `Job`. All are tolerant of field-name
-drift:
+`normalize_parse_job`, `normalize_extract_job`, and `normalize_build_schema_job`
+fold the upstream job envelopes into the unified `Job`. All are tolerant of
+field-name drift:
 
 - The parse response lives under `result` (older envelopes used `data`).
 - Failures arrive as a structured `error` object (`{code, message}`); older parse

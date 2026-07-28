@@ -67,9 +67,8 @@ def test_v2_attribute_exists() -> None:
 @respx.mock
 def test_v2_subclient_routes_to_v2_host() -> None:
     c = LandingAIADE(apikey=APIKEY, environment="production")
-    route = respx.post("https://api.ade.landing.ai/v1/files").mock(
-        return_value=httpx.Response(200, json={"file_ref": "ref-123"})
+    route = respx.post("https://api.ade.landing.ai/v2/ground").mock(
+        return_value=httpx.Response(200, json={"grounding": {}, "metadata": {"job_id": "g", "duration_ms": 1}})
     )
-    ref = c.v2.files.upload(file=b"hello")
+    c.v2.ground(extraction_metadata={}, structure={"type": "document", "children": []})
     assert route.called
-    assert ref == "ref-123"

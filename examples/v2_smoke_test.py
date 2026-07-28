@@ -43,7 +43,7 @@ from pydantic import Field, BaseModel
 
 from landingai_ade import LandingAIADE, AsyncLandingAIADE
 
-ALL_CHECKS = ["files", "extract", "extract_jobs", "parse", "parse_jobs"]
+ALL_CHECKS = ["extract", "extract_jobs", "parse", "parse_jobs"]
 
 # A tiny self-contained markdown document + schema so extract/files can run without any file.
 SAMPLE_MARKDOWN = "# Acme Inc. — Q1 Report\n\nTotal revenue for the quarter was **$1,250,000**.\n"
@@ -116,7 +116,6 @@ def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
     print(f"V1 base: {client.base_url}  |  V2 base: {client._v2_base_url}\n")
 
     results: dict[str, str] = {}
-    file_ref: Optional[str] = None
 
     def record(name: str, fn: Callable[[], Any]) -> None:
         print(f"── {name} ".ljust(60, "─"))
@@ -129,15 +128,6 @@ def run_sync(args: argparse.Namespace, checks: List[str]) -> int:
             print(f"   FAIL  {type(exc).__name__}: {exc}")
             traceback.print_exc()
             print()
-
-    if "files" in checks:
-
-        def _files() -> Any:
-            nonlocal file_ref
-            file_ref = client.v2.files.upload(file=("doc.md", SAMPLE_MARKDOWN.encode(), "text/markdown"))
-            return f"file_ref={file_ref}"
-
-        record("files.upload", _files)
 
     if "extract" in checks:
 
@@ -208,16 +198,6 @@ def run_async(args: argparse.Namespace, checks: List[str]) -> int:
         print(f"[async] V1 base: {client.base_url}  |  V2 base: {client._v2_base_url}\n")
         results: dict[str, str] = {}
 
-        if "files" in checks:
-            print("── [async] files.upload ".ljust(60, "─"))
-            try:
-                ref = await client.v2.files.upload(file=("doc.md", SAMPLE_MARKDOWN.encode(), "text/markdown"))
-                results["files.upload"] = "PASS"
-                print(f"   PASS  file_ref={ref}\n")
-            except Exception as exc:  # noqa: BLE001
-                results["files.upload"] = "FAIL"
-                print(f"   FAIL  {type(exc).__name__}: {exc}\n")
-
         if "extract" in checks:
             print("── [async] v2.extract ".ljust(60, "─"))
             try:
@@ -262,9 +242,9 @@ def main() -> int:
     args = _make_parser().parse_args()
     checks = _selected(args.only)
     if args.use_async:
-        async_checks = [c for c in checks if c in {"files", "extract", "extract_jobs"}]
+        async_checks = [c for c in checks if c in {"extract", "extract_jobs"}]
         if async_checks != checks:
-            print("note: --async runs files/extract/extract_jobs only (parse checks are sync-only here)\n")
+            print("note: --async runs extract/extract_jobs only (parse checks are sync-only here)\n")
         return run_async(args, async_checks)
     return run_sync(args, checks)
 

@@ -44,20 +44,6 @@
         "title": "BlocksOptions",
         "type": "object"
       },
-      "Body_stage_file_v1_files_post": {
-        "properties": {
-          "file": {
-            "contentMediaType": "application/octet-stream",
-            "title": "File",
-            "type": "string"
-          }
-        },
-        "required": [
-          "file"
-        ],
-        "title": "Body_stage_file_v1_files_post",
-        "type": "object"
-      },
       "Box": {
         "description": "Axis-aligned bounding box in normalized page coordinates.\n\nEvery value is a fraction of the page's width (`xmin`/`xmax`) or height\n(`ymin`/`ymax`) in `[0, 1]`, with at most 8 decimal places. To convert to\npixels, multiply by the dimensions of whatever raster of the page you are\ndrawing on. Coordinates are clamped and rounded at construction so the\nin-process value always equals the serialized one.",
         "properties": {
@@ -89,6 +75,27 @@
           "ymax"
         ],
         "title": "Box",
+        "type": "object"
+      },
+      "BuildSchemaWarning": {
+        "description": "A structured warning from the schema-generation process (VTRA\n``ExtractWarning``). ``code`` classifies the warning (e.g.\n``nonconformant_schema``); ``msg`` is the human-readable description.",
+        "properties": {
+          "code": {
+            "description": "The type of warning, used to translate to a status code downstream.",
+            "title": "Code",
+            "type": "string"
+          },
+          "msg": {
+            "description": "Human-readable description of the warning with more details.",
+            "title": "Msg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "msg"
+        ],
+        "title": "BuildSchemaWarning",
         "type": "object"
       },
       "Document": {
@@ -312,19 +319,6 @@
           "box"
         ],
         "title": "Grounding",
-        "type": "object"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
         "type": "object"
       },
       "Page": {
@@ -684,6 +678,90 @@
         "title": "V2Billing",
         "type": "object"
       },
+      "V2BuildSchemaMetadata": {
+        "description": "Response metadata for a v2 build-schema call (VTRA\n``BuildSchemaMetadata``).",
+        "properties": {
+          "billing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/V2Billing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Billing summary: the service tier the request ran in and the credits charged."
+          },
+          "duration_ms": {
+            "default": 0,
+            "description": "End-to-end request duration in milliseconds.",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Name of the first source document. Retained for v1 compatibility but NOT populated in this version — always null (the source is staged as an opaque ref, so the original name isn't carried through). Do not depend on it.",
+            "title": "Filename"
+          },
+          "job_id": {
+            "default": "",
+            "description": "Gateway job id (workflow id). Matches the billing row id in vision-agent.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "openapi_spec": {
+            "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Organization ID.",
+            "title": "Org Id"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Model version used for generation. build-schema is version-free (no ``model``/``version`` input), so this is always null. Retained for v1 response-shape compatibility.",
+            "title": "Version"
+          },
+          "warnings": {
+            "description": "Structured warnings from the schema-generation process. Each is a ``{code, msg}`` object (e.g. code ``nonconformant_schema``).",
+            "items": {
+              "$ref": "#/components/schemas/BuildSchemaWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "openapi_spec"
+        ],
+        "title": "V2BuildSchemaMetadata",
+        "type": "object"
+      },
       "V2ExtractMetadata": {
         "description": "Response metadata for a v2 extract call.",
         "properties": {
@@ -862,46 +940,6 @@
         "title": "V2WorkflowMetadata",
         "type": "object"
       },
-      "ValidationError": {
-        "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      },
       "WorkflowDocumentInput": {
         "description": "One declared document input in the ``inputs`` map.\n\nA caller supplies exactly one of ``document`` or ``document_url``:\n\n* ``document`` — name of a multipart form part carrying the raw bytes. The\n  gateway stages those bytes internally before the workflow runs.\n* ``document_url`` — public URL (SSRF-validated at submit; fetched and staged\n  by the gateway before the workflow starts).",
         "properties": {
@@ -975,52 +1013,6 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/v1/files": {
-      "post": {
-        "description": "Stage bytes on the data plane; pass the returned ``file_ref`` in\njob inputs (the contract request types take ``*_ref`` fields).",
-        "operationId": "stage_file_v1_files_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_stage_file_v1_files_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Stage File V1 Files Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Stage an input file",
-        "tags": [
-          "files"
-        ]
-      }
-    },
     "/v2/extract": {
       "post": {
         "description": "Extract structured data from a Markdown document according to a JSON schema, with character-span grounding into the source Markdown. Runs synchronously and returns the result inline.",
@@ -1268,6 +1260,674 @@
           }
         },
         "summary": "ADE Extract",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/extract/build-schema": {
+      "post": {
+        "description": "Generate or edit a JSON Schema for extraction from one or more source Markdown documents and/or a natural-language prompt. Runs synchronously and returns the result inline.",
+        "operationId": "v2-build-schema_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2BuildSchemaOperationWorkflow — the ``/v2/extract/build-schema``\nrequest body.\n\nMirrors VTRA's ``BuildSchemaRequest``: generate a JSON Schema from one or\nmore source markdown documents and/or a natural-language ``prompt``, and/or\niterate on an existing ``schema``. At least one of ``markdowns`` /\n``markdown_urls`` / ``prompt`` / ``schema`` must be provided.",
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                    "title": "Markdowns"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine.",
+                    "title": "Schema"
+                  }
+                },
+                "title": "V2BuildSchemaRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation. JSON-serialized string in form data.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "description": "Repeat the field for each file upload.",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                          "type": "string"
+                        },
+                        {
+                          "description": "File upload.",
+                          "format": "binary",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema. JSON-serialized string in form data.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine. JSON-serialized string in form data.",
+                    "title": "Schema"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Result returned by V2BuildSchemaOperationWorkflow — the\n``/v2/extract/build-schema`` response body (VTRA ``BuildSchemaResponse``).\n\n``extraction_schema`` is the generated JSON Schema serialized as a STRING\n(VTRA parity — the v1 field is a string, not an object).",
+                  "properties": {
+                    "extraction_schema": {
+                      "description": "The generated JSON schema as a string.",
+                      "title": "Extraction Schema",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "$ref": "#/components/schemas/V2BuildSchemaMetadata",
+                      "description": "The metadata for the schema generation process."
+                    }
+                  },
+                  "required": [
+                    "extraction_schema",
+                    "metadata"
+                  ],
+                  "title": "V2BuildSchemaResponse",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v2-build-schema result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Extract",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/extract/build-schema/jobs": {
+      "get": {
+        "description": "List your Extract jobs, newest first.",
+        "operationId": "v2-build-schema_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this v2-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      },
+      "post": {
+        "description": "Generate or edit a JSON Schema for extraction from one or more source Markdown documents and/or a natural-language prompt. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "v2-build-schema_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V2BuildSchemaOperationWorkflow — the ``/v2/extract/build-schema``\nrequest body.\n\nMirrors VTRA's ``BuildSchemaRequest``: generate a JSON Schema from one or\nmore source markdown documents and/or a natural-language ``prompt``, and/or\niterate on an existing ``schema``. At least one of ``markdowns`` /\n``markdown_urls`` / ``prompt`` / ``schema`` must be provided.",
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                    "title": "Markdowns"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine.",
+                    "title": "Schema"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "title": "V2BuildSchemaRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation. JSON-serialized string in form data.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "description": "Repeat the field for each file upload.",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                          "type": "string"
+                        },
+                        {
+                          "description": "File upload.",
+                          "format": "binary",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema. JSON-serialized string in form data.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine. JSON-serialized string in form data.",
+                    "title": "Schema"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v2-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v2/extract/build-schema/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Extract job, including its result once the job has completed.",
+        "operationId": "v2-build-schema_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v2-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by V2BuildSchemaOperationWorkflow — the\n``/v2/extract/build-schema`` response body (VTRA ``BuildSchemaResponse``).\n\n``extraction_schema`` is the generated JSON Schema serialized as a STRING\n(VTRA parity — the v1 field is a string, not an object).",
+                          "properties": {
+                            "extraction_schema": {
+                              "description": "The generated JSON schema as a string.",
+                              "title": "Extraction Schema",
+                              "type": "string"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V2BuildSchemaMetadata",
+                              "description": "The metadata for the schema generation process."
+                            }
+                          },
+                          "required": [
+                            "extraction_schema",
+                            "metadata"
+                          ],
+                          "title": "V2BuildSchemaResponse",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Extract Jobs",
         "tags": [
           "Extract"
         ]
@@ -1994,417 +2654,6 @@
           }
         },
         "summary": "ADE Ground",
-        "tags": [
-          "Ground"
-        ]
-      }
-    },
-    "/v2/ground/jobs": {
-      "get": {
-        "description": "List your Ground jobs, newest first.",
-        "operationId": "v2-ground_list_jobs",
-        "parameters": [
-          {
-            "description": "Page number (0-indexed).",
-            "in": "query",
-            "name": "page",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "description": "Page number (0-indexed).",
-              "minimum": 0,
-              "title": "Page",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Number of items per page.",
-            "in": "query",
-            "name": "page_size",
-            "required": false,
-            "schema": {
-              "default": 10,
-              "description": "Number of items per page.",
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Page Size",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Filter by job status.",
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by job status.",
-              "title": "Status"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "has_more": {
-                      "type": "boolean"
-                    },
-                    "jobs": {
-                      "items": {
-                        "properties": {
-                          "completed_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "created_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "failure_reason": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "job_id": {
-                            "description": "The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                            "type": "string"
-                          },
-                          "model_version": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "status": {
-                            "enum": [
-                              "pending",
-                              "processing",
-                              "completed",
-                              "failed"
-                            ],
-                            "type": "string"
-                          }
-                        },
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "page": {
-                      "type": "integer"
-                    },
-                    "page_size": {
-                      "type": "integer"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "The caller's jobs, newest first"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE List Ground Jobs",
-        "tags": [
-          "Ground"
-        ]
-      },
-      "post": {
-        "description": "Map extracted fields to the document blocks they were quoted from. Takes the extraction_metadata from an extract call and the structure tree from the parse call the markdown came from, and returns, for every extracted field, the overlapping blocks with their ids, page numbers, and bounding boxes. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
-        "operationId": "v2-ground_create_job",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "description": "Input to V2GroundOperationWorkflow — the ``/v2/ground`` request body.\n\nA pure, stateless join: each ``extraction_metadata`` leaf's ``ranges``\n(char offsets into the markdown both artifacts were produced from) is\noverlapped against the ``grounding.range`` carried on every ``structure``\nblock, and the matching blocks are returned. Nothing is stored server-side,\nso block ids in the response resolve only against the ``structure`` tree\nsupplied here — pairing an extraction with the parse result it actually\ncame from is the caller's responsibility.",
-                "properties": {
-                  "extraction_metadata": {
-                    "additionalProperties": true,
-                    "description": "The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown.",
-                    "example": {
-                      "invoice_number": {
-                        "ranges": [
-                          {
-                            "end": 31,
-                            "start": 13
-                          }
-                        ],
-                        "value": "INV-042"
-                      }
-                    },
-                    "title": "Extraction Metadata",
-                    "type": "object"
-                  },
-                  "structure": {
-                    "additionalProperties": true,
-                    "description": "The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree.",
-                    "title": "Structure",
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "extraction_metadata",
-                  "structure"
-                ],
-                "title": "V2GroundRequest",
-                "type": "object"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "properties": {
-                  "extraction_metadata": {
-                    "additionalProperties": true,
-                    "description": "The ``extraction_metadata`` object returned by ``POST /v2/extract`` (or the pipeline's extract step): a tree mirroring your extraction schema whose leaves are ``{value, ranges}`` objects, where ``ranges`` are ``{start, end}`` Unicode code point offsets into the parse markdown. JSON-serialized string in form data.",
-                    "example": {
-                      "invoice_number": {
-                        "ranges": [
-                          {
-                            "end": 31,
-                            "start": 13
-                          }
-                        ],
-                        "value": "INV-042"
-                      }
-                    },
-                    "title": "Extraction Metadata",
-                    "type": "object"
-                  },
-                  "structure": {
-                    "additionalProperties": true,
-                    "description": "The ``structure`` tree from the parse response the extraction was produced from. Every block in the tree carries its ``grounding`` (``{page, range, box}``) inline; block ids in the response resolve against this exact tree. JSON-serialized string in form data.",
-                    "title": "Structure",
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "extraction_metadata",
-                  "structure"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "created_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Job created"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE Ground Jobs",
-        "tags": [
-          "Ground"
-        ]
-      }
-    },
-    "/v2/ground/jobs/{job_id}": {
-      "get": {
-        "description": "Get the status of an async Ground job, including its result once the job has completed.",
-        "operationId": "v2-ground_get_job",
-        "parameters": [
-          {
-            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "completed_at": {
-                      "description": "Present once the job is terminal.",
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "error": {
-                      "description": "Present once status is ``failed``.",
-                      "properties": {
-                        "code": {
-                          "description": "Stable error code (``internal_error`` when unmapped).",
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this v2-ground job. Format: ``ground-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                      "type": "string"
-                    },
-                    "progress": {
-                      "description": "Job completion as a decimal from 0 (not started) to 1 (complete). Present while ``processing``.",
-                      "maximum": 1,
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "result": {
-                      "anyOf": [
-                        {
-                          "description": "Result returned by V2GroundOperationWorkflow — the ``/v2/ground``\nresponse body.\n\n``grounding`` MIRRORS the ``extraction_metadata`` tree: nested objects and\narrays keep their shape, and each ``{value, ranges}`` leaf is replaced by\nthe list of structure blocks its ranges overlap (the block-hit shape\ndocumented on the field). It is NOT a flat map — a nested schema field like\n``issuer.name`` resolves to ``grounding[\"issuer\"][\"name\"]``.",
-                          "properties": {
-                            "grounding": {
-                              "additionalProperties": true,
-                              "description": "A tree mirroring ``extraction_metadata``: nested objects and arrays keep their shape, and each ``{value, ranges}`` leaf is replaced by the list of blocks its ranges overlap, in reading order. Each entry carries ``block_id`` and ``type`` identifying the matched ``structure`` block, ``parent_id`` naming the enclosing block for nested blocks (table cells), and the block's own ``grounding`` object (``{page, range, box}``) verbatim. When the block itself carries ``atomic_grounding``, the entry also lists the overlapping subset as ``{index, page, range, box}`` objects, where ``index`` is the position in the block's own ``atomic_grounding`` array; ``[]`` means the block matched but no individual entry did, and the key is omitted for blocks that carry no ``atomic_grounding``. A leaf is ``null`` when its ``ranges`` was ``null`` (a synthesised value, with no supporting passage to look up) and ``[]`` when valid ranges overlapped no block (which usually indicates a mismatched extraction/structure pair).",
-                              "example": {
-                                "invoice_number": [
-                                  {
-                                    "atomic_grounding": [],
-                                    "block_id": "text-1",
-                                    "grounding": {
-                                      "box": {
-                                        "xmax": 0.42,
-                                        "xmin": 0.1,
-                                        "ymax": 0.15,
-                                        "ymin": 0.12
-                                      },
-                                      "page": 1,
-                                      "range": {
-                                        "end": 31,
-                                        "start": 13
-                                      }
-                                    },
-                                    "type": "text"
-                                  }
-                                ]
-                              },
-                              "title": "Grounding",
-                              "type": "object"
-                            },
-                            "metadata": {
-                              "$ref": "#/components/schemas/V2GroundMetadata",
-                              "description": "Request metadata (job_id, duration_ms, credit_usage)."
-                            }
-                          },
-                          "required": [
-                            "grounding",
-                            "metadata"
-                          ],
-                          "title": "V2GroundResult",
-                          "type": "object"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Present once status is ``completed``."
-                    },
-                    "status": {
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Job status / result"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found (e.g. no such job)."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE Get Ground Jobs",
         "tags": [
           "Ground"
         ]
