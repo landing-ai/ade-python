@@ -52,8 +52,19 @@ if [ -z "$summary" ]; then
 fi
 
 # Read the current body and APPEND — never overwrite. Guard the read: a failure or empty body means
-# we skip rather than clobber the static preamble with a bare summary.
-body="$(gh pr view "$pr_url" --json body --jq .body)" || { echo "could not read PR body; keeping it."; exit 0; }
+# we skip rather than clobber the static preamble with a bare summary. We go through the REST pulls
+# endpoint rather than `gh pr view`/`gh pr edit`: `gh pr edit` eagerly loads org-level PR metadata
+# (review-request team `slug`, assignee `login`/`name`) and fails with a `read:org` GraphQL scope
+# error under SPEC_SYNC_TOKEN — a classic PAT scoped to `repo`+`workflow`. REST pull read/update
+# needs only `repo`, so it works with the token we have.
+rest_path="${pr_url#https://github.com/}"   # <owner>/<repo>/pull/<n>
+repo="${rest_path%/pull/*}"                  # <owner>/<repo>
+num="${rest_path##*/}"                        # <n>
+if [ "$repo" = "$rest_path" ] || ! [[ "$num" =~ ^[0-9]+$ ]]; then
+  echo "could not parse PR URL '$pr_url'; keeping the static body."; exit 0
+fi
+
+body="$(gh api "repos/$repo/pulls/$num" --jq '.body // ""')" || { echo "could not read PR body; keeping it."; exit 0; }
 if [ -z "$body" ]; then echo "PR body empty/unreadable; keeping it."; exit 0; fi
 
 # Avoid duplicating the section if the workflow is re-run.
@@ -62,4 +73,6 @@ if printf '%s\n' "$body" | grep -qF '## What changed'; then
   exit 0
 fi
 
-printf '%s\n\n## What changed\n_AI-generated from the PR diff — verify against the actual changes._\n\n%s\n' "$body" "$summary" | gh pr edit "$pr_url" --body-file -
+printf '%s\n\n## What changed\n_AI-generated from the PR diff — verify against the actual changes._\n\n%s\n' "$body" "$summary" \
+  | gh api --method PATCH "repos/$repo/pulls/$num" -F body=@- >/dev/null \
+  || { echo "could not update PR body; keeping the static body."; exit 0; }
