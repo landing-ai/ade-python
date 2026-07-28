@@ -69,14 +69,15 @@ body="$(gh api "repos/$repo/pulls/$num" --jq '.body // ""')" || { echo "could no
 if [ -z "$body" ]; then echo "PR body empty/unreadable; keeping it."; exit 0; fi
 
 # Wrap the AI section in stable markers so a re-run REPLACES it in place (idempotent) rather than
-# appending a second copy, and so it never disturbs body text a human wrote outside the fence. This
-# is what lets a later push (see .github/workflows/spec-sync-summary.yml) refresh the summary against
-# the final diff. `$summary` already had <!-- / --> stripped above, so it cannot forge the end marker.
+# appending a second copy, and so it never disturbs body text a human wrote outside the fence.
+# `$summary` already had <!-- / --> stripped above, so it cannot forge the end marker.
 block="$(printf '<!-- what-changed:start -->\n## What changed\n_AI-generated from the PR diff — verify against the actual changes._\n\n%s\n<!-- what-changed:end -->' "$summary")"
 
 # Replace the existing marked block if present, else append a fresh one. perl slurps the whole body
 # so multi-line markdown is handled; the replacement is an interpolated variable, inserted verbatim.
-new_body="$(BODY="$body" BLOCK="$block" perl -0777 -e '
+# Guard the rewrite: a missing/erroring perl (or an empty result) must NOT reach the PATCH — patching
+# an empty body would wipe the whole PR description. Skip and keep the existing body on any failure.
+if ! new_body="$(BODY="$body" BLOCK="$block" perl -0777 -e '
   my ($b, $k) = ($ENV{BODY}, $ENV{BLOCK});
   if ($b =~ /<!-- what-changed:start -->.*?<!-- what-changed:end -->/s) {
     $b =~ s/<!-- what-changed:start -->.*?<!-- what-changed:end -->/$k/s;
@@ -85,7 +86,10 @@ new_body="$(BODY="$body" BLOCK="$block" perl -0777 -e '
     $b .= "\n\n" . $k . "\n";
   }
   print $b;
-')"
+')" || [ -z "$new_body" ]; then
+  echo "could not render the updated body (perl failed or produced nothing); keeping the existing body."
+  exit 0
+fi
 
 printf '%s' "$new_body" | gh api --method PATCH "repos/$repo/pulls/$num" -F body=@- >/dev/null \
   || { echo "could not update PR body; keeping the existing body."; exit 0; }
