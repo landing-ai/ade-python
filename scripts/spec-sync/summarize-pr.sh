@@ -51,15 +51,46 @@ if [ -z "$summary" ]; then
   exit 0
 fi
 
-# Read the current body and APPEND — never overwrite. Guard the read: a failure or empty body means
-# we skip rather than clobber the static preamble with a bare summary.
-body="$(gh pr view "$pr_url" --json body --jq .body)" || { echo "could not read PR body; keeping it."; exit 0; }
+# Read the current body, then refresh the marked "What changed" block in it (replace-or-append, see
+# below) — the rest of the body is never touched. Guard the read: a failure or empty body means we
+# skip rather than clobber the static preamble with a bare summary. We go through the REST pulls
+# endpoint rather than `gh pr view`/`gh pr edit`: `gh pr edit` eagerly loads org-level PR metadata
+# (review-request team `slug`, assignee `login`/`name`) and fails with a `read:org` GraphQL scope
+# error under SPEC_SYNC_TOKEN — a classic PAT scoped to `repo`+`workflow`. REST pull read/update
+# needs only `repo`, so it works with the token we have.
+rest_path="${pr_url#https://github.com/}"   # <owner>/<repo>/pull/<n>
+repo="${rest_path%/pull/*}"                  # <owner>/<repo>
+num="${rest_path##*/}"                        # <n>
+if [ "$repo" = "$rest_path" ] || ! [[ "$num" =~ ^[0-9]+$ ]]; then
+  echo "could not parse PR URL '$pr_url'; keeping the static body."; exit 0
+fi
+
+body="$(gh api "repos/$repo/pulls/$num" --jq '.body // ""')" || { echo "could not read PR body; keeping it."; exit 0; }
 if [ -z "$body" ]; then echo "PR body empty/unreadable; keeping it."; exit 0; fi
 
-# Avoid duplicating the section if the workflow is re-run.
-if printf '%s\n' "$body" | grep -qF '## What changed'; then
-  echo 'What changed section already present; keeping the existing PR body.'
+# Wrap the AI section in stable markers so a re-run REPLACES it in place (idempotent) rather than
+# appending a second copy, and so it never disturbs body text a human wrote outside the fence.
+# `$summary` already had <!-- / --> stripped above, so it cannot forge the end marker.
+block="$(printf '<!-- what-changed:start -->\n## What changed\n_AI-generated from the PR diff — verify against the actual changes._\n\n%s\n<!-- what-changed:end -->' "$summary")"
+
+# Replace the existing marked block if present, else append a fresh one. perl slurps the whole body
+# so multi-line markdown is handled; the replacement is an interpolated variable, inserted verbatim.
+# Guard the rewrite: a missing/erroring perl (or an empty result) must NOT reach the PATCH — patching
+# an empty body would wipe the whole PR description. Skip and keep the existing body on any failure.
+if ! new_body="$(BODY="$body" BLOCK="$block" perl -0777 -e '
+  my ($b, $k) = ($ENV{BODY}, $ENV{BLOCK});
+  if ($b =~ /<!-- what-changed:start -->.*?<!-- what-changed:end -->/s) {
+    $b =~ s/<!-- what-changed:start -->.*?<!-- what-changed:end -->/$k/s;
+  } else {
+    $b =~ s/\s+\z//;                 # trim trailing whitespace before appending
+    $b .= "\n\n" . $k . "\n";
+  }
+  print $b;
+')" || [ -z "$new_body" ]; then
+  echo "could not render the updated body (perl failed or produced nothing); keeping the existing body."
   exit 0
 fi
 
-printf '%s\n\n## What changed\n_AI-generated from the PR diff — verify against the actual changes._\n\n%s\n' "$body" "$summary" | gh pr edit "$pr_url" --body-file -
+printf '%s' "$new_body" | gh api --method PATCH "repos/$repo/pulls/$num" -F body=@- >/dev/null \
+  || { echo "could not update PR body; keeping the existing body."; exit 0; }
+echo "PR body updated with the What changed section."
