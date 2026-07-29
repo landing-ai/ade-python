@@ -87,6 +87,7 @@ from ._exceptions import (
     APIResponseValidationError,
 )
 from ._utils._json import openapi_dumps
+from ._client_identity import SOURCE, build_user_agent
 
 log: logging.Logger = logging.getLogger(__name__)
 
@@ -674,6 +675,10 @@ class BaseClient(Generic[_HttpxClientT, _DefaultStreamT]):
             "Accept": "application/json",
             "Content-Type": "application/json",
             "User-Agent": self.user_agent,
+            # Client identity (landing-ai/ade-python#131). Placed before
+            # `_custom_headers` so a caller-supplied `default_headers` / per-request
+            # `extra_headers` value can still override the identity if it must.
+            "X-Source": SOURCE,
             **self.platform_headers(),
             **self.auth_headers,
             **self._custom_headers,
@@ -698,7 +703,11 @@ class BaseClient(Generic[_HttpxClientT, _DefaultStreamT]):
 
     @property
     def user_agent(self) -> str:
-        return f"{self.__class__.__name__}/Python {self._version}"
+        # Structured client identity (landing-ai/ade-python#131), built in the
+        # single seam in `_client_identity`. Thread the version the client
+        # already holds so it isn't re-derived from an importlib.metadata scan
+        # on every request.
+        return build_user_agent(self._version)
 
     @property
     def base_url(self) -> URL:
