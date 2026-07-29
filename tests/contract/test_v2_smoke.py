@@ -56,6 +56,10 @@ def test_extract_jobs(staging_client: LandingAIADE) -> None:
     done = staging_client.v2.extract_jobs.wait(job.job_id, timeout=300)
     assert done.status is JobStatus.COMPLETED
     assert isinstance(done.result, V2ExtractResult)
+    # Envelope-level `metadata` is only surfaced alongside `output_url` when the
+    # job was created with `output_save_url`; this inline job carries its metadata
+    # inside `result`, so the envelope receipt is absent.
+    assert done.metadata is None
 
 
 def test_build_schema_sync(staging_client: LandingAIADE) -> None:
@@ -129,3 +133,7 @@ def test_parse_jobs(staging_client: LandingAIADE) -> None:
     assert isinstance(done.result, V2ParseResponse)
     assert isinstance(done.result.markdown, str)
     assert done.result.markdown
+    # Envelope-level `metadata` is only surfaced alongside `output_url` when the
+    # job was created with `output_save_url`; this inline job carries its metadata
+    # inside `result.metadata`, so the envelope receipt is absent.
+    assert done.metadata is None

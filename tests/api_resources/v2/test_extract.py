@@ -193,6 +193,31 @@ def test_extract_job_get_failed_maps_error_object() -> None:
 
 
 @respx.mock
+def test_extract_job_get_output_save_url_surfaces_envelope_metadata() -> None:
+    # A job created with `output_save_url` delivers its result to `output_url`
+    # (no inline `result`), but the metadata receipt (billing) is surfaced at the
+    # envelope level -- normalized onto `job.metadata`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e5").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "e5",
+                "status": "completed",
+                "output_url": "https://out.example/e5.json",
+                "metadata": {"job_id": "e5", "version": "extract-1", "duration_ms": 7},
+            },
+        )
+    )
+    job = client.v2.extract_jobs.get("e5")
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert job.metadata is not None
+    assert job.metadata["version"] == "extract-1"
+    assert job.raw["output_url"] == "https://out.example/e5.json"
+
+
+@respx.mock
 def test_extract_job_wait_raise_on_failure() -> None:
     from landingai_ade.lib.v2_errors import JobFailedError
 

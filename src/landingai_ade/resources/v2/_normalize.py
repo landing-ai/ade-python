@@ -37,6 +37,16 @@ def _progress(value: object) -> Optional[float]:
     return None
 
 
+def _metadata(raw: Mapping[str, Any]) -> Optional[Dict[str, object]]:
+    # Top-level envelope metadata (billing receipt), present alongside `output_url`
+    # once a job created with `output_save_url` has completed. Kept as a plain dict
+    # so novel upstream keys survive; inline jobs carry metadata inside `result`.
+    value = raw.get("metadata")
+    if isinstance(value, Mapping):
+        return dict(cast(Dict[str, Any], value))
+    return None
+
+
 def _status(raw: Mapping[str, Any]) -> JobStatus:
     value = raw.get("status")
     if value is None:
@@ -78,6 +88,7 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
         completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
+        metadata=_metadata(raw),
         error=error,
         raw=dict(raw),
     )
@@ -105,6 +116,7 @@ def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
         completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
+        metadata=_metadata(raw),
         error=error,
         raw=dict(raw),
     )

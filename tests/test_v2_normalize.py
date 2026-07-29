@@ -134,6 +134,44 @@ def test_normalize_extract_job_minimal_create_envelope_defaults_to_pending() -> 
     assert job.error is None
 
 
+def test_normalize_parse_job_surfaces_envelope_metadata() -> None:
+    # When a job created with `output_save_url` completes, the result is delivered
+    # to `output_url` (no inline `result`) but the metadata receipt stays on the
+    # envelope; it must be surfaced onto `job.metadata` as a plain dict.
+    raw = {
+        "job_id": "parse-osu",
+        "status": "completed",
+        "output_url": "https://out.example/parse-osu.json",
+        "metadata": {"job_id": "parse-osu", "page_count": 2, "billing": {"total_credits": 2.0}},
+    }
+    job = normalize_parse_job(raw)
+    assert job.result is None
+    assert job.metadata is not None
+    assert job.metadata["page_count"] == 2
+
+
+def test_normalize_extract_job_surfaces_envelope_metadata() -> None:
+    raw = {
+        "job_id": "extract-osu",
+        "status": "completed",
+        "output_url": "https://out.example/extract-osu.json",
+        "metadata": {"job_id": "extract-osu", "version": "extract-1", "duration_ms": 9},
+    }
+    job = normalize_extract_job(raw)
+    assert job.result is None
+    assert job.metadata is not None
+    assert job.metadata["version"] == "extract-1"
+
+
+def test_normalize_job_metadata_absent_is_none() -> None:
+    # Inline jobs carry metadata inside `result`, not at the envelope level; the
+    # envelope `metadata` is then absent and must normalize to None.
+    parse = normalize_parse_job({"job_id": "p", "status": "completed", "result": {"markdown": "# hi"}})
+    assert parse.metadata is None
+    extract = normalize_extract_job({"job_id": "e", "status": "pending"})
+    assert extract.metadata is None
+
+
 def test_normalize_parse_job_unknown_status_defaults_to_pending() -> None:
     # A new/renamed status from the gateway must not crash the normalizer;
     # the original raw status is preserved in job.raw for inspection.

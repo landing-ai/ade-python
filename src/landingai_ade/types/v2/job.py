@@ -34,6 +34,10 @@ class Job(BaseModel):
     progress: Optional[float] = None
     # Populated on completion: V2ParseResponse for parse jobs, V2ExtractResult for extract jobs.
     result: Optional[object] = None
+    # The result's metadata block (billing included), surfaced alongside `output_url`
+    # once a job created with `output_save_url` has completed -- the delivery moves the
+    # content, not the receipt. Inline jobs carry the same metadata inside `result`.
+    metadata: Optional[Dict[str, object]] = None
     error: Optional[JobError] = None
     # Full original envelope for fields not surfaced above (org_id, output_url, version, ...).
     raw: Dict[str, object] = Field(default_factory=dict)

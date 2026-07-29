@@ -537,6 +537,31 @@ def test_parse_job_get_completed_has_typed_result() -> None:
 
 
 @respx.mock
+def test_parse_job_get_output_save_url_surfaces_envelope_metadata() -> None:
+    # A job created with `output_save_url` delivers its result to `output_url`
+    # (no inline `result`), but the metadata receipt (billing) is surfaced at the
+    # envelope level -- normalized onto `job.metadata`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "p1",
+                "status": "completed",
+                "output_url": "https://out.example/p1.json",
+                "metadata": {"job_id": "p1", "page_count": 3, "billing": {"total_credits": 3.0}},
+            },
+        )
+    )
+    job = client.v2.parse_jobs.get("p1")
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert job.metadata is not None
+    assert job.metadata["page_count"] == 3
+    assert job.raw["output_url"] == "https://out.example/p1.json"
+
+
+@respx.mock
 def test_parse_job_get_206_partial_returns_result() -> None:
     # Per the V2 spec, GET /v2/parse/jobs/{id} can return 206 (partial success).
     # 206 is a 2xx, so the base client treats it as success and the envelope is
