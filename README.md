@@ -351,6 +351,19 @@ parsed = response.parse()  # the object the method would have returned
 
 Use `.with_streaming_response` instead (also v1 methods only) to stream the body rather than reading it eagerly; it requires a context manager and reads the body only when you call `.read()`, `.text()`, `.json()`, `.iter_bytes()`, `.iter_text()`, `.iter_lines()`, or `.parse()`. These return [`APIResponse`](https://github.com/landing-ai/ade-python/tree/main/src/landingai_ade/_response.py) (or `AsyncAPIResponse`) objects.
 
+### Client identity headers
+
+Every request carries two headers that let the platform attribute traffic to this SDK:
+
+- `X-Source: sdk`
+- a structured `User-Agent`, e.g. `ade-python/1.15.0 (Darwin arm64) python/3.12 httpx/0.28.1`
+
+You can override either one by passing the same header (using its canonical name) via `default_headers` on the client or `extra_headers` on a call — a caller-supplied value replaces the SDK default. Leave them untouched to keep accurate attribution.
+
+```python
+client = LandingAIADE(default_headers={"User-Agent": "my-app/1.0"})  # replaces the SDK User-Agent
+```
+
 ### Nested params and file uploads
 
 Nested request parameters are [TypedDicts](https://docs.python.org/3/library/typing.html#typing.TypedDict); responses are [Pydantic models](https://docs.pydantic.dev) with helpers such as `model.to_json()` and `model.to_dict()`. File upload parameters accept `bytes`, a [`PathLike`](https://docs.python.org/3/library/os.html#os.PathLike) instance, or a `(filename, contents, media type)` tuple; the async client reads `PathLike` files asynchronously.

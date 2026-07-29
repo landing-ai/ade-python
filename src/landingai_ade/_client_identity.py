@@ -42,10 +42,12 @@ PRODUCT = "ade-python"
 
 _PLACEHOLDER = "unknown"
 
-# Anything that would break the parser's ``(<os> <arch>)`` shape — whitespace,
-# ``;``/``,``, or parentheses — is collapsed into a single ``-`` so an exotic
-# platform never splits into extra "words".
-_UNSAFE_COMMENT_CHARS = re.compile(r"[\s;,()]+")
+# Keep only visible-ASCII token characters; collapse everything else into a
+# single ``-``. This covers what would break the parser's ``(<os> <arch>)`` shape
+# (whitespace, ``;``/``,``, parentheses) AND non-ASCII values (which httpx cannot
+# latin-1 encode — an exotic ``platform.machine()`` like ``arm<emoji>`` would
+# otherwise raise while building the header and fail the request).
+_UNSAFE_COMMENT_CHARS = re.compile(r"[^A-Za-z0-9._:+-]+")
 
 
 def _product_version() -> str:

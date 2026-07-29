@@ -105,6 +105,18 @@ class TestNeverFailsARequest:
         assert ua.startswith("ade-python/")
         assert "unknown" in ua[ua.index("(") : ua.index(")") + 1]
 
+    def test_non_ascii_platform_value_stays_ascii(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # An exotic platform.machine() must not smuggle non-latin-1 bytes into the
+        # header (httpx would raise while encoding and fail the request).
+        import platform
+
+        monkeypatch.setattr(platform, "machine", lambda: "arm\U0001f525")  # arm🔥
+        ua = build_user_agent()
+        ua.encode("ascii")  # must not raise
+        comment = ua[ua.index("(") + 1 : ua.index(")")]
+        assert len(comment.split()) == 2
+        assert "arm" in comment
+
     def test_missing_package_metadata_degrades(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import importlib.metadata as metadata
 
