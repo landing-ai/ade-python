@@ -70,8 +70,10 @@ reports `output_url` (on `Job.raw`) instead of an inline `result`.
 
 ## Current build-schema-response shape
 
-`POST /v2/extract/build-schema` (and the completed `build_schema_jobs` result)
-returns a `V2BuildSchemaResponse` with:
+The V2 build-schema **public surface is currently hidden** — `client.v2.build_schema(...)`
+and `client.v2.build_schema_jobs` are not wired. The `V2BuildSchemaResponse` model and
+its `normalize_build_schema_job` handling are retained internally, so a build-schema
+`Job` result still deserializes to a `V2BuildSchemaResponse` with:
 
 - `extraction_schema` — the generated JSON Schema serialized as a **string** (VTRA
   parity — a string, not an object). Parse it with `json.loads(...)` to get the
@@ -80,16 +82,6 @@ returns a `V2BuildSchemaResponse` with:
   `filename` / `org_id` / `version` (retained for v1 compatibility, unpopulated in
   this version), a `warnings` list of `V2BuildSchemaWarning` (`{code, msg}`, e.g.
   code `nonconformant_schema`), and `billing` (`V2BuildSchemaBilling`).
-
-`client.v2.build_schema(...)` generates or edits a JSON Schema from one or more
-source Markdown documents and/or a natural-language `prompt`, optionally iterating
-on an existing `schema`. At least one of `markdowns`, `markdown_urls`, `prompt`, or
-`schema` must be provided. `markdowns` entries are each either an inline markdown
-string or a file upload (`Path`/`bytes`/file object); the request is sent as
-`multipart/form-data` when any entry is a file and as JSON otherwise. `schema`
-accepts a pydantic model, a `dict`, or a JSON string — all coerced to a JSON Schema
-and sent as a JSON-encoded string. `build_schema_jobs.create` additionally accepts
-`service_tier`.
 
 ## Current ground-response shape
 
