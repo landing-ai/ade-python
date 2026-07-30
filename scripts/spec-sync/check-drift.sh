@@ -2,7 +2,8 @@
 # Compare a live spec against its committed snapshot.
 #   exit 0  -> no drift
 #   exit 10 -> drift detected; <committed-path> updated in place with the live spec
-#   other   -> operational error (e.g. fetch failure)
+#   exit 20 -> spec source unreachable (e.g. unbooked staging); caller may treat as an expected no-op
+#   other   -> operational error (reachable but empty/invalid spec, script error, etc.)
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
