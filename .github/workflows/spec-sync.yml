@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V1_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json  # staging spec, published to S3 by vision-tools-rest-api CI
+      V1_SPEC_URL: https://api.va.staging.landing.ai/v1/ade/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v1   # fixed branch: reruns update one PR in place, never a pile of them
       SPEC_LABEL: V1   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
@@ -54,11 +54,14 @@ jobs:
         if: steps.drift.outputs.code == '0'
         run: echo "specs in sync; nothing to do."
 
-      - name: Fail on fetch error
+      # A spec fetch/normalize failure is the EXPECTED case on staging, not an incident: staging
+      # auto-reclaims and must be booked to come back, so an unbooked cluster leaves the spec URL
+      # unreachable. Log it and end the run cleanly (no drift, no PR, no Slack) instead of failing —
+      # the next hourly run picks up any drift once staging is booked, and the release gate reads the
+      # always-online production spec, so releases are unaffected.
+      - name: Spec source unavailable — skip
         if: steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10'
-        run: |
-          echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }})"
-          exit 1
+        run: echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }}); staging is likely unbooked — skipping this run."
 
       # If a sync PR is already open, do nothing: it's awaiting human review, and re-running
       # would duplicate gate runs and Claude API spend every hour until it merges.
@@ -216,9 +219,9 @@ jobs:
           text: ${{ steps.ai_push.outputs.summary }}
           thread_ts: ${{ steps.root.outputs.ts }}
 
-      # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
-      # calling out — a spec fetch/normalize error (S3 object missing/unreadable or its publisher failing) and an
-      # AI-wiring crash (PR left mechanical-only) — and falls back to a generic run-failed otherwise.
+      # Catch-all failure alert for this job. A spec fetch/normalize failure is handled earlier as an
+      # expected skip (staging is often unbooked) and never reaches here, so this only calls out an
+      # AI-wiring crash (PR left mechanical-only) and falls back to a generic run-failed otherwise.
       - name: Slack — spec-sync failed
         if: failure()
         uses: ./.github/actions/slack-notify
@@ -228,11 +231,9 @@ jobs:
           status: failure
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
-            ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
-            && format('Spec fetch/normalize failed (exit {0}). spec-sync reads the V1 spec from <https://ade-specs.s3.us-east-2.amazonaws.com/v1/staging/openapi.json|the S3 object>, published by vision-tools-rest-api <https://github.com/landing-ai/vision-tools-rest-api/actions/workflows/publish-openapi.yml|Publish OpenAPI>. Check the object is present and readable, and that the publisher last ran green.', steps.drift.outputs.code)
-            || (steps.ai_wiring.outcome == 'failure'
+            ${{ steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
-            || 'spec-sync run failed. See the workflow run for details.') }}
+            || 'spec-sync run failed. See the workflow run for details.' }}
             · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
           thread_ts: ${{ steps.root.outputs.ts }}
 
@@ -240,16 +241,15 @@ jobs:
   # and a separate sync branch, with a V2-tailored wiring prompt. Kept as a distinct job (not a
   # matrix) so the proven V1 loop is untouched and the two prompts can diverge freely.
   #
-  # HOSTS (do not conflate): the V2 *spec* originates in the AIDE gateway, but spec-sync reads it
-  # from the CI-published S3 copy (V2_SPEC_URL below) — not live from aide — so drift detection does
-  # not depend on staging being booked. The V2 *API* the SDK and contract tests call is api.ade.[env];
-  # the SDK never talks to aide (its paths are staff-SSO-gated).
+  # HOSTS (do not conflate): the V2 *spec* is published at aide.[env]/openapi.json; the V2 *API*
+  # (what the SDK and contract tests call) is api.ade.[env]. We fetch drift from aide; the SDK
+  # never talks to aide (its paths are staff-SSO-gated).
   spec-sync-v2:
     if: github.repository == 'landing-ai/ade-python'
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V2_SPEC_URL: https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json  # staging spec, published to S3 by aide CI
+      V2_SPEC_URL: https://aide.staging.landing.ai/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v2   # separate branch so V1 and V2 sync PRs never collide
       SPEC_LABEL: V2   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
@@ -282,11 +282,14 @@ jobs:
         if: steps.drift.outputs.code == '0'
         run: echo "specs in sync; nothing to do."
 
-      - name: Fail on fetch error
+      # A spec fetch/normalize failure is the EXPECTED case on staging, not an incident: staging
+      # auto-reclaims and must be booked to come back, so an unbooked cluster leaves the spec URL
+      # unreachable. Log it and end the run cleanly (no drift, no PR, no Slack) instead of failing —
+      # the next hourly run picks up any drift once staging is booked, and the release gate reads the
+      # always-online production spec, so releases are unaffected.
+      - name: Spec source unavailable — skip
         if: steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10'
-        run: |
-          echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }})"
-          exit 1
+        run: echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }}); staging is likely unbooked — skipping this run."
 
       - name: Check for an open sync PR
         id: existing
@@ -520,9 +523,9 @@ jobs:
           text: ${{ steps.ai_push.outputs.summary }}
           thread_ts: ${{ steps.root.outputs.ts }}
 
-      # Catch-all failure alert for this job. Tailors the message to the two failure modes worth
-      # calling out — a spec fetch/normalize error (S3 object missing/unreadable or its publisher failing) and an
-      # AI-wiring crash (PR left mechanical-only) — and falls back to a generic run-failed otherwise.
+      # Catch-all failure alert for this job. A spec fetch/normalize failure is handled earlier as an
+      # expected skip (staging is often unbooked) and never reaches here, so this only calls out an
+      # AI-wiring crash (PR left mechanical-only) and falls back to a generic run-failed otherwise.
       - name: Slack — spec-sync failed
         if: failure()
         uses: ./.github/actions/slack-notify
@@ -532,10 +535,8 @@ jobs:
           status: failure
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
-            ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
-            && format('Spec fetch/normalize failed (exit {0}). spec-sync reads the V2 spec from <https://ade-specs.s3.us-east-2.amazonaws.com/v2/staging/openapi.json|the S3 object>, published by aide <https://github.com/landing-ai/aide/actions/workflows/publish-openapi.yml|Publish OpenAPI>. Check the object is present and readable, and that the publisher last ran green.', steps.drift.outputs.code)
-            || (steps.ai_wiring.outcome == 'failure'
+            ${{ steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
-            || 'spec-sync run failed. See the workflow run for details.') }}
+            || 'spec-sync run failed. See the workflow run for details.' }}
             · <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
           thread_ts: ${{ steps.root.outputs.ts }}
