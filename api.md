@@ -64,7 +64,7 @@ Methods:
 
 The `client.v2` sub-client targets LandingAI's next-generation ADE gateway, which lives on its own host (`api.ade.[env].landing.ai`) rather than the V1 host (`api.va.[env].landing.ai`). It is **additive**: `client.v2.*` is a separate surface from the top-level `client.*` (V1) methods documented above, and using it does not change any V1 behavior. See the [README](README.md#environments) for environment selection and usage examples.
 
-`client.v2.parse_jobs`, `client.v2.extract_jobs`, and `client.v2.build_schema_jobs` all return a single, unified <a href="./src/landingai_ade/types/v2/job.py">`Job`</a> shape, even though the underlying parse/extract/build-schema job envelopes differ upstream -- `Job.raw` retains the full original envelope as an escape hatch for any field not surfaced on the typed model.
+`client.v2.parse_jobs` and `client.v2.extract_jobs` both return a single, unified <a href="./src/landingai_ade/types/v2/job.py">`Job`</a> shape, even though the underlying parse/extract job envelopes differ upstream -- `Job.raw` retains the full original envelope as an escape hatch for any field not surfaced on the typed model.
 
 Types:
 
@@ -129,22 +129,11 @@ Methods:
 
   Same polling/timeout semantics as `parse_jobs.wait`. Extract jobs have no `cancelled` status, so `raise_on_failure` only ever triggers on `failed`.
 
-- <code title="post /v2/extract/build-schema">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">build_schema</a>(\*, markdowns=..., markdown_urls=..., prompt=..., schema=...) -> <a href="./src/landingai_ade/types/v2/build_schema_response.py">V2BuildSchemaResponse</a></code>
-
-  Synchronous schema generation. Generate or edit a JSON Schema for extraction from one or more source Markdown documents and/or a natural-language `prompt`, optionally iterating on an existing `schema`. Provide at least one of `markdowns`, `markdown_urls`, `prompt`, or `schema`. `markdowns` entries are each either an inline markdown string or a file upload (`Path`/`bytes`/file object) -- the request is sent as `multipart/form-data` when any entry is a file, and as JSON otherwise. `schema` accepts a pydantic `BaseModel` subclass, a `dict`, or a JSON-encoded string -- all are coerced to a JSON Schema and sent as a JSON-encoded string. Raises `V2SyncTimeoutError` on a 504; use `build_schema_jobs` for long-running inputs.
-
-- <code title="post /v2/extract/build-schema/jobs">client.v2.build_schema_jobs.<a href="./src/landingai_ade/resources/v2/build_schema.py">create</a>(\*, markdowns=..., markdown_urls=..., prompt=..., schema=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
-- <code title="get /v2/extract/build-schema/jobs/{job_id}">client.v2.build_schema_jobs.<a href="./src/landingai_ade/resources/v2/build_schema.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
-- <code title="get /v2/extract/build-schema/jobs">client.v2.build_schema_jobs.<a href="./src/landingai_ade/resources/v2/build_schema.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
-- <code>client.v2.build_schema_jobs.<a href="./src/landingai_ade/resources/v2/build_schema.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
-
-  Same polling/timeout semantics as `parse_jobs.wait`. Build-schema jobs have no `cancelled` status, so `raise_on_failure` only ever triggers on `failed`.
-
 - <code title="post /v2/ground">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">ground</a>(\*, extraction_metadata, structure) -> <a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundResult</a></code>
 
   Synchronous ground. Maps each extracted field back to the `structure` blocks it was quoted from by overlapping `extraction_metadata` ranges against every block's inline `grounding.range`. Both `extraction_metadata` (e.g. `client.v2.extract(...).extraction_metadata`) and `structure` (e.g. `client.v2.parse(...).structure`) accept a `dict` or a pydantic model. Block ids resolve only against the `structure` supplied here, so pass the parse result the extraction actually came from. `/v2/ground` is synchronous-only (no async jobs route).
 
 Notes:
 
-- `parse_jobs.list` / `extract_jobs.list` / `build_schema_jobs.list` all return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
+- `parse_jobs.list` and `extract_jobs.list` both return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
 - All `client.v2.*` methods accept the usual `extra_headers`, `extra_query`, `extra_body`, and `timeout` overrides; sync methods additionally accept `save_to` (parse/extract only, not the job-creation methods) to write the response to disk, mirroring V1's `save_to`.

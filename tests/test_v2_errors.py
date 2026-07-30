@@ -21,9 +21,9 @@ def _status_error(code: int) -> APIStatusError:
 
 def test_raise_if_sync_timeout_converts_504() -> None:
     with pytest.raises(V2SyncTimeoutError) as exc_info:
-        raise_if_sync_timeout(_status_error(504), jobs_resource="build_schema_jobs")
+        raise_if_sync_timeout(_status_error(504), jobs_resource="extract_jobs")
     # The remediation names the endpoint's own async route, not a hardcoded parse/extract one.
-    assert "build_schema_jobs" in str(exc_info.value)
+    assert "extract_jobs" in str(exc_info.value)
 
 
 def test_raise_if_sync_timeout_ignores_other_codes() -> None:
