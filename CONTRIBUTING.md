@@ -141,9 +141,10 @@ V2 *API* the SDK calls is `api.ade.[env]`.)
 
 On each run a loop fetches and normalizes its live spec (`scripts/spec-sync/fetch-normalize.sh`) and
 diffs it against its committed snapshot (`scripts/spec-sync/check-drift.sh`). Staging auto-reclaims
-and must be booked, so an unreachable spec source is treated as an expected no-op — the run ends
-cleanly with no PR and no Slack alert, and the next run picks up drift once staging is booked. A spec
-that is reachable but empty or invalid still fails loudly and alerts. On drift it opens one PR with
+and must be booked, so an unavailable spec source (an unbooked cluster 404s, or the host stops
+answering) is treated as an expected no-op — the run ends cleanly with no PR and no Slack alert, and
+the next run picks up drift once staging is booked. A reachable source that returns an error status
+(401/403/5xx) or an empty/invalid spec still fails loudly and alerts. On drift it opens one PR with
 two attributed commits (paths shown for V1; the V2 loop uses the `v2-aide`/`v2_models` equivalents):
 
 1. **Mechanical** — updated `specs/v1-ade.json` snapshot plus regenerated *reference* models in
