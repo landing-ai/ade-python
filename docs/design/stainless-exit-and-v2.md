@@ -54,7 +54,7 @@ It *would* be the right call for a large, fast-moving generated surface or many 
 
 ### The API contract
 
-Derived from the aide gateway source (`services/gateway/`, `packages/aide_temporal/.../public_workflows/{parse,extract_v2}.py`, `customer_surface.py`). **The exposed `openapi.json` is the source of truth once public — this table must be re-verified against it** (see the aide ask below; the URL currently returns 401).
+Derived from the aide gateway source (`services/gateway/`, `packages/aide_temporal/.../public_workflows/{parse,extract_v2}.py`, `customer_surface.py`). **The exposed `openapi.json` is the source of truth — this table must be re-verified against it** (the aide ask below is now DONE — the curated spec is served **unauthenticated**).
 
 Auth is unchanged from V1: `Authorization: Bearer <apikey>`. Hosts differ from V1 (see environment matrix below).
 
@@ -115,9 +115,9 @@ The V2 API lives on different hosts, so the existing 2-entry `environment` map b
 
 A new `LANDINGAI_ADE_ENVIRONMENT` env var selects the environment without code changes — that's the QA workflow. Explicit `base_url` / `v2_base_url` overrides (params and env vars) remain for mock servers and proxies; if only `base_url` is set, V2 traffic follows it too, so a mock captures everything. Two implementation subtleties are deferred to the PR, noted here only so they aren't rediscovered: routing is per-resource rather than by path prefix (`POST /v1/files` lives on the aide host), and V1 request paths are untouched, so existing behavior can't change. API keys stay per-environment, passed through as today. Open item: security sign-off on shipping `dev`/`staging` hostnames in public source (not secrets; fallback is env-var-only recognition).
 
-### Required from aide (one change)
+### Required from aide (one change) — DONE
 
-Serve the curated, customer-surface-only OpenAPI spec unauthenticated at each environment's gateway host — `https://aide[.env].landing.ai/openapi.json` currently returns 401 (staff SSO). The curation hook (`install_job_openapi()`) already exists; verify staff routes are excluded and multipart bodies render correctly for codegen. This unblocks both the contract verification above and Problem 3.
+**DONE (2026-07):** the curated, customer-surface-only OpenAPI spec is now served **unauthenticated** at each environment's gateway host (`https://aide[.env].landing.ai/openapi.json` — was 401/staff SSO). The curation hook (`install_job_openapi()`) excludes staff routes and renders multipart bodies for codegen. This unblocked both the contract verification above and Problem 3, and lets spec-sync live-fetch the V2 staging spec.
 
 ---
 
@@ -164,7 +164,7 @@ Two consequences to be explicit about:
 - **The surface-lock baseline must be the last *release tag*, not the previous commit on `main`.** Merged-but-unreleased surface stays mutable: if a staging feature is reshaped or dropped before it ever reaches production, the next sync PR can amend or remove it without tripping the compat gate. Only *released* surface is locked — which is the actual promise made to users.
 - **A staging-only feature holds the release train**: nothing releases until it either reaches production or is reverted in staging (at which point the next sync PR removes it and unblocks). Self-correcting in both directions, and acceptable at our deploy cadence.
 
-Verified: the V1 staging spec is already public (`https://api.va.staging.landing.ai/v1/ade/openapi.json` → 200); aide's staging spec is behind the same auth as production, so the single aide ask in Problem 2 (expose the curated spec per environment) covers this.
+Verified: both staging specs are now public and fetchable **without auth** — V1 at `https://api.va.staging.landing.ai/v1/ade/openapi.json` and V2 at `https://aide.staging.landing.ai/openapi.json` (after the Problem 2 aide change landed). spec-sync live-fetches both.
 
 ### The AI step, concretely: `anthropics/claude-code-action`
 
