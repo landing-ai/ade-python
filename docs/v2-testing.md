@@ -9,7 +9,7 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 | Layer | Location | What it covers |
 | --- | --- | --- |
 | Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `metadata`, `error`). |
 | Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
@@ -66,7 +66,11 @@ upstream; both are retained on `V2ExtractBilling` for backward compatibility.
 
 The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
 when set, the finished result is delivered to that URL and the completed job
-reports `output_url` (on `Job.raw`) instead of an inline `result`.
+reports `output_url` (on `Job.raw`) instead of an inline `result`. The delivery
+moves the content, not the receipt — the metadata block is still returned on the
+job status, and the normalizer surfaces it on `Job.metadata` (a `V2ExtractMetadata`
+for extract jobs, a `V2ParseMetadata` for parse jobs). Inline jobs leave
+`Job.metadata` as `None` and carry the receipt inside `result.metadata` instead.
 
 ## Current build-schema-response shape
 
@@ -109,6 +113,9 @@ field-name drift:
 - Failures arrive as a structured `error` object (`{code, message}`); older parse
   envelopes used a flat `failure_reason` string. Both map to `Job.error`.
 - `created_at` / `completed_at` accept ISO-8601 strings or epoch seconds.
+- A top-level `metadata` block (present once an `output_save_url` job completes)
+  maps to `Job.metadata`; it stays `None` for inline jobs, whose metadata rides on
+  `result.metadata` instead.
 - Unknown / renamed `status` values fall back to `pending` rather than raising;
   the raw envelope is always preserved on `Job.raw`.
 

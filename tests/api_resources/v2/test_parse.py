@@ -9,7 +9,7 @@ import respx
 import pytest
 
 from landingai_ade import LandingAIADE
-from landingai_ade.types.v2 import Job, JobStatus, V2ParseResponse
+from landingai_ade.types.v2 import Job, JobStatus, V2ParseMetadata, V2ParseResponse
 from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 APIKEY = "My Apikey"
@@ -534,6 +534,31 @@ def test_parse_job_get_completed_has_typed_result() -> None:
     assert job.status is JobStatus.COMPLETED
     assert isinstance(job.result, V2ParseResponse)
     assert job.result.markdown == "# Hello"
+
+
+@respx.mock
+def test_parse_job_get_output_save_url_surfaces_metadata() -> None:
+    # When the job was created with `output_save_url`, the completed status
+    # delivers the result to `output_url` and returns the metadata receipt as a
+    # top-level `metadata` block instead of an inline `result`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/parse/jobs/p1").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "p1",
+                "status": "completed",
+                "output_url": "https://example.com/out.json",
+                "metadata": {"req_id": "r1", "job_id": "p1", "page_count": 3, "range_units": "unicode_codepoints"},
+            },
+        )
+    )
+    job = client.v2.parse_jobs.get("p1")
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert isinstance(job.metadata, V2ParseMetadata)
+    assert job.metadata.page_count == 3
+    assert job.raw["output_url"] == "https://example.com/out.json"
 
 
 @respx.mock

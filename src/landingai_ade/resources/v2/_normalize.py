@@ -11,7 +11,9 @@ from ...types.v2 import (
     JobError,
     JobStatus,
     V2ExtractResult,
+    V2ParseMetadata,
     V2ParseResponse,
+    V2ExtractMetadata,
     V2BuildSchemaResponse,
 )
 
@@ -71,6 +73,11 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
     created = raw.get("created_at")
     created = created if created is not None else raw.get("received_at")
 
+    # Present alongside `output_url` once an `output_save_url` job completes; the
+    # inline result carries its own metadata instead.
+    meta = raw.get("metadata")
+    metadata = V2ParseMetadata.construct(**cast(Dict[str, Any], meta)) if isinstance(meta, Mapping) else None
+
     return Job(
         job_id=str(raw["job_id"]),
         status=status,
@@ -78,6 +85,7 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
         completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
+        metadata=metadata,
         error=error,
         raw=dict(raw),
     )
@@ -98,6 +106,11 @@ def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
     elif raw.get("failure_reason"):  # extract *list* uses failure_reason
         error = JobError(message=str(raw["failure_reason"]))
 
+    # Present alongside `output_url` once an `output_save_url` job completes; the
+    # inline result carries its own metadata instead.
+    meta = raw.get("metadata")
+    metadata = V2ExtractMetadata.construct(**cast(Dict[str, Any], meta)) if isinstance(meta, Mapping) else None
+
     return Job(
         job_id=str(raw["job_id"]),
         status=status,
@@ -105,6 +118,7 @@ def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
         completed_at=_ts(raw.get("completed_at")),
         progress=_progress(raw.get("progress")),
         result=result,
+        metadata=metadata,
         error=error,
         raw=dict(raw),
     )

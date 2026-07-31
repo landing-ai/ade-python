@@ -9,7 +9,7 @@ import pytest
 from pydantic import Field, BaseModel
 
 from landingai_ade import LandingAIADE
-from landingai_ade.types.v2 import JobStatus, V2ExtractResult
+from landingai_ade.types.v2 import JobStatus, V2ExtractResult, V2ExtractMetadata
 from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 APIKEY = "My Apikey"
@@ -190,6 +190,31 @@ def test_extract_job_get_failed_maps_error_object() -> None:
     )
     job = client.v2.extract_jobs.get("e2")
     assert job.status is JobStatus.FAILED and job.error is not None and job.error.code == "internal_error"
+
+
+@respx.mock
+def test_extract_job_get_output_save_url_surfaces_metadata() -> None:
+    # An `output_save_url` extract job delivers its result to `output_url` and
+    # returns the metadata receipt as a top-level `metadata` block instead of an
+    # inline `result`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e4").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "e4",
+                "status": "completed",
+                "output_url": "https://example.com/out.json",
+                "metadata": {"job_id": "e4", "model_version": "extract-1", "duration_ms": 12},
+            },
+        )
+    )
+    job = client.v2.extract_jobs.get("e4")
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert isinstance(job.metadata, V2ExtractMetadata)
+    assert job.metadata.model_version == "extract-1"
+    assert job.raw["output_url"] == "https://example.com/out.json"
 
 
 @respx.mock

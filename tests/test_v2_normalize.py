@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from landingai_ade.types.v2 import (
     JobStatus,
     V2ExtractResult,
+    V2ParseMetadata,
     V2ParseResponse,
+    V2ExtractMetadata,
     V2BuildSchemaResponse,
 )
 from landingai_ade.resources.v2._normalize import (
@@ -106,6 +108,45 @@ def test_normalize_extract_job_iso_and_result() -> None:
     assert job.completed_at is not None
     assert isinstance(job.result, V2ExtractResult)
     assert job.result.metadata.version == "extract-1"
+
+
+def test_normalize_parse_job_output_save_url_surfaces_metadata() -> None:
+    # When `output_save_url` was set, the completed job delivers its result to
+    # `output_url` (kept in `raw`) and returns the receipt as a top-level
+    # `metadata` block instead of inline `result`.
+    raw: Dict[str, Any] = {
+        "job_id": "parse-abc",
+        "status": "completed",
+        "output_url": "https://example.com/out.json",
+        "metadata": {"job_id": "parse-abc", "page_count": 2, "range_units": "unicode_codepoints"},
+    }
+    job = normalize_parse_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert isinstance(job.metadata, V2ParseMetadata)
+    assert job.metadata.page_count == 2
+    assert job.raw["output_url"] == "https://example.com/out.json"
+
+
+def test_normalize_parse_job_without_metadata_leaves_it_none() -> None:
+    raw = {"job_id": "parse-x", "status": "pending"}
+    job = normalize_parse_job(raw)
+    assert job.metadata is None
+
+
+def test_normalize_extract_job_output_save_url_surfaces_metadata() -> None:
+    raw: Dict[str, Any] = {
+        "job_id": "e1",
+        "status": "completed",
+        "output_url": "https://example.com/out.json",
+        "metadata": {"job_id": "e1", "model_version": "extract-1", "duration_ms": 10},
+    }
+    job = normalize_extract_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert isinstance(job.metadata, V2ExtractMetadata)
+    assert job.metadata.model_version == "extract-1"
+    assert job.raw["output_url"] == "https://example.com/out.json"
 
 
 def test_normalize_extract_job_error_object() -> None:
