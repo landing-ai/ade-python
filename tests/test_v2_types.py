@@ -46,6 +46,20 @@ def test_job_holds_typed_result_and_error() -> None:
     assert job.raw["org_id"] == "o1"
 
 
+def test_job_metadata_defaults_none_and_holds_receipt() -> None:
+    # `metadata` defaults to None (inline jobs carry it on `result.metadata`) and,
+    # for `output_save_url` deliveries, holds the top-level metadata receipt.
+    inline = Job(job_id="j1", status=JobStatus.COMPLETED)
+    assert inline.metadata is None
+    delivered = Job(
+        job_id="j2",
+        status=JobStatus.COMPLETED,
+        metadata={"job_id": "j2", "page_count": 2, "billing": {"total_credits": 1.5}},
+        raw={"output_url": "https://example.com/out.json"},
+    )
+    assert delivered.metadata is not None and delivered.metadata["page_count"] == 2
+
+
 def test_job_raw_default_is_independent_per_instance() -> None:
     job_a = Job(job_id="j1", status=JobStatus.PENDING)
     job_b = Job(job_id="j2", status=JobStatus.PENDING)

@@ -115,6 +115,52 @@ def test_normalize_extract_job_error_object() -> None:
     assert job.error is not None and job.error.code == "internal_error"
 
 
+def test_normalize_parse_job_output_save_url_surfaces_metadata() -> None:
+    # When `output_save_url` was set, the completed job delivers the result to
+    # `output_url` (no inline `result`) but still rides the metadata receipt back
+    # top-level, where it's surfaced on `Job.metadata`.
+    raw: Dict[str, Any] = {
+        "job_id": "parse-osu",
+        "status": "completed",
+        "output_url": "https://example.com/out.json",
+        "metadata": {"job_id": "parse-osu", "page_count": 3, "billing": {"total_credits": 2.0}},
+    }
+    job = normalize_parse_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None  # delivered out-of-band, not inline
+    assert job.metadata is not None
+    assert job.metadata["page_count"] == 3
+    assert job.raw["output_url"] == "https://example.com/out.json"
+
+
+def test_normalize_extract_job_output_save_url_surfaces_metadata() -> None:
+    raw: Dict[str, Any] = {
+        "job_id": "extract-osu",
+        "status": "completed",
+        "output_url": "https://example.com/out.json",
+        "metadata": {"job_id": "extract-osu", "duration_ms": 42, "billing": {"total_credits": 1.0}},
+    }
+    job = normalize_extract_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.result is None
+    assert job.metadata is not None
+    assert job.metadata["duration_ms"] == 42
+
+
+def test_normalize_job_inline_result_leaves_metadata_none() -> None:
+    # Inline jobs carry metadata inside `result.metadata`; the top-level
+    # `Job.metadata` receipt is only populated for `output_save_url` deliveries.
+    raw: Dict[str, Any] = {
+        "job_id": "parse-inline",
+        "status": "completed",
+        "result": {"markdown": "# hi", "metadata": {"job_id": "parse-inline", "page_count": 1}},
+    }
+    job = normalize_parse_job(raw)
+    assert job.metadata is None
+    assert isinstance(job.result, V2ParseResponse)
+    assert job.result.metadata is not None and job.result.metadata.page_count == 1
+
+
 def test_normalize_parse_job_minimal_create_envelope_defaults_to_pending() -> None:
     # Live /v2/parse/jobs create (202) response is minimal: only job_id, no status.
     raw = {"job_id": "parse-api-x"}

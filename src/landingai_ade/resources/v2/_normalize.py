@@ -37,6 +37,15 @@ def _progress(value: object) -> Optional[float]:
     return None
 
 
+def _metadata(value: object) -> Optional[Dict[str, object]]:
+    # The top-level `metadata` receipt rides back on a completed job only when
+    # `output_save_url` was set (the result was delivered out-of-band). Pass it
+    # through as a plain dict; the inline-result case leaves this None.
+    if isinstance(value, Mapping):
+        return dict(cast(Dict[str, object], value))
+    return None
+
+
 def _status(raw: Mapping[str, Any]) -> JobStatus:
     value = raw.get("status")
     if value is None:
@@ -79,6 +88,7 @@ def normalize_parse_job(raw: Mapping[str, Any]) -> Job:
         progress=_progress(raw.get("progress")),
         result=result,
         error=error,
+        metadata=_metadata(raw.get("metadata")),
         raw=dict(raw),
     )
 
@@ -106,6 +116,7 @@ def normalize_extract_job(raw: Mapping[str, Any]) -> Job:
         progress=_progress(raw.get("progress")),
         result=result,
         error=error,
+        metadata=_metadata(raw.get("metadata")),
         raw=dict(raw),
     )
 

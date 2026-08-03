@@ -66,7 +66,11 @@ upstream; both are retained on `V2ExtractBilling` for backward compatibility.
 
 The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
 when set, the finished result is delivered to that URL and the completed job
-reports `output_url` (on `Job.raw`) instead of an inline `result`.
+reports `output_url` (on `Job.raw`) instead of an inline `result`. The metadata
+receipt (billing included) still rides back on the job and is surfaced as a
+`dict` on `Job.metadata` — the delivery moves the content, not the receipt. For
+inline jobs `Job.metadata` is `None` and the metadata lives on
+`result.metadata` instead. `parse_jobs` behaves the same way.
 
 ## Current build-schema-response shape
 
@@ -109,6 +113,8 @@ field-name drift:
 - Failures arrive as a structured `error` object (`{code, message}`); older parse
   envelopes used a flat `failure_reason` string. Both map to `Job.error`.
 - `created_at` / `completed_at` accept ISO-8601 strings or epoch seconds.
+- A top-level `metadata` object (present on `output_save_url` deliveries) is
+  passed through to `Job.metadata`; inline jobs leave it `None`.
 - Unknown / renamed `status` values fall back to `pending` rather than raising;
   the raw envelope is always preserved on `Job.raw`.
 
