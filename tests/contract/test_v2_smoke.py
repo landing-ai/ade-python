@@ -54,6 +54,10 @@ def test_extract_jobs(staging_client: LandingAIADE) -> None:
     done = staging_client.v2.extract_jobs.wait(job.job_id, timeout=300)
     assert done.status is JobStatus.COMPLETED
     assert isinstance(done.result, V2ExtractResult)
+    # This inline job carries its metadata on `result.metadata`; the top-level
+    # `Job.metadata` receipt is only populated for `output_save_url` deliveries.
+    assert done.metadata is None
+    assert done.result.metadata.model_version
 
 
 def test_parse_sync(staging_client: LandingAIADE) -> None:
@@ -105,3 +109,7 @@ def test_parse_jobs(staging_client: LandingAIADE) -> None:
     assert isinstance(done.result, V2ParseResponse)
     assert isinstance(done.result.markdown, str)
     assert done.result.markdown
+    # Inline delivery: the metadata rides on `result.metadata`, so the top-level
+    # `Job.metadata` receipt (set only for `output_save_url` deliveries) is absent.
+    assert done.metadata is None
+    assert done.result.metadata is not None
