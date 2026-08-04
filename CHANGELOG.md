@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.16.0 (2026-08-04)
+
+Full Changelog: [v1.15.0...v1.16.0](https://github.com/landing-ai/ade-python/compare/v1.15.0...v1.16.0)
+
+### Features
+
+* send structured User-Agent and X-Source: sdk on every request (#133) ([1d2af8c](https://github.com/landing-ai/ade-python/commit/1d2af8c6c7b09eb313858ed41eabb155cf0be8dc))
+
+### Bug Fixes
+
+* **spec-sync:** disable adaptive thinking so the LLM PR summary lands (#139) ([f16b868](https://github.com/landing-ai/ade-python/commit/f16b86877c07912933567e492cf6f3cc6bfa84f6))
+* **spec-sync:** update PR body via REST so the LLM summary lands (#132) ([1610a2d](https://github.com/landing-ai/ade-python/commit/1610a2d78b047842f2e9d912387e0e92e60f942a))
+
+### Chores
+
+* hide the V2 build-schema surface from the SDK (#135) ([163ca74](https://github.com/landing-ai/ade-python/commit/163ca74b97516220d3d861389667e17b87c72038))
+
+### Other Changes
+
+* spec-sync: track V2 spec drift (#138) ([a3201e6](https://github.com/landing-ai/ade-python/commit/a3201e66253faf87d154de72f37bee43c8e8a201))
+* spec-sync: track V2 spec drift (#129) ([f7fe8c4](https://github.com/landing-ai/ade-python/commit/f7fe8c43248e797e9a6fe8ed2866d07c1196abac))
+
 ## 1.15.0 (2026-07-22)
 
 Full Changelog: [v1.14.0...v1.15.0](https://github.com/landing-ai/ade-python/compare/v1.14.0...v1.15.0)
