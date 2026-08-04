@@ -1469,7 +1469,7 @@
                       }
                     ],
                     "default": null,
-                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.",
+                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. A presigned URL must stay valid until the job COMPLETES, not just past submit — an already-expired presign, or one with less than 15 minutes of validity remaining (the default floor; the 422 names the exact window required), is rejected at submit. Sign with credentials that outlive the expected job duration: a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
                     "title": "Output Save Url"
                   },
                   "schema": {
@@ -1578,7 +1578,7 @@
                       }
                     ],
                     "default": null,
-                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.",
+                    "description": "URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. A presigned URL must stay valid until the job COMPLETES, not just past submit — an already-expired presign, or one with less than 15 minutes of validity remaining (the default floor; the 422 names the exact window required), is rejected at submit. Sign with credentials that outlive the expected job duration: a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry. JSON-serialized string in form data.",
                     "title": "Output Save Url"
                   },
                   "schema": {
@@ -2017,7 +2017,7 @@
                     "type": "string"
                   },
                   "model": {
-                    "description": "The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.",
+                    "description": "The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), a `-latest` alias, or a bare family name (equivalent to that family's `-latest`). Two families are available: `dpt-3-pro` for highest quality, and `dpt-3-fast` for lower-latency parsing without vision-model captioning. Defaults to the latest DPT-3 Pro snapshot.",
                     "type": "string"
                   },
                   "options": {
@@ -2276,7 +2276,7 @@
                     "type": "string"
                   },
                   "model": {
-                    "description": "The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.",
+                    "description": "The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), a `-latest` alias, or a bare family name (equivalent to that family's `-latest`). Two families are available: `dpt-3-pro` for highest quality, and `dpt-3-fast` for lower-latency parsing without vision-model captioning. Defaults to the latest DPT-3 Pro snapshot.",
                     "type": "string"
                   },
                   "options": {
@@ -2331,7 +2331,7 @@
                     "type": "object"
                   },
                   "output_save_url": {
-                    "description": "Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data.",
+                    "description": "Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data. A presigned URL must stay valid until the job COMPLETES, not just past submit: an already-expired URL, or one whose remaining validity is too short for the document's page count, is rejected at submit (422). By default the URL must retain at least 15 minutes of validity at submit, plus 3 seconds per document page; the 422 message names the exact window required. Sign with credentials that outlive the expected job duration — a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
                     "type": "string"
                   },
                   "service_tier": {
@@ -2535,7 +2535,7 @@
     },
     "/v2/workflow": {
       "post": {
-        "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body) or\n``multipart/form-data`` (file fields are staged automatically).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
+        "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body),\n``multipart/form-data`` (file fields are staged automatically),\nor ``application/x-www-form-urlencoded`` (text fields only).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
         "operationId": "v2-workflow_run_sync",
         "requestBody": {
           "content": {

@@ -623,7 +623,7 @@ class V2ExtractJobsPostRequest(BaseModel):
     )
     output_save_url: Optional[str] = Field(
         None,
-        description='URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time.',
+        description="URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. A presigned URL must stay valid until the job COMPLETES, not just past submit — an already-expired presign, or one with less than 15 minutes of validity remaining (the default floor; the 422 names the exact window required), is rejected at submit. Sign with credentials that outlive the expected job duration: a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
         title='Output Save Url',
     )
     schema_: dict[str, Any] = Field(
@@ -665,7 +665,7 @@ class V2ExtractJobsPostRequest1(BaseModel):
     )
     output_save_url: Optional[str] = Field(
         None,
-        description='URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. JSON-serialized string in form data.',
+        description="URL to save the result to — e.g. a presigned S3 PUT URL. Async jobs only. When set, the finished result is delivered (HTTP PUT) to this URL and the completed job reports ``output_url`` instead of an inline ``result``. Must be a public http(s) URL; private/loopback IPs are rejected at submit time. A presigned URL must stay valid until the job COMPLETES, not just past submit — an already-expired presign, or one with less than 15 minutes of validity remaining (the default floor; the 422 names the exact window required), is rejected at submit. Sign with credentials that outlive the expected job duration: a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry. JSON-serialized string in form data.",
         title='Output Save Url',
     )
     schema_: dict[str, Any] = Field(
@@ -1260,7 +1260,7 @@ class V2ParsePostRequest(BaseModel):
     )
     model: Optional[str] = Field(
         None,
-        description='The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.',
+        description="The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), a `-latest` alias, or a bare family name (equivalent to that family's `-latest`). Two families are available: `dpt-3-pro` for highest quality, and `dpt-3-fast` for lower-latency parsing without vision-model captioning. Defaults to the latest DPT-3 Pro snapshot.",
     )
     options: Optional[Options] = Field(
         None,
@@ -1280,7 +1280,7 @@ class V2ParseJobsPostRequest(BaseModel):
     )
     model: Optional[str] = Field(
         None,
-        description='The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), the `dpt-3-pro-latest` alias, or the bare `dpt-3-pro` family name (equivalent to `dpt-3-pro-latest`). Defaults to the latest DPT-3 Pro snapshot.',
+        description="The DPT-3 model snapshot to use for this request. Accepts a dated snapshot (for example, `dpt-3-pro-20260710`), a `-latest` alias, or a bare family name (equivalent to that family's `-latest`). Two families are available: `dpt-3-pro` for highest quality, and `dpt-3-fast` for lower-latency parsing without vision-model captioning. Defaults to the latest DPT-3 Pro snapshot.",
     )
     options: Optional[Options] = Field(
         None,
@@ -1289,7 +1289,7 @@ class V2ParseJobsPostRequest(BaseModel):
     )
     output_save_url: Optional[str] = Field(
         None,
-        description='Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data.',
+        description="Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data. A presigned URL must stay valid until the job COMPLETES, not just past submit: an already-expired URL, or one whose remaining validity is too short for the document's page count, is rejected at submit (422). By default the URL must retain at least 15 minutes of validity at submit, plus 3 seconds per document page; the 422 message names the exact window required. Sign with credentials that outlive the expected job duration — a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
     )
     service_tier: Optional[ServiceTier4] = Field(
         None,
