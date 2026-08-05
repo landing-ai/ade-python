@@ -238,7 +238,13 @@ def test_parse_jobs(production_client: LandingAIADE) -> None:
 
 def test_extract_jobs(production_client: LandingAIADE, parsed: ParseResponse) -> None:
     """`/v1/ade/extract/jobs` — create, poll to completion, and list."""
-    created = production_client.extract_jobs.create(schema=EXTRACT_SCHEMA, markdown=parsed.markdown)
+    # Unlike the sync `/extract` endpoint (test_extract), `/extract/jobs` requires
+    # `markdown` as a genuine file part. The SDK treats a bare `str` as file content
+    # (see _files.is_file_content) but uploads it with no filename, which this endpoint
+    # rejects with 422 "Invalid file provided". Send it as a named (filename, bytes,
+    # content-type) tuple so it uploads as a proper multipart file.
+    markdown_file = ("document.md", parsed.markdown.encode("utf-8"), "text/markdown")
+    created = production_client.extract_jobs.create(schema=EXTRACT_SCHEMA, markdown=markdown_file)
     assert created.job_id
 
     job = _wait_for_job(production_client.extract_jobs.get, created.job_id)
