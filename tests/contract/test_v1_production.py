@@ -16,7 +16,9 @@ from landingai_ade.types import (
     SectionResponse,
     ClassifyResponse,
     ParseJobGetResponse,
+    ParseJobListResponse,
     ExtractJobGetResponse,
+    ExtractJobListResponse,
     ExtractBuildSchemaResponse,
     client_split_params,
     client_classify_params,
@@ -79,6 +81,9 @@ SPLIT_CLASSES = cast(
 # helper serves both. Constrained (not bound) so the return type stays exact.
 JobT = TypeVar("JobT", ParseJobGetResponse, ExtractJobGetResponse)
 
+# Same idea for the two list responses, which both expose `.jobs`.
+ListT = TypeVar("ListT", ParseJobListResponse, ExtractJobListResponse)
+
 
 @pytest.fixture(scope="module")
 def production_client() -> Iterator[LandingAIADE]:
@@ -121,6 +126,24 @@ def _wait_for_job(
         if time.monotonic() >= deadline:
             raise AssertionError(f"job {job_id} still {job.status!r} after {timeout}s")
         time.sleep(poll_interval)
+
+
+def _list_completed_nonempty(list_completed: Callable[[], ListT]) -> ListT:
+    """Fetch a page of completed jobs, retrying briefly until it is non-empty.
+
+    Each caller has just completed a job under this key, so the completed-jobs list must
+    be non-empty; the short retry only absorbs read-after-write lag in list indexing.
+    The last response is returned either way, so the caller's non-empty assertion fails
+    with context if the list never populates — rather than the status-filter loop passing
+    vacuously on an empty page.
+    """
+    listed = list_completed()
+    for _ in range(4):
+        if listed.jobs:
+            break
+        time.sleep(3)
+        listed = list_completed()
+    return listed
 
 
 def test_parse(parsed: ParseResponse) -> None:
@@ -227,10 +250,15 @@ def test_parse_jobs(production_client: LandingAIADE) -> None:
         assert job.data.markdown
         assert job.data.chunks
 
-    # The `status` filter is applied server-side. Asserting the filter (rather than
-    # that our own job appears) keeps this stable on a busy production org.
-    listed = production_client.parse_jobs.list(page=0, page_size=10, status="completed")
-    assert isinstance(listed.jobs, list)
+    # Verify the `status` filter server-side. We just completed a parse job under this
+    # key, so the completed list must be non-empty — assert that (with a short retry for
+    # list-indexing lag) so a `list` regression that always returns `[]` can't pass this
+    # gate vacuously. We assert the filter holds rather than that our specific job is on
+    # page 0, which would be flaky on a busy production org.
+    listed = _list_completed_nonempty(
+        lambda: production_client.parse_jobs.list(page=0, page_size=10, status="completed")
+    )
+    assert listed.jobs, "expected at least one completed parse job (this test just completed one)"
     for listed_job in listed.jobs:
         assert listed_job.job_id
         assert listed_job.status == "completed"
@@ -258,8 +286,10 @@ def test_extract_jobs(production_client: LandingAIADE, parsed: ParseResponse) ->
         assert isinstance(job.data.extraction_metadata, dict)
         assert job.data.metadata.job_id
 
-    listed = production_client.extract_jobs.list(page=0, page_size=10, status="completed")
-    assert isinstance(listed.jobs, list)
+    listed = _list_completed_nonempty(
+        lambda: production_client.extract_jobs.list(page=0, page_size=10, status="completed")
+    )
+    assert listed.jobs, "expected at least one completed extract job (this test just completed one)"
     for listed_job in listed.jobs:
         assert listed_job.job_id
         assert listed_job.status == "completed"

@@ -28,12 +28,23 @@ jobs:
     name: e2e (production V1)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Defense in depth: only main should reach the production key. release.yml runs on main
+    # and a manual dispatch is expected on main; anything else skips here. NOTE this is not
+    # the real control — a workflow_dispatch runs the SELECTED ref's copy of this file, which
+    # could drop the `if`, so the environment branch rule below is what actually protects the
+    # secret. A non-main dispatch now skips silently rather than failing; that's expected.
+    if: github.ref == 'refs/heads/main'
     # Scopes the production key to a GitHub Environment instead of exposing it to every
     # workflow in the repo. REQUIRED SETUP: in repo Settings -> Environments, create
-    # `production-e2e` and add LANDINGAI_ADE_PRODUCTION_APIKEY as an environment secret.
-    # Do NOT add required reviewers unless you want every release to pause for a manual
-    # approval — release.yml blocks on this job. Until the environment exists the job
-    # falls back to a repo-level secret of the same name.
+    # `production-e2e`, add LANDINGAI_ADE_PRODUCTION_APIKEY as an environment secret, and
+    # under "Deployment branches and tags" restrict it to `main` only. That branch rule is
+    # the control that actually protects the key: GitHub enforces it against the run's real
+    # ref, so a workflow_dispatch on another branch cannot hand its (possibly modified)
+    # checkout the production credential. The release gate still works — release.yml runs on
+    # main and calls this workflow, which inherits the caller's main ref. Keep the secret
+    # environment-only: do NOT also store it as a repo-level secret (every branch can read
+    # that, defeating the branch rule). Do NOT add required reviewers unless you want every
+    # release to pause for a manual approval — release.yml blocks on this job.
     environment: production-e2e
     steps:
       - uses: actions/checkout@v6
