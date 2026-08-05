@@ -1,0 +1,74 @@
+# V1 end-to-end tests against the LIVE PRODUCTION API (api.va.landing.ai).
+#
+# Unlike the staging contract gate in pr-gates.yml, this is NOT wired to pull requests.
+# It runs in exactly two places:
+#   1. manually — Actions -> "E2E Production (V1)" -> Run workflow;
+#   2. as the pre-tag gate in release.yml, which calls this workflow via `workflow_call`
+#      and refuses to stamp/commit/tag if it goes red.
+#
+# COST: every run exercises the full V1 surface (parse, extract, build-schema, classify,
+# section, split, and both job types) against production, so it spends real inference
+# credits and leaves real job records in the production org — roughly 8 inference calls
+# on a 2-page PDF. That is the deliberate price of gating releases on the real API; do
+# not add this to a per-PR trigger.
+name: E2E Production (V1)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+# Serialize runs so a manual dispatch cannot interleave with the gate of an in-flight
+# release (both hit the same production org). A second run queues rather than racing.
+concurrency:
+  group: e2e-production
+  cancel-in-progress: false
+
+jobs:
+  e2e-production:
+    name: e2e (production V1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Scopes the production key to a GitHub Environment instead of exposing it to every
+    # workflow in the repo. REQUIRED SETUP: in repo Settings -> Environments, create
+    # `production-e2e` and add LANDINGAI_ADE_PRODUCTION_APIKEY as an environment secret.
+    # Do NOT add required reviewers unless you want every release to pause for a manual
+    # approval — release.yml blocks on this job. Until the environment exists the job
+    # falls back to a repo-level secret of the same name.
+    environment: production-e2e
+    steps:
+      - uses: actions/checkout@v6
+
+      # The tests self-skip when the key is absent (so a local `pytest -m production`
+      # is harmless). In CI that would turn a missing or rotated secret into a green
+      # run with zero tests executed — and, via release.yml, a release gated on
+      # nothing. Fail loudly here instead.
+      - name: Require the production API key
+        env:
+          LANDINGAI_ADE_PRODUCTION_APIKEY: ${{ secrets.LANDINGAI_ADE_PRODUCTION_APIKEY }}
+        run: |
+          if [ -z "$LANDINGAI_ADE_PRODUCTION_APIKEY" ]; then
+            echo "::error::LANDINGAI_ADE_PRODUCTION_APIKEY is not set. Add it as a secret on the" \
+                 "\`production-e2e\` environment (or at the repo level). Refusing to report a green" \
+                 "production e2e run with no tests executed."
+            exit 1
+          fi
+
+      - name: Install Rye
+        run: |
+          curl -sSf https://rye.astral.sh/get | bash
+          echo "$HOME/.rye/shims" >> "$GITHUB_PATH"
+        env:
+          RYE_VERSION: '0.44.0'
+          RYE_INSTALL_OPTION: '--yes'
+
+      - name: Install dependencies
+        run: rye sync --all-features
+
+      - name: V1 e2e vs production
+        env:
+          LANDINGAI_ADE_PRODUCTION_APIKEY: ${{ secrets.LANDINGAI_ADE_PRODUCTION_APIKEY }}
+        # `-m production` overrides the `-m 'not contract and not production'` default in
+        # pyproject.toml. -n 0 forces serial execution: these hit the live API, and the
+        # repo's default `-n auto` (xdist) would run them in parallel, inviting flakiness
+        # and rate-limits — and would re-parse the sample document once per worker.
+        run: rye run pytest tests/contract -m production -n 0 -v

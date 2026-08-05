@@ -134,15 +134,18 @@ replacement = '[\1](https://github.com/landing-ai/ade-python/tree/main/\g<2>)'
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Contract tests (marker `contract`) hit the live staging API — opt-in only, so a plain
-# `rye run pytest` (or the pydantic-v1 nox session) never silently calls staging even when
-# LANDINGAI_ADE_STAGING_APIKEY is exported. CI's explicit `-m contract` overrides this.
-addopts = "--tb=short -n auto -m 'not contract'"
+# Live-API tests are opt-in only, so a plain `rye run pytest` (or the pydantic-v1 nox session)
+# never silently calls a real environment even when the keys are exported. CI's explicit
+# `-m contract` / `-m production` overrides this.
+#   contract   -> staging (pr-gates.yml, spec-sync PRs)
+#   production -> PRODUCTION, spends real credits (e2e-production.yml, dispatch + release gate)
+addopts = "--tb=short -n auto -m 'not contract and not production'"
 xfail_strict = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 markers = [
   "contract: hits the live staging API; requires LANDINGAI_ADE_STAGING_APIKEY",
+  "production: hits the live PRODUCTION API and spends real credits; requires LANDINGAI_ADE_PRODUCTION_APIKEY",
 ]
 filterwarnings = [
   "error"
