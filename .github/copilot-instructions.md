@@ -33,3 +33,12 @@ When performing a code review on these PRs:
 - Once the wiring commit is present, focus the review on whether the wired surface matches
   the spec diff: routes, parameter names, request/response fields, required-vs-optional,
   and sync/async (job) surface consistency.
+- Do **not** review the spec snapshot files at all — `specs/v2-aide.json`, `specs/v1-ade.json`,
+  and everything under `specs/_generated/`. Skip them entirely and post **no** comments on their
+  diffs: not on wording, structure, `$ref`s, missing or updated schemas, typing, or anything else.
+  They are a verbatim mirror of the upstream OpenAPI spec (fetched live from staging and regenerated
+  on every sync), so they cannot be edited in this repo — any spec issue must be fixed upstream, not
+  here. Everything else the PR touches stays in review scope — the hand-maintained client code and
+  tests under `src/` / `tests/`, plus the regenerated-but-reviewable surface docs `api.md`,
+  `README.md`, and files under `docs/` (the spec-sync wiring commit updates these, and they should
+  be reviewed).

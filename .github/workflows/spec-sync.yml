@@ -214,6 +214,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUMMARY_TITLE_PREFIX: 'spec-sync(v1)'   # LLM generates only the title summary after this prefix
         run: ./scripts/spec-sync/summarize-pr.sh "${{ steps.open_pr.outputs.url }}"
 
       # The AI-wiring outcome, as a reply under the PR-opened thread root (steps.root).
@@ -526,6 +527,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUMMARY_TITLE_PREFIX: 'spec-sync(v2)'   # LLM generates only the title summary after this prefix
           # /v2/workflow* is intentionally NOT wired (see the AI-wiring prompt above), so keep it out
           # of "What changed" — else a workflow-only drift would advertise SDK endpoints the PR never
           # implemented.
