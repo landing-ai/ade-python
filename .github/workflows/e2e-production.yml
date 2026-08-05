@@ -16,6 +16,10 @@ name: E2E Production (V1)
 on:
   workflow_dispatch:
   workflow_call:
+  # TEMPORARY (remove before merge): lets us exercise this workflow from the feature
+  # branch, since workflow_dispatch only works once the file is on the default branch.
+  push:
+    branches: [feat/v1-production-e2e]
 
 # Serialize runs so a manual dispatch cannot interleave with the gate of an in-flight
 # release (both hit the same production org). A second run queues rather than racing.
