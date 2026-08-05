@@ -38,4 +38,7 @@ When performing a code review on these PRs:
   diffs: not on wording, structure, `$ref`s, missing or updated schemas, typing, or anything else.
   They are a verbatim mirror of the upstream OpenAPI spec (fetched live from staging and regenerated
   on every sync), so they cannot be edited in this repo — any spec issue must be fixed upstream, not
-  here. Review only the hand-maintained client code, tests, and docs under `src/` / `tests/` / `docs/`.
+  here. Everything else the PR touches stays in review scope — the hand-maintained client code and
+  tests under `src/` / `tests/`, plus the regenerated-but-reviewable surface docs `api.md`,
+  `README.md`, and files under `docs/` (the spec-sync wiring commit updates these, and they should
+  be reviewed).
