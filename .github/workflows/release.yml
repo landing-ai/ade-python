@@ -3,7 +3,7 @@
 #
 # A maintainer runs this workflow (Actions -> Release -> Run workflow) and
 # picks the bump: patch / minor / major. The workflow then, in one shot:
-#   0. runs the V1 production e2e suite (.github/workflows/e2e-production.yml)
+#   0. runs the V1 + V2 production e2e suite (.github/workflows/e2e-production.yml)
 #      against the live API — nothing below runs if it goes red,
 #   1. computes the next version from the latest git tag,
 #   2. stamps it into pyproject.toml and src/landingai_ade/_version.py,
