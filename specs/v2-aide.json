@@ -148,7 +148,7 @@
               }
             ],
             "default": null,
-            "description": "Fine-grained grounding segments at the model's current granularity (visual lines today; finer in future versions, same schema). Present only on leaf elements — every type except `table`. `[]` only when segments are structurally impossible: `table_cell` (a cell has no finer granularity than itself) and elements whose markdown is suppressed via `blocks.<type>.markdown=false`. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
+            "description": "Fine-grained grounding segments, at whichever granularity the model reads at: one entry per visual line for `dpt-3-pro`, one per **word** — each with its `confidence` — for `dpt-3-fast`, including the words inside table cells. Present only on leaf elements — every type except `table`. `[]` in three cases: an element whose markdown is suppressed via `blocks.<type>.markdown=false`; a `table_cell` on a line-granularity model (a cell has no finer granularity than itself there); and a `table_cell` on a word-granularity model whose words cannot be located in the rendered cell text — a `|` escaped on the way into a pipe table, or a character escaped on the way into an HTML table — where the segments are dropped rather than risk reporting offsets that point at the wrong characters. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
             "title": "Atomic Grounding"
           },
           "children": {
@@ -302,6 +302,19 @@
           "box": {
             "$ref": "#/components/schemas/Box",
             "description": "Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 8 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`."
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How sure the model is of the text in this segment, in `[0, 1]`. Present only on word-granularity `atomic_grounding` entries (`dpt-3-fast`), where it is the lowest per-character OCR confidence in the word — so a word is only as trustworthy as its weakest character. Omitted on node-level grounding and on models that ground at line granularity.",
+            "title": "Confidence"
           },
           "page": {
             "description": "1-indexed page number this grounding is on. On a page node, the page's own number.",
@@ -1013,6 +1026,730 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/extract/build-schema": {
+      "post": {
+        "description": "Generate or edit a JSON Schema for extraction from one or more source Markdown documents and/or a natural-language prompt. v1-compatible wire, running the same schema-build engine as `/v2/extract/build-schema`. The one difference: this route accepts `model` and echoes it back as `metadata.version`. Schema generation is version-free, so `model` does NOT select a model and does not change the generated schema. Runs synchronously and returns the result inline.",
+        "operationId": "v1-build-schema_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V1BuildSchemaOperationWorkflow — the ``/v1/extract/build-schema``\nrequest body, i.e. VTRA's ``/v1/ade/extract/build-schema`` wire.\n\nThe v2 request already mirrors VTRA's ``BuildSchemaRequest`` field-for-field\n(``markdowns`` / ``markdown_urls`` / ``prompt`` / ``schema``, plus the\nat-least-one-source validator), so this INHERITS all of it and adds back the\none field v2 deliberately dropped: ``model``.\n\nWhy the delta exists at all: v2 build-schema is intentionally version-free —\nschema generation runs on the build engine's default model, so v2 takes no\n``model`` and always answers ``metadata.version: null``. VTRA's v1 wire DOES\naccept ``model``, and a caller that sends it must not get a 422 for an unknown\nform field. So v1 accepts it and ECHOES it back in ``metadata.version``\n(``operations/v1_build_schema.py``'s ``map_result``).\n\nIt is an ECHO, not a selector — the value does not reach the engine and does\nnot change which model builds the schema. That is the honest shape: v1 and v2\ndrive the same ``extractor.build()``, and pretending ``model`` picks a version\nwould be a lie in the contract. Documented on the field below so a caller\nisn't misled into thinking they pinned anything.",
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                    "title": "Markdowns"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent.",
+                    "title": "Model"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine.",
+                    "title": "Schema"
+                  }
+                },
+                "title": "V1BuildSchemaRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation. JSON-serialized string in form data.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "description": "Repeat the field for each file upload.",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                          "type": "string"
+                        },
+                        {
+                          "description": "File upload.",
+                          "format": "binary",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent. JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema. JSON-serialized string in form data.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine. JSON-serialized string in form data.",
+                    "title": "Schema"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Result returned by V2BuildSchemaOperationWorkflow — the\n``/v2/extract/build-schema`` response body (VTRA ``BuildSchemaResponse``).\n\n``extraction_schema`` is the generated JSON Schema serialized as a STRING\n(VTRA parity — the v1 field is a string, not an object).",
+                  "properties": {
+                    "extraction_schema": {
+                      "description": "The generated JSON schema as a string.",
+                      "title": "Extraction Schema",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "$ref": "#/components/schemas/V2BuildSchemaMetadata",
+                      "description": "The metadata for the schema generation process."
+                    }
+                  },
+                  "required": [
+                    "extraction_schema",
+                    "metadata"
+                  ],
+                  "title": "V2BuildSchemaResponse",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v1-build-schema result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Extract",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v1/extract/build-schema/jobs": {
+      "get": {
+        "description": "List your Extract jobs, newest first.",
+        "operationId": "v1-build-schema_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      },
+      "post": {
+        "description": "Generate or edit a JSON Schema for extraction from one or more source Markdown documents and/or a natural-language prompt. v1-compatible wire, running the same schema-build engine as `/v2/extract/build-schema`. The one difference: this route accepts `model` and echoes it back as `metadata.version`. Schema generation is version-free, so `model` does NOT select a model and does not change the generated schema. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "v1-build-schema_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V1BuildSchemaOperationWorkflow — the ``/v1/extract/build-schema``\nrequest body, i.e. VTRA's ``/v1/ade/extract/build-schema`` wire.\n\nThe v2 request already mirrors VTRA's ``BuildSchemaRequest`` field-for-field\n(``markdowns`` / ``markdown_urls`` / ``prompt`` / ``schema``, plus the\nat-least-one-source validator), so this INHERITS all of it and adds back the\none field v2 deliberately dropped: ``model``.\n\nWhy the delta exists at all: v2 build-schema is intentionally version-free —\nschema generation runs on the build engine's default model, so v2 takes no\n``model`` and always answers ``metadata.version: null``. VTRA's v1 wire DOES\naccept ``model``, and a caller that sends it must not get a 422 for an unknown\nform field. So v1 accepts it and ECHOES it back in ``metadata.version``\n(``operations/v1_build_schema.py``'s ``map_result``).\n\nIt is an ECHO, not a selector — the value does not reach the engine and does\nnot change which model builds the schema. That is the honest shape: v1 and v2\ndrive the same ``extractor.build()``, and pretending ``model`` picks a version\nwould be a lie in the contract. Documented on the field below so a caller\nisn't misled into thinking they pinned anything.",
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                    "title": "Markdowns"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent.",
+                    "title": "Model"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine.",
+                    "title": "Schema"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "title": "V1BuildSchemaRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown_urls": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "URLs to Markdown files to analyze for schema generation. JSON-serialized string in form data.",
+                    "title": "Markdown Urls"
+                  },
+                  "markdowns": {
+                    "description": "Repeat the field for each file upload.",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "description": "Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.",
+                          "type": "string"
+                        },
+                        {
+                          "description": "File upload.",
+                          "format": "binary",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent. JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "prompt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Instructions for how to generate or modify the schema. JSON-serialized string in form data.",
+                    "title": "Prompt"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Existing JSON schema to iterate on or refine. JSON-serialized string in form data.",
+                    "title": "Schema"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v1/extract/build-schema/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Extract job, including its result once the job has completed.",
+        "operationId": "v1-build-schema_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by V2BuildSchemaOperationWorkflow — the\n``/v2/extract/build-schema`` response body (VTRA ``BuildSchemaResponse``).\n\n``extraction_schema`` is the generated JSON Schema serialized as a STRING\n(VTRA parity — the v1 field is a string, not an object).",
+                          "properties": {
+                            "extraction_schema": {
+                              "description": "The generated JSON schema as a string.",
+                              "title": "Extraction Schema",
+                              "type": "string"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V2BuildSchemaMetadata",
+                              "description": "The metadata for the schema generation process."
+                            }
+                          },
+                          "required": [
+                            "extraction_schema",
+                            "metadata"
+                          ],
+                          "title": "V2BuildSchemaResponse",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
     "/v2/extract": {
       "post": {
         "description": "Extract structured data from a Markdown document according to a JSON schema, with character-span grounding into the source Markdown. Runs synchronously and returns the result inline.",

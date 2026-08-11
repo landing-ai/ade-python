@@ -431,6 +431,337 @@ class WorkflowStepOptions(BaseModel):
     )
 
 
+class Model(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent.',
+        max_length=256,
+        title='Model',
+    )
+
+
+class V1ExtractBuildSchemaPostRequest(BaseModel):
+    """
+    Input to V1BuildSchemaOperationWorkflow — the ``/v1/extract/build-schema``
+    request body, i.e. VTRA's ``/v1/ade/extract/build-schema`` wire.
+
+    The v2 request already mirrors VTRA's ``BuildSchemaRequest`` field-for-field
+    (``markdowns`` / ``markdown_urls`` / ``prompt`` / ``schema``, plus the
+    at-least-one-source validator), so this INHERITS all of it and adds back the
+    one field v2 deliberately dropped: ``model``.
+
+    Why the delta exists at all: v2 build-schema is intentionally version-free —
+    schema generation runs on the build engine's default model, so v2 takes no
+    ``model`` and always answers ``metadata.version: null``. VTRA's v1 wire DOES
+    accept ``model``, and a caller that sends it must not get a 422 for an unknown
+    form field. So v1 accepts it and ECHOES it back in ``metadata.version``
+    (``operations/v1_build_schema.py``'s ``map_result``).
+
+    It is an ECHO, not a selector — the value does not reach the engine and does
+    not change which model builds the schema. That is the honest shape: v1 and v2
+    drive the same ``extractor.build()``, and pretending ``model`` picks a version
+    would be a lie in the contract. Documented on the field below so a caller
+    isn't misled into thinking they pinned anything.
+    """
+
+    markdown_urls: Optional[list[str]] = Field(
+        None,
+        description='URLs to Markdown files to analyze for schema generation.',
+        title='Markdown Urls',
+    )
+    markdowns: Optional[list[str]] = Field(
+        None,
+        description='Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.',
+        title='Markdowns',
+    )
+    model: Optional[Model] = Field(
+        None,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent.',
+        title='Model',
+    )
+    prompt: Optional[str] = Field(
+        None,
+        description='Instructions for how to generate or modify the schema.',
+        title='Prompt',
+    )
+    schema_: Optional[str] = Field(
+        None,
+        alias='schema',
+        description='Existing JSON schema to iterate on or refine.',
+        title='Schema',
+    )
+
+
+class Model1(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent. JSON-serialized string in form data.',
+        max_length=256,
+        title='Model',
+    )
+
+
+class V1ExtractBuildSchemaPostRequest1(BaseModel):
+    markdown_urls: Optional[list[str]] = Field(
+        None,
+        description='URLs to Markdown files to analyze for schema generation. JSON-serialized string in form data.',
+        title='Markdown Urls',
+    )
+    markdowns: Optional[list[Union[str, bytes]]] = Field(
+        None, description='Repeat the field for each file upload.'
+    )
+    model: Optional[Model1] = Field(
+        None,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent. JSON-serialized string in form data.',
+        title='Model',
+    )
+    prompt: Optional[str] = Field(
+        None,
+        description='Instructions for how to generate or modify the schema. JSON-serialized string in form data.',
+        title='Prompt',
+    )
+    schema_: Optional[str] = Field(
+        None,
+        alias='schema',
+        description='Existing JSON schema to iterate on or refine. JSON-serialized string in form data.',
+        title='Schema',
+    )
+
+
+class V1ExtractBuildSchemaPostResponse(BaseModel):
+    """
+    Result returned by V2BuildSchemaOperationWorkflow — the
+    ``/v2/extract/build-schema`` response body (VTRA ``BuildSchemaResponse``).
+
+    ``extraction_schema`` is the generated JSON Schema serialized as a STRING
+    (VTRA parity — the v1 field is a string, not an object).
+    """
+
+    extraction_schema: str = Field(
+        ...,
+        description='The generated JSON schema as a string.',
+        title='Extraction Schema',
+    )
+    metadata: V2BuildSchemaMetadata = Field(
+        ..., description='The metadata for the schema generation process.'
+    )
+
+
+class V1ExtractBuildSchemaJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Status1(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class Job(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status1] = None
+
+
+class V1ExtractBuildSchemaJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class Model2(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent.',
+        max_length=256,
+        title='Model',
+    )
+
+
+class ServiceTier2(Enum):
+    """
+    Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
+    """
+
+    standard = 'standard'
+    priority = 'priority'
+
+
+class V1ExtractBuildSchemaJobsPostRequest(BaseModel):
+    """
+    Input to V1BuildSchemaOperationWorkflow — the ``/v1/extract/build-schema``
+    request body, i.e. VTRA's ``/v1/ade/extract/build-schema`` wire.
+
+    The v2 request already mirrors VTRA's ``BuildSchemaRequest`` field-for-field
+    (``markdowns`` / ``markdown_urls`` / ``prompt`` / ``schema``, plus the
+    at-least-one-source validator), so this INHERITS all of it and adds back the
+    one field v2 deliberately dropped: ``model``.
+
+    Why the delta exists at all: v2 build-schema is intentionally version-free —
+    schema generation runs on the build engine's default model, so v2 takes no
+    ``model`` and always answers ``metadata.version: null``. VTRA's v1 wire DOES
+    accept ``model``, and a caller that sends it must not get a 422 for an unknown
+    form field. So v1 accepts it and ECHOES it back in ``metadata.version``
+    (``operations/v1_build_schema.py``'s ``map_result``).
+
+    It is an ECHO, not a selector — the value does not reach the engine and does
+    not change which model builds the schema. That is the honest shape: v1 and v2
+    drive the same ``extractor.build()``, and pretending ``model`` picks a version
+    would be a lie in the contract. Documented on the field below so a caller
+    isn't misled into thinking they pinned anything.
+    """
+
+    markdown_urls: Optional[list[str]] = Field(
+        None,
+        description='URLs to Markdown files to analyze for schema generation.',
+        title='Markdown Urls',
+    )
+    markdowns: Optional[list[str]] = Field(
+        None,
+        description='Markdown files or inline content strings to analyze for schema generation. Multiple documents can be provided for better schema coverage.',
+        title='Markdowns',
+    )
+    model: Optional[Model2] = Field(
+        None,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent.',
+        title='Model',
+    )
+    prompt: Optional[str] = Field(
+        None,
+        description='Instructions for how to generate or modify the schema.',
+        title='Prompt',
+    )
+    schema_: Optional[str] = Field(
+        None,
+        alias='schema',
+        description='Existing JSON schema to iterate on or refine.',
+        title='Schema',
+    )
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class Model3(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent. JSON-serialized string in form data.',
+        max_length=256,
+        title='Model',
+    )
+
+
+class V1ExtractBuildSchemaJobsPostRequest1(BaseModel):
+    markdown_urls: Optional[list[str]] = Field(
+        None,
+        description='URLs to Markdown files to analyze for schema generation. JSON-serialized string in form data.',
+        title='Markdown Urls',
+    )
+    markdowns: Optional[list[Union[str, bytes]]] = Field(
+        None, description='Repeat the field for each file upload.'
+    )
+    model: Optional[Model3] = Field(
+        None,
+        description='Accepted for v1 wire compatibility and echoed back as `metadata.version`. Schema generation is version-free — this value does NOT select a model and does not change the generated schema. Bounded to 256 characters; blank values are treated as absent. JSON-serialized string in form data.',
+        title='Model',
+    )
+    prompt: Optional[str] = Field(
+        None,
+        description='Instructions for how to generate or modify the schema. JSON-serialized string in form data.',
+        title='Prompt',
+    )
+    schema_: Optional[str] = Field(
+        None,
+        alias='schema',
+        description='Existing JSON schema to iterate on or refine. JSON-serialized string in form data.',
+        title='Schema',
+    )
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class V1ExtractBuildSchemaJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status1] = None
+
+
+class Error(BaseModel):
+    """
+    Present once status is ``failed``.
+    """
+
+    code: Optional[str] = Field(
+        None, description='Stable error code (``internal_error`` when unmapped).'
+    )
+    message: Optional[str] = None
+
+
+class Result(BaseModel):
+    """
+    Result returned by V2BuildSchemaOperationWorkflow — the
+    ``/v2/extract/build-schema`` response body (VTRA ``BuildSchemaResponse``).
+
+    ``extraction_schema`` is the generated JSON Schema serialized as a STRING
+    (VTRA parity — the v1 field is a string, not an object).
+    """
+
+    extraction_schema: str = Field(
+        ...,
+        description='The generated JSON schema as a string.',
+        title='Extraction Schema',
+    )
+    metadata: V2BuildSchemaMetadata = Field(
+        ..., description='The metadata for the schema generation process.'
+    )
+
+
+class V1ExtractBuildSchemaJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result] = Field(
+        None, description='Present once status is ``completed``.'
+    )
+    status: Optional[Status1] = None
+
+
 class V2ExtractPostRequest(BaseModel):
     """
     Input to V2ExtractOperationWorkflow.
@@ -558,14 +889,7 @@ class V2ExtractJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status1(Enum):
-    pending = 'pending'
-    processing = 'processing'
-    completed = 'completed'
-    failed = 'failed'
-
-
-class Job(BaseModel):
+class Job1(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -579,18 +903,9 @@ class Job(BaseModel):
 
 class V2ExtractJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job]] = None
+    jobs: Optional[list[Job1]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
-
-
-class ServiceTier2(Enum):
-    """
-    Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
-    """
-
-    standard = 'standard'
-    priority = 'priority'
 
 
 class V2ExtractJobsPostRequest(BaseModel):
@@ -698,18 +1013,7 @@ class V2ExtractJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Error(BaseModel):
-    """
-    Present once status is ``failed``.
-    """
-
-    code: Optional[str] = Field(
-        None, description='Stable error code (``internal_error`` when unmapped).'
-    )
-    message: Optional[str] = None
-
-
-class Result(BaseModel):
+class Result1(BaseModel):
     """
     Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``
     response body (``docs/extract-v2-proposal.md`` → Response).
@@ -772,7 +1076,7 @@ class V2ExtractJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result] = Field(
+    result: Optional[Result1] = Field(
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
@@ -888,7 +1192,7 @@ class V2ParseJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status4(Enum):
+class Status7(Enum):
     """
     The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
     """
@@ -899,7 +1203,7 @@ class Status4(Enum):
     failed = 'failed'
 
 
-class Job1(BaseModel):
+class Job2(BaseModel):
     completed_at: Optional[str] = Field(
         None, description='ISO-8601 timestamp for when the job finished, if terminal.'
     )
@@ -917,7 +1221,7 @@ class Job1(BaseModel):
     model_version: Optional[str] = Field(
         None, description='The model snapshot used to parse the document.'
     )
-    status: Optional[Status4] = Field(
+    status: Optional[Status7] = Field(
         None,
         description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
@@ -928,14 +1232,14 @@ class V2ParseJobsGetResponse(BaseModel):
         None,
         description='Whether more jobs exist beyond this page; request the next ``page`` to fetch them.',
     )
-    jobs: Optional[list[Job1]] = Field(
+    jobs: Optional[list[Job2]] = Field(
         None, description="The caller's parse jobs for this page, newest first."
     )
     page: Optional[int] = Field(None, description='The 0-indexed page number.')
     page_size: Optional[int] = Field(None, description='Items per page.')
 
 
-class ServiceTier4(Enum):
+class ServiceTier6(Enum):
     """
     Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
     """
@@ -944,7 +1248,7 @@ class ServiceTier4(Enum):
     priority = 'priority'
 
 
-class Status5(Enum):
+class Status8(Enum):
     """
     The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.
     """
@@ -963,13 +1267,13 @@ class V2ParseJobsPostResponse(BaseModel):
         ...,
         description='The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Status5 = Field(
+    status: Status8 = Field(
         ...,
         description="The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.",
     )
 
 
-class Error1(BaseModel):
+class Error2(BaseModel):
     """
     Present once the job has ``failed`` — the failure code + message.
     """
@@ -978,7 +1282,7 @@ class Error1(BaseModel):
     message: Optional[str] = None
 
 
-class Status6(Enum):
+class Status9(Enum):
     """
     The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
     """
@@ -1037,14 +1341,14 @@ class V2WorkflowJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status7(Enum):
+class Status10(Enum):
     pending = 'pending'
     processing = 'processing'
     completed = 'completed'
     failed = 'failed'
 
 
-class Job2(BaseModel):
+class Job3(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -1053,17 +1357,17 @@ class Job2(BaseModel):
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status7] = None
+    status: Optional[Status10] = None
 
 
 class V2WorkflowJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job2]] = None
+    jobs: Optional[list[Job3]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
 
-class ServiceTier5(Enum):
+class ServiceTier7(Enum):
     """
     Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
     """
@@ -1078,10 +1382,10 @@ class V2WorkflowJobsPostResponse(BaseModel):
         None,
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status7] = None
+    status: Optional[Status10] = None
 
 
-class Error2(BaseModel):
+class Error3(BaseModel):
     """
     Present once status is ``failed``.
     """
@@ -1092,7 +1396,7 @@ class Error2(BaseModel):
     message: Optional[str] = None
 
 
-class Result1(BaseModel):
+class Result2(BaseModel):
     """
     Result returned by V2WorkflowOperationWorkflow.
 
@@ -1133,7 +1437,7 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
         None, description='Present once the job is terminal.'
     )
     created_at: Optional[str] = None
-    error: Optional[Error2] = Field(
+    error: Optional[Error3] = Field(
         None, description='Present once status is ``failed``.'
     )
     job_id: Optional[str] = Field(
@@ -1146,10 +1450,10 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result1] = Field(
+    result: Optional[Result2] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status7] = None
+    status: Optional[Status10] = None
 
 
 class BlocksOptions(BaseModel):
@@ -1178,6 +1482,11 @@ class Grounding(BaseModel):
     box: Box = Field(
         ...,
         description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 8 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`.",
+    )
+    confidence: Optional[float] = Field(
+        None,
+        description='How sure the model is of the text in this segment, in `[0, 1]`. Present only on word-granularity `atomic_grounding` entries (`dpt-3-fast`), where it is the lowest per-character OCR confidence in the word — so a word is only as trustworthy as its weakest character. Omitted on node-level grounding and on models that ground at line granularity.',
+        title='Confidence',
     )
     page: int = Field(
         ...,
@@ -1291,7 +1600,7 @@ class V2ParseJobsPostRequest(BaseModel):
         None,
         description="Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data. A presigned URL must stay valid until the job COMPLETES, not just past submit: an already-expired URL, or one whose remaining validity is too short for the document's page count, is rejected at submit (422). By default the URL must retain at least 15 minutes of validity at submit, plus 3 seconds per document page; the 422 message names the exact window required. Sign with credentials that outlive the expected job duration — a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
     )
-    service_tier: Optional[ServiceTier4] = Field(
+    service_tier: Optional[ServiceTier6] = Field(
         None,
         description='Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -1441,7 +1750,7 @@ class V2WorkflowJobsPostRequest(BaseModel):
         ],
         title='Output',
     )
-    service_tier: Optional[ServiceTier5] = Field(
+    service_tier: Optional[ServiceTier7] = Field(
         None,
         description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -1482,7 +1791,7 @@ class V2WorkflowJobsPostRequest1(BaseModel):
         ],
         title='Output',
     )
-    service_tier: Optional[ServiceTier5] = Field(
+    service_tier: Optional[ServiceTier7] = Field(
         None,
         description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -1515,7 +1824,7 @@ class Element(BaseModel):
 
     atomic_grounding: Optional[list[Grounding]] = Field(
         None,
-        description="Fine-grained grounding segments at the model's current granularity (visual lines today; finer in future versions, same schema). Present only on leaf elements — every type except `table`. `[]` only when segments are structurally impossible: `table_cell` (a cell has no finer granularity than itself) and elements whose markdown is suppressed via `blocks.<type>.markdown=false`. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
+        description="Fine-grained grounding segments, at whichever granularity the model reads at: one entry per visual line for `dpt-3-pro`, one per **word** — each with its `confidence` — for `dpt-3-fast`, including the words inside table cells. Present only on leaf elements — every type except `table`. `[]` in three cases: an element whose markdown is suppressed via `blocks.<type>.markdown=false`; a `table_cell` on a line-granularity model (a cell has no finer granularity than itself there); and a `table_cell` on a word-granularity model whose words cannot be located in the rendered cell text — a `|` escaped on the way into a pipe table, or a character escaped on the way into an HTML table — where the segments are dropped rather than risk reporting offsets that point at the wrong characters. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
         title='Atomic Grounding',
     )
     children: Optional[list[Element]] = Field(
@@ -1643,7 +1952,7 @@ class V2ParseJobsJobIdGetResponse(BaseModel):
     created_at: Optional[str] = Field(
         None, description='ISO-8601 timestamp for when the job was created.'
     )
-    error: Optional[Error1] = Field(
+    error: Optional[Error2] = Field(
         None,
         description='Present once the job has ``failed`` — the failure code + message.',
     )
@@ -1667,7 +1976,7 @@ class V2ParseJobsJobIdGetResponse(BaseModel):
         None,
         description='The parse response, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
-    status: Optional[Status6] = Field(
+    status: Optional[Status9] = Field(
         None,
         description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
