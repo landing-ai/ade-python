@@ -189,6 +189,8 @@ def test_parse_response_inline_grounding_and_metadata() -> None:
                                     "page": 1,
                                     "range": {"start": 0, "end": 4},
                                     "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
+                                    # Word-granularity (`dpt-3-fast`) segments carry a `confidence`.
+                                    "confidence": 0.87,
                                 }
                             ],
                         }
@@ -221,6 +223,10 @@ def test_parse_response_inline_grounding_and_metadata() -> None:
     assert el.atomic_grounding is not None and len(el.atomic_grounding) == 1
     seg = el.atomic_grounding[0]
     assert seg.range is not None and seg.range.start == 0
+    # `confidence` is populated on word-granularity segments and absent (None) on
+    # node-level grounding.
+    assert seg.confidence == 0.87
+    assert el.grounding.confidence is None
     assert r.metadata is not None
     assert r.metadata.output_markdown_chars == 4
     assert r.metadata.range_units == "unicode_codepoints"

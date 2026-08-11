@@ -76,6 +76,11 @@ class V2ParseNodeGrounding(BaseModel):
     page: Optional[int] = None
     range: Optional[V2ParseRange] = None
     box: Optional[V2ParseBox] = None
+    # How sure the model is of the text in this segment, in `[0, 1]`. Present only on
+    # word-granularity `atomic_grounding` entries (`dpt-3-fast`), where it is the
+    # lowest per-character OCR confidence in the word. Omitted on node-level grounding
+    # and on models that ground at line granularity (`dpt-3-pro`).
+    confidence: Optional[float] = None
 
 
 # --- `structure`: the logical document tree ------------------------------------
@@ -96,8 +101,10 @@ class V2ParseElement(BaseModel):
     span: Optional[List[int]] = None
     # The element's spatial data (`{page, range, box}`), inline on the node.
     grounding: Optional[V2ParseNodeGrounding] = None
-    # Fine-grained grounding segments (visual lines today). Present on leaf
-    # elements only; omitted entirely when `options.atomic_grounding` is false.
+    # Fine-grained grounding segments, at whichever granularity the model reads at:
+    # one entry per visual line for `dpt-3-pro`, one per word (each with its
+    # `confidence`) for `dpt-3-fast`. Present on leaf elements only; omitted entirely
+    # when `options.atomic_grounding` is false.
     atomic_grounding: Optional[List[V2ParseNodeGrounding]] = None
     # The element's slice of the top-level `markdown`; only when
     # `options.inline_markdown` is true.
