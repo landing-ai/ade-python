@@ -510,8 +510,34 @@ jobs:
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git diff:*)"
 
-      # The AI step has NO shell (only git diff), so it cannot itself execute anything with the
-      # checkout's push credentials. But its Write tool is repo-wide, so before running the trusted
+      # ---- Harden before running ANY trusted command over the AI's edits --------------------
+      #
+      # The AI step has no shell, so it cannot execute anything ITSELF. But the allowlist revert
+      # below is not a complete boundary, because `git checkout` only restores TRACKED files and
+      # `git clean -fd` (no -x) only deletes untracked, non-ignored ones. Two repo-wide Write
+      # targets survive both — and the trusted steps that follow EXECUTE both:
+      #   * .venv/**  — gitignored, so never cleaned; `rye run check:ruff` / `typecheck` / `format`
+      #                 all run binaries out of it.
+      #   * .git/**   — not a worktree path at all; `.git/hooks/pre-commit` would run on our own
+      #                 `git commit`, and `core.hooksPath` can redirect hooks anywhere.
+      # Either one turns "the AI wrote a file" into "code runs in a trusted step".
+      #
+      # So do two things before any of those steps: drop the push credential actions/checkout
+      # persisted into .git/config (nothing executed downstream can reach a token that is not
+      # there — the AI-wiring push below re-supplies it explicitly for that one command), and
+      # neutralize the hook paths so our own git commands cannot run anything.
+      #
+      # This narrows the blast radius; it does not make executing AI-authored code safe. Full
+      # isolation — run the AI pass in a credential-free checkout and copy only the validated
+      # allowlist diff back — is the real fix and is deliberately NOT attempted here.
+      - name: Harden the checkout after the AI pass
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        run: |
+          git config --local --unset-all 'http.https://github.com/.extraheader' || true
+          rm -rf .git/hooks
+          git config --local --unset-all core.hooksPath || true
+
+      # Its Write tool is repo-wide, so before running the trusted
       # formatter — and before the `git add -A` below — we enforce the product-code ALLOWLIST:
       # revert every tracked edit and delete every untracked file OUTSIDE src/ tests/ docs/ api.md.
       # This stops an injected edit to e.g. pyproject.toml (which defines what `rye run format`
@@ -591,9 +617,20 @@ jobs:
             --max-turns 60
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git diff:*)"
 
-      # The repair pass is exactly as untrusted as the wiring pass, so re-apply the allowlist before
-      # formatting or committing. This also deletes .spec-sync-lint.log (untracked, not in the
-      # `git clean` exclusions), so the log never reaches the commit.
+      # The repair pass is exactly as untrusted as the wiring pass, so repeat the hardening too:
+      # it could have written .venv/** or .git/hooks/** just as the wiring pass could, and the
+      # format/re-lint/commit steps below execute both. (The credential unset is already done and
+      # idempotent; the hooks removal matters because a repair pass could recreate them.)
+      - name: Re-harden the checkout after the repair pass
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
+        run: |
+          git config --local --unset-all 'http.https://github.com/.extraheader' || true
+          rm -rf .git/hooks
+          git config --local --unset-all core.hooksPath || true
+
+      # Re-apply the allowlist before formatting or committing. This also deletes
+      # .spec-sync-lint.log (untracked, not in the `git clean` exclusions), so the log never
+      # reaches the commit.
       - name: Re-restrict AI edits to product code, then format
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
         run: |
@@ -620,6 +657,10 @@ jobs:
         env:
           LINT_FIRST: ${{ steps.ai_lint.outcome }}
           LINT_FINAL: ${{ steps.ai_lint_final.outcome }}   # 'skipped' when the first lint passed
+          # The harden step above removed the credential actions/checkout persisted in .git/config,
+          # so supply it explicitly here — to this one command, after all AI-authored code has
+          # already run. GitHub masks the value in logs.
+          GH_PUSH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
         run: |
           if [ "$LINT_FIRST" = 'success' ]; then
             lint_note='Lint clean.'
@@ -638,8 +679,9 @@ jobs:
             echo "AI step produced no changes."
             echo "summary=Mechanical-only PR (AI wiring added no changes — e.g. workflow-only drift). Human review required before merge." >> "$GITHUB_OUTPUT"
           else
-            git commit -m "feat(spec-sync): wire client.v2 to spec diff (AI)"
-            git push origin HEAD:"$SYNC_BRANCH"
+            # --no-verify belts-and-braces on top of removing .git/hooks above.
+            git commit --no-verify -m "feat(spec-sync): wire client.v2 to spec diff (AI)"
+            git push "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:"$SYNC_BRANCH"
             echo "summary=Mechanical snapshot + AI wiring committed (a draft a human finishes). ${lint_note} Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
 
