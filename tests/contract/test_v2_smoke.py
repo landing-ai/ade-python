@@ -35,6 +35,16 @@ SAMPLE_MARKDOWN = "# Acme Inc. — Q1 Report\n\nTotal revenue for the quarter wa
 # and the whole suite is ~100s, so re-running the job is cheap.
 CONTRACT_TIMEOUT = 45.0
 
+# Budget for the `.wait()` job polls below. `poll_until_terminal` (_base.py) calls `get_job()`
+# and only THEN checks the deadline, so a poll starting just under it still costs a full
+# CONTRACT_TIMEOUT on top: worst case per job test is create + deadline + one in-flight poll.
+# With these values that is 45+60+45=150s (extract) and 45+120+45=210s (parse), which keeps the
+# whole file inside the 15-minute `contract-tests` job cap even if staging stops answering
+# entirely. Parse gets the larger deadline because it processes the 2-page sample PDF rather
+# than a few hundred bytes of markdown. Raise either only against that cap.
+EXTRACT_JOB_WAIT = 60.0
+PARSE_JOB_WAIT = 120.0
+
 
 class RevenueSchema(BaseModel):
     """Demonstrates passing a pydantic model as the extract schema."""
@@ -69,7 +79,7 @@ def test_extract_sync(staging_client: LandingAIADE) -> None:
 
 def test_extract_jobs(staging_client: LandingAIADE) -> None:
     job = staging_client.v2.extract_jobs.create(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN)
-    done = staging_client.v2.extract_jobs.wait(job.job_id, timeout=300)
+    done = staging_client.v2.extract_jobs.wait(job.job_id, timeout=EXTRACT_JOB_WAIT)
     assert done.status is JobStatus.COMPLETED
     assert isinstance(done.result, V2ExtractResult)
     # This inline job carries its metadata on `result.metadata`; the top-level
@@ -140,7 +150,7 @@ def test_ground_sync(staging_client: LandingAIADE) -> None:
 def test_parse_jobs(staging_client: LandingAIADE) -> None:
     pdf = Path(__file__).parent / "sample.pdf"
     job = staging_client.v2.parse_jobs.create(document=pdf)
-    done = staging_client.v2.parse_jobs.wait(job.job_id, timeout=300)
+    done = staging_client.v2.parse_jobs.wait(job.job_id, timeout=PARSE_JOB_WAIT)
     assert done.status is JobStatus.COMPLETED
     # Assert the normalized job result, not just the terminal status, so this test
     # actually covers the parse-job response contract (data -> V2ParseResponse).

@@ -533,10 +533,18 @@ jobs:
       # landed as a red `lint` job on a PR that otherwise looked review-ready. So run the real lint
       # HERE, in a trusted step, and hand its output back to a second shell-less Claude pass.
       #
-      # This closes the loop WITHOUT granting the AI a shell: it still cannot execute anything with
-      # the checkout's push credentials, and its edits are still funnelled through the product-code
-      # allowlist below before they can reach a commit. The lint log it reads is pyright/ruff output
-      # quoting the AI's own just-written code — no new trust boundary is crossed by feeding it back.
+      # This closes the loop WITHOUT granting the AI a shell: nothing here EXECUTES the code it just
+      # wrote, and its edits are still funnelled through the product-code allowlist below before they
+      # can reach a commit. The lint log it reads is ruff/pyright/mypy output quoting the AI's own
+      # just-written code — no new trust boundary is crossed by feeding it back.
+      #
+      # That "nothing executes it" property is why this runs a STATIC SUBSET and not `./scripts/lint`:
+      # that script — and the `rye run lint` chain it calls — ends in `check:importable`, i.e.
+      # `python -c 'import landingai_ade'`, which would import the AI's freshly written `src/` inside
+      # a trusted step that still holds the checkout's SPEC_SYNC_TOKEN. A top-level statement in any
+      # imported module would then run with push credentials, defeating the whole shell-less design.
+      # ruff, pyright, and mypy only ever READ the source. The import check is not lost — it still
+      # runs on the PR in CI's own `lint` job, which has no push credentials.
       #
       # `specs/` is excluded from pyright (see [tool.pyright] in pyproject.toml), so anything lint
       # reports here lives in the AI's own edits under src/ tests/ docs/ — i.e. within its reach.
@@ -547,7 +555,11 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          ./scripts/lint 2>&1 | tee .spec-sync-lint.log
+          # Run both even if the first fails, so the repair pass sees every error at once.
+          status=0
+          rye run check:ruff 2>&1 | tee .spec-sync-lint.log || status=1
+          rye run typecheck 2>&1 | tee -a .spec-sync-lint.log || status=1
+          exit $status
 
       - name: AI lint repair (edits only)
         id: ai_lint_fix
@@ -595,7 +607,12 @@ jobs:
         id: ai_lint_final
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
         continue-on-error: true
-        run: ./scripts/lint
+        # Same static subset as the first pass — see there for why `check:importable` is excluded.
+        run: |
+          status=0
+          rye run check:ruff || status=1
+          rye run typecheck || status=1
+          exit $status
 
       - name: Commit + push AI wiring
         id: ai_push
@@ -611,6 +628,11 @@ jobs:
           else
             lint_note='LINT STILL FAILS after the AI repair pass — the CI lint job will be red and needs a manual fix.'
           fi
+          # Unconditionally, BEFORE `git add -A`: the log is untracked and not gitignored, and the
+          # re-restrict step that would have cleaned it only runs on the repair path. On the common
+          # clean-lint path it would otherwise be committed — and on a no-op wiring run it would be
+          # the ONLY staged change, turning "the AI changed nothing" into a bogus wiring commit.
+          rm -f .spec-sync-lint.log
           git add -A
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
