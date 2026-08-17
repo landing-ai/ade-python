@@ -38,8 +38,13 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
   - `box` (`V2ParseBox`) -- `{xmin, ymin, xmax, ymax}` as `[0, 1]` fractions of
     the page width/height (a page node's box is the full page `{0, 0, 1, 1}`).
   - Leaf elements additionally carry `atomic_grounding` -- a list of
-    `V2ParseNodeGrounding` segments (visual lines today). Omitted when
-    `options.atomic_grounding` is `false`.
+    `V2ParseNodeGrounding` segments at whichever granularity the model reads at:
+    one entry per visual line for `dpt-3-pro`, one per word for `dpt-3-fast`.
+    Each segment reuses the node-grounding shape (`page`, `range`, `box`) and, on
+    word-granularity models only, an optional `confidence` in `[0, 1]` (the
+    lowest per-character OCR confidence in the word; `None` on line-granularity
+    models and on node-level grounding). Omitted when `options.atomic_grounding`
+    is `false`.
 - With `options.inline_markdown=true`, the document root, each page, and each
   element also carry their own `markdown` slice.
 - `metadata` (`V2ParseMetadata`) -- `job_id`, `model_version`, `page_count`,

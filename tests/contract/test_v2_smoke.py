@@ -84,6 +84,26 @@ def test_parse_sync_inline_grounding_and_metadata(staging_client: LandingAIADE) 
     assert resp.metadata.output_markdown_chars is not None
 
 
+def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None:
+    # `atomic_grounding` segments carry an optional per-segment `confidence` in
+    # [0, 1] on word-granularity models (`dpt-3-fast`); line-granularity models
+    # omit it. Tolerate either: assert every present value is a valid probability.
+    pdf = Path(__file__).parent / "sample.pdf"
+    resp = staging_client.v2.parse(document=pdf, options={"atomic_grounding": True})
+    assert isinstance(resp, V2ParseResponse)
+    assert resp.structure is not None
+
+    def _walk(elements: object) -> None:
+        for el in elements or []:  # type: ignore[union-attr]
+            for seg in el.atomic_grounding or []:
+                if seg.confidence is not None:
+                    assert 0.0 <= seg.confidence <= 1.0
+            _walk(el.children)
+
+    for page in resp.structure.children:
+        _walk(page.children)
+
+
 def test_ground_sync(staging_client: LandingAIADE) -> None:
     # Ground is a stateless join: parse the doc, extract against it, then ground
     # the extraction back onto the parse structure the markdown came from.
