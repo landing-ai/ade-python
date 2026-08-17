@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Iterator
+from typing import List, Iterator
 from pathlib import Path
 
 import pytest
@@ -11,6 +11,7 @@ from landingai_ade import LandingAIADE
 from landingai_ade.types.v2 import (
     JobStatus,
     V2GroundResult,
+    V2ParseElement,
     V2ExtractResult,
     V2ParseResponse,
 )
@@ -93,12 +94,12 @@ def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None
     assert isinstance(resp, V2ParseResponse)
     assert resp.structure is not None
 
-    def _walk(elements: object) -> None:
-        for el in elements or []:  # type: ignore[union-attr]
+    def _walk(elements: List[V2ParseElement]) -> None:
+        for el in elements:
             for seg in el.atomic_grounding or []:
                 if seg.confidence is not None:
                     assert 0.0 <= seg.confidence <= 1.0
-            _walk(el.children)
+            _walk(el.children or [])
 
     for page in resp.structure.children:
         _walk(page.children)
