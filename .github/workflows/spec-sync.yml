@@ -465,14 +465,36 @@ jobs:
             - Build request URLs with V2ResourceMixin._v2_url — dual-host routing is automatic;
               never hardcode a host.
 
+            Optionality comes from the schema, never from the prose: a response field is Optional
+            iff it is absent from that schema's `required` array. A field can be described as
+            "always present for model X" and still be optional — read `required`, not the
+            `description`. Model an optional field as `Optional[T] = None` and treat "the key is
+            missing" and "the key is null" as the same state (`if x is not None`), because the
+            gateway omits optional fields rather than sending an explicit null.
+
             Add a live check to tests/contract/test_v2_smoke.py (marked `contract`) and unit tests
-            under tests/api_resources/. Update api.md, and create or update docs/v2-testing.md
-            (the V2 QA guide) with the new surface. Write clean, import-sorted code matching the
-            style of the files you mirror — a later fixed step runs `./scripts/format`, and the PR's
-            lint/test CI reports anything else for a human to resolve.
+            under tests/api_resources/. The contract file hits LIVE staging, so it must assert only
+            what staging is guaranteed to return: NEVER pin `model=` there (a model family the spec
+            documents may be unserved on staging — `dpt-3-fast` is accepted but never answered, and
+            a test pinning it hangs until the gate times out), and for an optional field assert
+            absent-or-valid ("if present, it is in range"), never that it is populated. Assertions
+            on a specific value belong in the mocked unit tests under tests/api_resources/, where
+            you control the response body — put them there instead, and reuse the module's existing
+            `staging_client` fixture rather than constructing your own client.
+
+            Update api.md, and create or update docs/v2-testing.md (the V2 QA guide) with the new
+            surface. Write clean, import-sorted code matching the style of the files you mirror — a
+            later fixed step runs `./scripts/format` and then `./scripts/lint`, and you get one
+            chance to fix whatever lint reports before the PR opens.
 
             You may only edit product code: src/, tests/, docs/, and api.md. Do NOT edit scripts/,
             .github/, specs/, or any dotfile.
+
+            The repo type-checks with pyright in STRICT mode, which you cannot run yourself. Two
+            rules that keep it green: annotate every parameter and local with its concrete type
+            (importing the real model from landingai_ade.types.v2) — never `object` or `Any` when
+            you then access attributes on the value, which yields `reportUnknown*` errors; and do
+            not add `# type: ignore` to silence an annotation you could have written correctly.
 
             Additive-changes rule: BACKWARD-COMPATIBLE ADDITIONS ONLY. You MAY add a new optional
             keyword parameter (with a default) to an existing parse/extract method to wire an
@@ -502,10 +524,93 @@ jobs:
           git clean -fd -e /src -e /tests -e /docs
           ./scripts/format
 
+      # ---------------------------------------------------------------------------------------
+      # Verify the AI wiring, then give it ONE chance to fix itself.
+      #
+      # The wiring step has no shell, so nothing has type-checked its output: the step above only
+      # *formats*. Historically that meant every AI mistake pyright can see (annotating a param
+      # `object` and reaching for attributes on it, `# type: ignore` over a fixable annotation)
+      # landed as a red `lint` job on a PR that otherwise looked review-ready. So run the real lint
+      # HERE, in a trusted step, and hand its output back to a second shell-less Claude pass.
+      #
+      # This closes the loop WITHOUT granting the AI a shell: it still cannot execute anything with
+      # the checkout's push credentials, and its edits are still funnelled through the product-code
+      # allowlist below before they can reach a commit. The lint log it reads is pyright/ruff output
+      # quoting the AI's own just-written code — no new trust boundary is crossed by feeding it back.
+      #
+      # `specs/` is excluded from pyright (see [tool.pyright] in pyproject.toml), so anything lint
+      # reports here lives in the AI's own edits under src/ tests/ docs/ — i.e. within its reach.
+      - name: Lint the AI wiring
+        id: ai_lint
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        # A lint failure here is the normal case this loop exists to handle, not a run failure.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./scripts/lint 2>&1 | tee .spec-sync-lint.log
+
+      - name: AI lint repair (edits only)
+        id: ai_lint_fix
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.SPEC_SYNC_TOKEN }}
+          prompt: |
+            `./scripts/lint` failed on the client.v2 wiring you just wrote. Read
+            .spec-sync-lint.log in the repo root — it is the captured output of that run (ruff
+            check, then pyright in STRICT mode, then an import check) — and fix every error it
+            reports.
+
+            Fix the CAUSE, not the symptom. Specifically, do NOT silence anything: no
+            `# type: ignore`, no `cast(Any, ...)`, no widening an annotation to `object`/`Any`, no
+            deleting the assertion or test that tripped the error. A `reportUnknown*` error means a
+            value has no concrete type — annotate it with the real model imported from
+            landingai_ade.types.v2 (a recursive helper over parse elements takes
+            `List[V2ParseElement]`, not `object`). Keep the behavior the wiring was written to have.
+
+            You may only edit src/, tests/, docs/, and api.md — the same allowlist as before. Do
+            NOT edit scripts/, .github/, specs/, pyproject.toml, or any dotfile (including
+            .spec-sync-lint.log itself: it is an input, and it is deleted before anything is
+            committed). `git diff` (read-only) is fine; do NOT stage, commit, push, or run any
+            other git command.
+          claude_args: |
+            --model "claude-opus-4-8[1m]"
+            --max-turns 60
+            --allowedTools "Edit,Write,Read,Glob,Grep,Bash(git diff:*)"
+
+      # The repair pass is exactly as untrusted as the wiring pass, so re-apply the allowlist before
+      # formatting or committing. This also deletes .spec-sync-lint.log (untracked, not in the
+      # `git clean` exclusions), so the log never reaches the commit.
+      - name: Re-restrict AI edits to product code, then format
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
+        run: |
+          git checkout -- . ':(exclude)src' ':(exclude)tests' ':(exclude)docs' ':(exclude)api.md'
+          git clean -fd -e /src -e /tests -e /docs
+          ./scripts/format
+
+      # Record whether the repair actually worked, so the Slack reply and the PR say so honestly
+      # instead of implying the wiring is clean when CI is about to go red.
+      - name: Re-lint after repair
+        id: ai_lint_final
+        if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
+        continue-on-error: true
+        run: ./scripts/lint
+
       - name: Commit + push AI wiring
         id: ai_push
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        env:
+          LINT_FIRST: ${{ steps.ai_lint.outcome }}
+          LINT_FINAL: ${{ steps.ai_lint_final.outcome }}   # 'skipped' when the first lint passed
         run: |
+          if [ "$LINT_FIRST" = 'success' ]; then
+            lint_note='Lint clean.'
+          elif [ "$LINT_FINAL" = 'success' ]; then
+            lint_note='Lint failed on the first pass; the AI repair pass fixed it.'
+          else
+            lint_note='LINT STILL FAILS after the AI repair pass — the CI lint job will be red and needs a manual fix.'
+          fi
           git add -A
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
@@ -513,7 +618,7 @@ jobs:
           else
             git commit -m "feat(spec-sync): wire client.v2 to spec diff (AI)"
             git push origin HEAD:"$SYNC_BRANCH"
-            echo "summary=Mechanical snapshot + AI wiring committed (a draft a human finishes). Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
+            echo "summary=Mechanical snapshot + AI wiring committed (a draft a human finishes). ${lint_note} Gates must pass; human review required before merge." >> "$GITHUB_OUTPUT"
           fi
 
       # Rewrite the PR description: keep the static process/safety preamble from "Open sync PR" and

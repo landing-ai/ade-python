@@ -23,6 +23,18 @@ STAGING_KEY = os.environ.get("LANDINGAI_ADE_STAGING_APIKEY")
 # A tiny self-contained markdown document so extract/files can run without any file.
 SAMPLE_MARKDOWN = "# Acme Inc. — Q1 Report\n\nTotal revenue for the quarter was **$1,250,000**.\n"
 
+# These tests are a merge gate against a LIVE environment, so they have to fail fast and
+# legibly. The SDK ships an 8-minute timeout with 2 retries — sensible for a real caller
+# parsing a 500-page scan, wrong for a gate: an endpoint staging accepts but never answers
+# then burns ~24 minutes and reads as "the suite is slow" rather than "staging never
+# replied". Cap one request at 45s and don't retry, so a hang surfaces as an
+# `APITimeoutError` naming the route.
+#
+# Trade-off: a transient 429/5xx now fails the run instead of being retried away. That is
+# the intended bias — a retry cannot rescue a genuinely dead upstream, it only hides it —
+# and the whole suite is ~100s, so re-running the job is cheap.
+CONTRACT_TIMEOUT = 45.0
+
 
 class RevenueSchema(BaseModel):
     """Demonstrates passing a pydantic model as the extract schema."""
@@ -36,7 +48,12 @@ def staging_client() -> Iterator[LandingAIADE]:
     if not STAGING_KEY:
         pytest.skip("LANDINGAI_ADE_STAGING_APIKEY not set")
     # Context-managed so the underlying HTTP client is closed in teardown (no socket leak).
-    with LandingAIADE(apikey=STAGING_KEY, environment="staging") as client:
+    with LandingAIADE(
+        apikey=STAGING_KEY,
+        environment="staging",
+        timeout=CONTRACT_TIMEOUT,
+        max_retries=0,
+    ) as client:
         yield client
 
 
