@@ -417,15 +417,21 @@ jobs:
       #    and one line in .git/info/exclude makes `git clean -fd` skip the agent's own file —
       #    walking it straight past the product-code allowlist.
       - name: Precompute the spec diff and harden the checkout
+        id: harden
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         run: |
           git diff HEAD~1..HEAD > .spec-sync-diff.txt
           git config --local --unset-all 'http.https://github.com/.extraheader' || true
           git config --local --unset-all core.hooksPath || true
           rm -rf .git/hooks .git/info
-          # $RUNNER_TEMP is outside GITHUB_WORKSPACE, so the `git clean` in the allowlist steps
-          # cannot delete this snapshot before the repair path needs it a second time.
-          cp .git/config "$RUNNER_TEMP/git-config.trusted"
+          # The snapshot is a step OUTPUT, not a file. Every path on disk — $RUNNER_TEMP included —
+          # is writable by AI-authored code: nothing here executes src/ any more, but ruff/pyright
+          # run as binaries out of the gitignored .venv, which the allowlist cannot clean, so a
+          # replaced binary could overwrite a file snapshot between it being taken and restored and
+          # thereby reinstall an attacker-controlled core.hooksPath before the credentialed push.
+          # Step outputs are captured by the runner when this step ends and injected as expressions
+          # afterwards, so nothing running later in the job can alter this value.
+          echo "gitconfig=$(base64 -w0 < .git/config)" >> "$GITHUB_OUTPUT"
 
       # ---- Phase 2: AI wiring — edits ONLY (no git/push; a later step commits). ----
       - name: AI wiring (edits only)
@@ -514,8 +520,10 @@ jobs:
             Add a live check to tests/contract/test_v2_smoke.py (marked `contract`) and unit tests
             under tests/api_resources/. The contract file hits LIVE staging, so it must assert only
             what staging is guaranteed to return: NEVER pin `model=` there (a model family the spec
-            documents may be unserved on staging — `dpt-3-fast` is accepted but never answered, and
-            a test pinning it hangs until the gate times out), and for an optional field assert
+            documents may not be servable in whatever way the staging cluster happens to be
+            provisioned — `dpt-3-fast` needs a GPU-backed booking, and against one without it the
+            request hangs until the gate times out; that is an environment property, not an SDK
+            contract, so no live test should depend on it), and for an optional field assert
             absent-or-valid ("if present, it is in range"), never that it is populated. Assertions
             on a specific value belong in the mocked unit tests under tests/api_resources/, where
             you control the response body — put them there instead, and reuse the module's existing
@@ -578,8 +586,10 @@ jobs:
       # allowlist diff back — is the real fix and is deliberately NOT attempted here.
       - name: Restore trusted git metadata after the AI pass
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        env:
+          TRUSTED_GITCONFIG: ${{ steps.harden.outputs.gitconfig }}
         run: |
-          cp "$RUNNER_TEMP/git-config.trusted" .git/config
+          printf '%s' "$TRUSTED_GITCONFIG" | base64 -d > .git/config
           rm -rf .git/hooks .git/info
 
       # Its Write tool is repo-wide, so before running the trusted
@@ -679,8 +689,10 @@ jobs:
       # idempotent; the hooks removal matters because a repair pass could recreate them.)
       - name: Restore trusted git metadata after the repair pass
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_lint.outcome == 'failure'
+        env:
+          TRUSTED_GITCONFIG: ${{ steps.harden.outputs.gitconfig }}
         run: |
-          cp "$RUNNER_TEMP/git-config.trusted" .git/config
+          printf '%s' "$TRUSTED_GITCONFIG" | base64 -d > .git/config
           rm -rf .git/hooks .git/info
 
       # Re-apply the allowlist before formatting or committing. This also deletes
@@ -724,8 +736,10 @@ jobs:
       # every formatter result is preserved.
       - name: Final restore + allowlist before staging
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
+        env:
+          TRUSTED_GITCONFIG: ${{ steps.harden.outputs.gitconfig }}
         run: |
-          cp "$RUNNER_TEMP/git-config.trusted" .git/config
+          printf '%s' "$TRUSTED_GITCONFIG" | base64 -d > .git/config
           rm -rf .git/hooks .git/info
           git reset -q
           git checkout -- . ':(exclude)src' ':(exclude)tests' ':(exclude)docs' ':(exclude)api.md'
@@ -778,7 +792,9 @@ jobs:
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true' && steps.ai_commit.outputs.changed == 'true'
         env:
           GH_PUSH_TOKEN: ${{ secrets.SPEC_SYNC_TOKEN }}
-        run: git push "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:"$SYNC_BRANCH"
+        # -c overrides any on-disk config, so even a tampered .git/config cannot point a pre-push
+        # hook at a surviving script in src/ and have it run in the one step that holds the token.
+        run: git -c core.hooksPath=/dev/null push "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:"$SYNC_BRANCH"
 
       # Rewrite the PR description: keep the static process/safety preamble from "Open sync PR" and
       # APPEND an LLM "## What changed" summary of the actual PR diff. Logic is shared by both jobs
