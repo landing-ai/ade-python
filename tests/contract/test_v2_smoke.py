@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Iterator
+from typing import List, Iterator, Optional
 from pathlib import Path
 
 import pytest
@@ -14,6 +14,7 @@ from landingai_ade.types.v2 import (
     V2ParseElement,
     V2ExtractResult,
     V2ParseResponse,
+    V2ParseNodeGrounding,
 )
 
 pytestmark = pytest.mark.contract
@@ -113,22 +114,30 @@ def test_parse_sync_inline_grounding_and_metadata(staging_client: LandingAIADE) 
 
 
 def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None:
-    # `atomic_grounding` segments carry an optional per-segment `confidence` in
-    # [0, 1] on word-granularity models (`dpt-3-fast`); line-granularity models
-    # omit it. Tolerate either: assert every present value is a valid probability.
+    # `confidence` is an optional per-grounding probability in [0, 1]. On
+    # word-granularity models (`dpt-3-fast`) it is set at every level: each word
+    # `atomic_grounding` segment and each parent node-level `grounding` carry it.
+    # Line-granularity models (`dpt-3-pro`) omit it. Since no model is pinned here,
+    # tolerate either: assert every present value is a valid probability, wherever
+    # it appears (atomic segments and node-level grounding alike).
     pdf = Path(__file__).parent / "sample.pdf"
     resp = staging_client.v2.parse(document=pdf, options={"atomic_grounding": True})
     assert isinstance(resp, V2ParseResponse)
     assert resp.structure is not None
 
+    def _check(grounding: Optional[V2ParseNodeGrounding]) -> None:
+        if grounding is not None and grounding.confidence is not None:
+            assert 0.0 <= grounding.confidence <= 1.0
+
     def _walk(elements: List[V2ParseElement]) -> None:
         for el in elements:
+            _check(el.grounding)
             for seg in el.atomic_grounding or []:
-                if seg.confidence is not None:
-                    assert 0.0 <= seg.confidence <= 1.0
+                _check(seg)
             _walk(el.children or [])
 
     for page in resp.structure.children:
+        _check(page.grounding)
         _walk(page.children)
 
 

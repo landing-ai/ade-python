@@ -76,9 +76,15 @@ class V2ParseNodeGrounding(BaseModel):
     page: Optional[int] = None
     range: Optional[V2ParseRange] = None
     box: Optional[V2ParseBox] = None
-    # How sure the model is of the text in this segment, in `[0, 1]`. Present only
-    # on word-granularity `atomic_grounding` entries (`dpt-3-fast`); omitted on
-    # node-level grounding and on models that ground at line granularity.
+    # How sure the model is of the text in this grounding, in `[0, 1]`.
+    # Word-granularity models (`dpt-3-fast`) set it at every level with the same
+    # weakest-link rule: a word `atomic_grounding` entry carries the lowest
+    # per-character OCR confidence in the word, and each parent grounding
+    # (element, `table_cell`, `table`, page) carries the lowest confidence among
+    # its transcribed words. Omitted where no transcribed word carries a score:
+    # models that ground at line granularity (`dpt-3-pro`), blocks whose text the
+    # model wrote rather than read (captioned figures and similar), and blocks
+    # with markdown suppressed.
     confidence: Optional[float] = None
 
 
