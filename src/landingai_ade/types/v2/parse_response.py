@@ -76,7 +76,8 @@ class V2ParseNodeGrounding(BaseModel):
     page: Optional[int] = None
     range: Optional[V2ParseRange] = None
     box: Optional[V2ParseBox] = None
-    # How sure the model is of the text in this grounding, in `[0, 1]`.
+    # How sure the model is of the text in this grounding, in `[0, 1]` with at
+    # most 2 decimal places.
     # Word-granularity models (`dpt-3-fast`) set it at every level with the same
     # weakest-link rule: a word `atomic_grounding` entry carries the lowest
     # per-character OCR confidence in the word, and each parent grounding

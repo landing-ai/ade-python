@@ -37,7 +37,8 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
     `"unicode_codepoints"`).
   - `box` (`V2ParseBox`) -- `{xmin, ymin, xmax, ymax}` as `[0, 1]` fractions of
     the page width/height (a page node's box is the full page `{0, 0, 1, 1}`).
-  - `confidence` -- an optional `[0, 1]` probability. Word-granularity models
+  - `confidence` -- an optional `[0, 1]` probability (at most 2 decimal places).
+    Word-granularity models
     (`dpt-3-fast`) set it at **every** grounding level with the same weakest-link
     rule: a word `atomic_grounding` segment carries the lowest per-character OCR
     confidence in the word, and each parent grounding (element, `table_cell`,
