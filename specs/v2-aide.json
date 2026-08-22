@@ -45,7 +45,7 @@
         "type": "object"
       },
       "Box": {
-        "description": "Axis-aligned bounding box in normalized page coordinates.\n\nEvery value is a fraction of the page's width (`xmin`/`xmax`) or height\n(`ymin`/`ymax`) in `[0, 1]`, with at most 8 decimal places. To convert to\npixels, multiply by the dimensions of whatever raster of the page you are\ndrawing on. Coordinates are clamped and rounded at construction so the\nin-process value always equals the serialized one.",
+        "description": "Axis-aligned bounding box in normalized page coordinates.\n\nEvery value is a fraction of the page's width (`xmin`/`xmax`) or height\n(`ymin`/`ymax`) in `[0, 1]`, with at most 5 decimal places. To convert to\npixels, multiply by the dimensions of whatever raster of the page you are\ndrawing on. Coordinates are clamped and rounded at construction so the\nin-process value always equals the serialized one.",
         "properties": {
           "xmax": {
             "description": "Right edge as a fraction of the page width, in `[0, 1]`.",
@@ -96,6 +96,48 @@
           "msg"
         ],
         "title": "BuildSchemaWarning",
+        "type": "object"
+      },
+      "CreditUsage": {
+        "description": "The standard credit-usage shape a billable WORK result carries.\n\nA billed passthrough operation's work result declares\n``credit_usage: CreditUsage`` and the gateway's default\n``build_success_record`` bills it verbatim — no per-op billing code\n(operations/base.py requires it: a result carrying anything else raises).\n\nStdlib result modules embedding CreditUsage should follow the pdf.py posture\n(no ``from __future__ import annotations``) or use pydantic dataclasses (the\nextract_v2 posture).",
+        "properties": {
+          "breakdown": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Breakdown"
+          },
+          "charge_unit": {
+            "default": 0.0,
+            "title": "Charge Unit",
+            "type": "number"
+          },
+          "credits": {
+            "default": 0.0,
+            "title": "Credits",
+            "type": "number"
+          },
+          "output_charge_unit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Output Charge Unit"
+          }
+        },
+        "title": "CreditUsage",
         "type": "object"
       },
       "Document": {
@@ -301,7 +343,7 @@
         "properties": {
           "box": {
             "$ref": "#/components/schemas/Box",
-            "description": "Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 8 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`."
+            "description": "Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 5 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`."
           },
           "confidence": {
             "anyOf": [
@@ -313,7 +355,7 @@
               }
             ],
             "default": null,
-            "description": "How sure the model is of the text in this grounding, in `[0, 1]`. Word-granularity models (`dpt-3-fast`) set it at every level with the same weakest-link rule: a word `atomic_grounding` entry carries the lowest per-character OCR confidence in the word, and each parent grounding (element, `table_cell`, `table`, page) carries the lowest confidence among its transcribed words. Omitted where no transcribed word carries a score: models that ground at line granularity (`dpt-3-pro`), blocks whose text the model wrote rather than read (captioned figures and similar), and blocks with markdown suppressed.",
+            "description": "How sure the model is of the text in this grounding, in `[0, 1]` with at most 2 decimal places. Word-granularity models (`dpt-3-fast`) set it at every level with the same weakest-link rule: a word `atomic_grounding` entry carries the lowest per-character OCR confidence in the word, and each parent grounding (element, `table_cell`, `table`, page) carries the lowest confidence among its transcribed words. Omitted where no transcribed word carries a score: models that ground at line granularity (`dpt-3-pro`), blocks whose text the model wrote rather than read (captioned figures and similar), and blocks with markdown suppressed.",
             "title": "Confidence"
           },
           "page": {
@@ -1202,6 +1244,1159 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/ade/parse": {
+      "post": {
+        "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body),\n``multipart/form-data`` (file fields are staged automatically),\nor ``application/x-www-form-urlencoded`` (text fields only).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
+        "operationId": "v1-ade-parse_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``\n(work). The document rides as ``document_ref`` (the gateway's multipart adapter\nstages the upload / fetches ``document_url`` → data store, runs the pdf_pages\npre-flight, then starts the operation).",
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Model Versions"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "title": "Parse2Request",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "description": "File upload.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Model Versions"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the\nbilling inputs hoisted to the top level so the gateway operation reads them\nwithout re-parsing the nested tree.\n\nBilling is worker-owned (parse-api parity): the worker finalizes the price and\nreports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =\nFINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),\nplus the record-inference enrichment (``usage`` + ``model_family``). The\ngateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``\nop — no gateway recomputation).",
+                  "properties": {
+                    "base_credit": {
+                      "default": 0.0,
+                      "title": "Base Credit",
+                      "type": "number"
+                    },
+                    "billable_pages": {
+                      "default": 0,
+                      "title": "Billable Pages",
+                      "type": "integer"
+                    },
+                    "completion_tokens": {
+                      "default": 0,
+                      "title": "Completion Tokens",
+                      "type": "integer"
+                    },
+                    "credit_usage": {
+                      "$ref": "#/components/schemas/CreditUsage"
+                    },
+                    "duration_ms": {
+                      "default": 0,
+                      "title": "Duration Ms",
+                      "type": "integer"
+                    },
+                    "failed_pages": {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "title": "Failed Pages",
+                      "type": "array"
+                    },
+                    "model_family": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Model Family"
+                    },
+                    "output_ref": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Output Ref"
+                    },
+                    "page_count": {
+                      "default": 0,
+                      "title": "Page Count",
+                      "type": "integer"
+                    },
+                    "prompt_tokens": {
+                      "default": 0,
+                      "title": "Prompt Tokens",
+                      "type": "integer"
+                    },
+                    "response": {
+                      "additionalProperties": true,
+                      "title": "Response",
+                      "type": "object"
+                    },
+                    "status_code": {
+                      "default": 200,
+                      "title": "Status Code",
+                      "type": "integer"
+                    },
+                    "token_steps": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Token Steps"
+                    },
+                    "total_tokens": {
+                      "default": 0,
+                      "title": "Total Tokens",
+                      "type": "integer"
+                    },
+                    "usage": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Usage"
+                    }
+                  },
+                  "required": [
+                    "response"
+                  ],
+                  "title": "Parse2Result",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v1-ade-parse result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Parse v1",
+        "tags": [
+          "Parse v1"
+        ]
+      }
+    },
+    "/v1/ade/parse/jobs": {
+      "get": {
+        "operationId": "v1-ade-parse_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Parse v1 Jobs",
+        "tags": [
+          "Parse v1"
+        ]
+      },
+      "post": {
+        "operationId": "v1-ade-parse_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``\n(work). The document rides as ``document_ref`` (the gateway's multipart adapter\nstages the upload / fetches ``document_url`` → data store, runs the pdf_pages\npre-flight, then starts the operation).",
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Model Versions"
+                  },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Output Save Url"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "title": "Parse2Request",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "description": "File upload.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Model Versions"
+                  },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Output Save Url"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Parse v1 Jobs",
+        "tags": [
+          "Parse v1"
+        ]
+      }
+    },
+    "/v1/ade/parse/jobs/{job_id}": {
+      "get": {
+        "description": "Poll a job.\n\nReturns ``{job_id, status, created_at}`` plus ``completed_at`` and\n``result`` (on ``completed``) or ``error: {code, message}`` (on\n``failed``). Statuses: ``pending`` → ``processing`` →\n``completed`` | ``failed``.",
+        "operationId": "v1-ade-parse_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "description": "The result's metadata block (billing included), present alongside ``output_url`` once a job with ``output_save_url`` has ``completed`` — the delivery moves the content, not the receipt. Same shape as the inline ``result``'s ``metadata``; inline jobs carry it there instead.",
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "progress": {
+                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the\nbilling inputs hoisted to the top level so the gateway operation reads them\nwithout re-parsing the nested tree.\n\nBilling is worker-owned (parse-api parity): the worker finalizes the price and\nreports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =\nFINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),\nplus the record-inference enrichment (``usage`` + ``model_family``). The\ngateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``\nop — no gateway recomputation).",
+                          "properties": {
+                            "base_credit": {
+                              "default": 0.0,
+                              "title": "Base Credit",
+                              "type": "number"
+                            },
+                            "billable_pages": {
+                              "default": 0,
+                              "title": "Billable Pages",
+                              "type": "integer"
+                            },
+                            "completion_tokens": {
+                              "default": 0,
+                              "title": "Completion Tokens",
+                              "type": "integer"
+                            },
+                            "credit_usage": {
+                              "$ref": "#/components/schemas/CreditUsage"
+                            },
+                            "duration_ms": {
+                              "default": 0,
+                              "title": "Duration Ms",
+                              "type": "integer"
+                            },
+                            "failed_pages": {
+                              "items": {
+                                "type": "integer"
+                              },
+                              "title": "Failed Pages",
+                              "type": "array"
+                            },
+                            "model_family": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Model Family"
+                            },
+                            "output_ref": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Output Ref"
+                            },
+                            "page_count": {
+                              "default": 0,
+                              "title": "Page Count",
+                              "type": "integer"
+                            },
+                            "prompt_tokens": {
+                              "default": 0,
+                              "title": "Prompt Tokens",
+                              "type": "integer"
+                            },
+                            "response": {
+                              "additionalProperties": true,
+                              "title": "Response",
+                              "type": "object"
+                            },
+                            "status_code": {
+                              "default": 200,
+                              "title": "Status Code",
+                              "type": "integer"
+                            },
+                            "token_steps": {
+                              "anyOf": [
+                                {
+                                  "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Token Steps"
+                            },
+                            "total_tokens": {
+                              "default": 0,
+                              "title": "Total Tokens",
+                              "type": "integer"
+                            },
+                            "usage": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": true,
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Usage"
+                            }
+                          },
+                          "required": [
+                            "response"
+                          ],
+                          "title": "Parse2Result",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Parse v1 Jobs",
+        "tags": [
+          "Parse v1"
+        ]
+      }
+    },
     "/v1/extract": {
       "post": {
         "description": "Extract structured data from a Markdown document using a JSON Schema. v1-compatible wire, running the same extraction engine as `/v2/extract`. Runs synchronously and returns the result inline.",
@@ -2559,6 +3754,1159 @@
         "summary": "ADE Get Extract Jobs",
         "tags": [
           "Extract"
+        ]
+      }
+    },
+    "/v1/parse": {
+      "post": {
+        "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body),\n``multipart/form-data`` (file fields are staged automatically),\nor ``application/x-www-form-urlencoded`` (text fields only).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
+        "operationId": "parse2_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``\n(work). The document rides as ``document_ref`` (the gateway's multipart adapter\nstages the upload / fetches ``document_url`` → data store, runs the pdf_pages\npre-flight, then starts the operation).",
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Model Versions"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "title": "Parse2Request",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "description": "File upload.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Model Versions"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the\nbilling inputs hoisted to the top level so the gateway operation reads them\nwithout re-parsing the nested tree.\n\nBilling is worker-owned (parse-api parity): the worker finalizes the price and\nreports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =\nFINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),\nplus the record-inference enrichment (``usage`` + ``model_family``). The\ngateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``\nop — no gateway recomputation).",
+                  "properties": {
+                    "base_credit": {
+                      "default": 0.0,
+                      "title": "Base Credit",
+                      "type": "number"
+                    },
+                    "billable_pages": {
+                      "default": 0,
+                      "title": "Billable Pages",
+                      "type": "integer"
+                    },
+                    "completion_tokens": {
+                      "default": 0,
+                      "title": "Completion Tokens",
+                      "type": "integer"
+                    },
+                    "credit_usage": {
+                      "$ref": "#/components/schemas/CreditUsage"
+                    },
+                    "duration_ms": {
+                      "default": 0,
+                      "title": "Duration Ms",
+                      "type": "integer"
+                    },
+                    "failed_pages": {
+                      "items": {
+                        "type": "integer"
+                      },
+                      "title": "Failed Pages",
+                      "type": "array"
+                    },
+                    "model_family": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Model Family"
+                    },
+                    "output_ref": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Output Ref"
+                    },
+                    "page_count": {
+                      "default": 0,
+                      "title": "Page Count",
+                      "type": "integer"
+                    },
+                    "prompt_tokens": {
+                      "default": 0,
+                      "title": "Prompt Tokens",
+                      "type": "integer"
+                    },
+                    "response": {
+                      "additionalProperties": true,
+                      "title": "Response",
+                      "type": "object"
+                    },
+                    "status_code": {
+                      "default": 200,
+                      "title": "Status Code",
+                      "type": "integer"
+                    },
+                    "token_steps": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Token Steps"
+                    },
+                    "total_tokens": {
+                      "default": 0,
+                      "title": "Total Tokens",
+                      "type": "integer"
+                    },
+                    "usage": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "title": "Usage"
+                    }
+                  },
+                  "required": [
+                    "response"
+                  ],
+                  "title": "Parse2Result",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "parse2 result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Parse v1",
+        "tags": [
+          "Parse v1"
+        ]
+      }
+    },
+    "/v1/parse/jobs": {
+      "get": {
+        "operationId": "parse2_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Parse v1 Jobs",
+        "tags": [
+          "Parse v1"
+        ]
+      },
+      "post": {
+        "operationId": "parse2_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``\n(work). The document rides as ``document_ref`` (the gateway's multipart adapter\nstages the upload / fetches ``document_url`` → data store, runs the pdf_pages\npre-flight, then starts the operation).",
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Model Versions"
+                  },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Output Save Url"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "title": "Parse2Request",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "content_type": {
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "custom_prompts": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Custom Prompts"
+                  },
+                  "document_ref": {
+                    "description": "File upload.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "job_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Job Id"
+                  },
+                  "model_versions": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Model Versions"
+                  },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Output Save Url"
+                  },
+                  "password": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Password"
+                  },
+                  "pricing_multiplier": {
+                    "default": 1.0,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Pricing Multiplier",
+                    "type": "number"
+                  },
+                  "processing_mode": {
+                    "default": "sync",
+                    "title": "Processing Mode",
+                    "type": "string"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "split": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Split"
+                  },
+                  "version": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Version"
+                  },
+                  "x_request_id": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "X Request Id"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "filename",
+                  "content_type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Parse v1 Jobs",
+        "tags": [
+          "Parse v1"
+        ]
+      }
+    },
+    "/v1/parse/jobs/{job_id}": {
+      "get": {
+        "description": "Poll a job.\n\nReturns ``{job_id, status, created_at}`` plus ``completed_at`` and\n``result`` (on ``completed``) or ``error: {code, message}`` (on\n``failed``). Statuses: ``pending`` → ``processing`` →\n``completed`` | ``failed``.",
+        "operationId": "parse2_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "description": "The result's metadata block (billing included), present alongside ``output_url`` once a job with ``output_save_url`` has ``completed`` — the delivery moves the content, not the receipt. Same shape as the inline ``result``'s ``metadata``; inline jobs carry it there instead.",
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "progress": {
+                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the\nbilling inputs hoisted to the top level so the gateway operation reads them\nwithout re-parsing the nested tree.\n\nBilling is worker-owned (parse-api parity): the worker finalizes the price and\nreports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =\nFINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),\nplus the record-inference enrichment (``usage`` + ``model_family``). The\ngateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``\nop — no gateway recomputation).",
+                          "properties": {
+                            "base_credit": {
+                              "default": 0.0,
+                              "title": "Base Credit",
+                              "type": "number"
+                            },
+                            "billable_pages": {
+                              "default": 0,
+                              "title": "Billable Pages",
+                              "type": "integer"
+                            },
+                            "completion_tokens": {
+                              "default": 0,
+                              "title": "Completion Tokens",
+                              "type": "integer"
+                            },
+                            "credit_usage": {
+                              "$ref": "#/components/schemas/CreditUsage"
+                            },
+                            "duration_ms": {
+                              "default": 0,
+                              "title": "Duration Ms",
+                              "type": "integer"
+                            },
+                            "failed_pages": {
+                              "items": {
+                                "type": "integer"
+                              },
+                              "title": "Failed Pages",
+                              "type": "array"
+                            },
+                            "model_family": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Model Family"
+                            },
+                            "output_ref": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Output Ref"
+                            },
+                            "page_count": {
+                              "default": 0,
+                              "title": "Page Count",
+                              "type": "integer"
+                            },
+                            "prompt_tokens": {
+                              "default": 0,
+                              "title": "Prompt Tokens",
+                              "type": "integer"
+                            },
+                            "response": {
+                              "additionalProperties": true,
+                              "title": "Response",
+                              "type": "object"
+                            },
+                            "status_code": {
+                              "default": 200,
+                              "title": "Status Code",
+                              "type": "integer"
+                            },
+                            "token_steps": {
+                              "anyOf": [
+                                {
+                                  "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Token Steps"
+                            },
+                            "total_tokens": {
+                              "default": 0,
+                              "title": "Total Tokens",
+                              "type": "integer"
+                            },
+                            "usage": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": true,
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "default": null,
+                              "title": "Usage"
+                            }
+                          },
+                          "required": [
+                            "response"
+                          ],
+                          "title": "Parse2Result",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Parse v1 Jobs",
+        "tags": [
+          "Parse v1"
         ]
       }
     },

@@ -21,7 +21,7 @@ class Box(BaseModel):
     Axis-aligned bounding box in normalized page coordinates.
 
     Every value is a fraction of the page's width (`xmin`/`xmax`) or height
-    (`ymin`/`ymax`) in `[0, 1]`, with at most 8 decimal places. To convert to
+    (`ymin`/`ymax`) in `[0, 1]`, with at most 5 decimal places. To convert to
     pixels, multiply by the dimensions of whatever raster of the page you are
     drawing on. Coordinates are clamped and rounded at construction so the
     in-process value always equals the serialized one.
@@ -66,6 +66,26 @@ class BuildSchemaWarning(BaseModel):
         description='Human-readable description of the warning with more details.',
         title='Msg',
     )
+
+
+class CreditUsage(BaseModel):
+    """
+    The standard credit-usage shape a billable WORK result carries.
+
+    A billed passthrough operation's work result declares
+    ``credit_usage: CreditUsage`` and the gateway's default
+    ``build_success_record`` bills it verbatim — no per-op billing code
+    (operations/base.py requires it: a result carrying anything else raises).
+
+    Stdlib result modules embedding CreditUsage should follow the pdf.py posture
+    (no ``from __future__ import annotations``) or use pydantic dataclasses (the
+    extract_v2 posture).
+    """
+
+    breakdown: Optional[dict[str, Any]] = Field(None, title='Breakdown')
+    charge_unit: Optional[float] = Field(0.0, title='Charge Unit')
+    credits: Optional[float] = Field(0.0, title='Credits')
+    output_charge_unit: Optional[float] = Field(None, title='Output Charge Unit')
 
 
 class Type(Enum):
@@ -505,6 +525,292 @@ class WorkflowStepOptions(BaseModel):
     )
 
 
+class V1AdeParsePostRequest(BaseModel):
+    """
+    Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``
+    (work). The document rides as ``document_ref`` (the gateway's multipart adapter
+    stages the upload / fetches ``document_url`` → data store, runs the pdf_pages
+    pre-flight, then starts the operation).
+    """
+
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(None, title='Custom Prompts')
+    document_ref: str = Field(..., title='Document Ref')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(None, title='Job Id')
+    model_versions: Optional[dict[str, str]] = Field(None, title='Model Versions')
+    password: Optional[str] = Field(None, title='Password')
+    pricing_multiplier: Optional[float] = Field(1.0, title='Pricing Multiplier')
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    split: Optional[str] = Field(None, title='Split')
+    version: Optional[str] = Field(None, title='Version')
+    x_request_id: Optional[str] = Field(None, title='X Request Id')
+
+
+class V1AdeParsePostRequest1(BaseModel):
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Custom Prompts'
+    )
+    document_ref: bytes = Field(..., description='File upload.')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Job Id'
+    )
+    model_versions: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Model Versions'
+    )
+    password: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Password'
+    )
+    pricing_multiplier: Optional[float] = Field(
+        1.0,
+        description='JSON-serialized string in form data.',
+        title='Pricing Multiplier',
+    )
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    split: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Split'
+    )
+    version: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Version'
+    )
+    x_request_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='X Request Id'
+    )
+
+
+class V1AdeParsePostResponse(BaseModel):
+    """
+    Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the
+    billing inputs hoisted to the top level so the gateway operation reads them
+    without re-parsing the nested tree.
+
+    Billing is worker-owned (parse-api parity): the worker finalizes the price and
+    reports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =
+    FINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),
+    plus the record-inference enrichment (``usage`` + ``model_family``). The
+    gateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``
+    op — no gateway recomputation).
+    """
+
+    base_credit: Optional[float] = Field(0.0, title='Base Credit')
+    billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
+    credit_usage: Optional[CreditUsage] = None
+    duration_ms: Optional[int] = Field(0, title='Duration Ms')
+    failed_pages: Optional[list[int]] = Field(None, title='Failed Pages')
+    model_family: Optional[str] = Field(None, title='Model Family')
+    output_ref: Optional[str] = Field(None, title='Output Ref')
+    page_count: Optional[int] = Field(0, title='Page Count')
+    prompt_tokens: Optional[int] = Field(0, title='Prompt Tokens')
+    response: dict[str, Any] = Field(..., title='Response')
+    status_code: Optional[int] = Field(200, title='Status Code')
+    token_steps: Optional[list[dict[str, Any]]] = Field(None, title='Token Steps')
+    total_tokens: Optional[int] = Field(0, title='Total Tokens')
+    usage: Optional[dict[str, Any]] = Field(None, title='Usage')
+
+
+class V1AdeParseJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Status1(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
+class Job(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status1] = None
+
+
+class V1AdeParseJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class ServiceTier2(Enum):
+    """
+    Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
+    """
+
+    standard = 'standard'
+    priority = 'priority'
+
+
+class V1AdeParseJobsPostRequest(BaseModel):
+    """
+    Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``
+    (work). The document rides as ``document_ref`` (the gateway's multipart adapter
+    stages the upload / fetches ``document_url`` → data store, runs the pdf_pages
+    pre-flight, then starts the operation).
+    """
+
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(None, title='Custom Prompts')
+    document_ref: str = Field(..., title='Document Ref')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(None, title='Job Id')
+    model_versions: Optional[dict[str, str]] = Field(None, title='Model Versions')
+    output_save_url: Optional[str] = Field(None, title='Output Save Url')
+    password: Optional[str] = Field(None, title='Password')
+    pricing_multiplier: Optional[float] = Field(1.0, title='Pricing Multiplier')
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+    split: Optional[str] = Field(None, title='Split')
+    version: Optional[str] = Field(None, title='Version')
+    x_request_id: Optional[str] = Field(None, title='X Request Id')
+
+
+class V1AdeParseJobsPostRequest1(BaseModel):
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Custom Prompts'
+    )
+    document_ref: bytes = Field(..., description='File upload.')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Job Id'
+    )
+    model_versions: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Model Versions'
+    )
+    output_save_url: Optional[str] = Field(
+        None,
+        description='JSON-serialized string in form data.',
+        title='Output Save Url',
+    )
+    password: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Password'
+    )
+    pricing_multiplier: Optional[float] = Field(
+        1.0,
+        description='JSON-serialized string in form data.',
+        title='Pricing Multiplier',
+    )
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+    split: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Split'
+    )
+    version: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Version'
+    )
+    x_request_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='X Request Id'
+    )
+
+
+class V1AdeParseJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status1] = None
+
+
+class Error(BaseModel):
+    """
+    Present once status is ``failed``.
+    """
+
+    code: Optional[str] = Field(
+        None, description='Stable error code (``internal_error`` when unmapped).'
+    )
+    message: Optional[str] = None
+
+
+class Result(BaseModel):
+    """
+    Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the
+    billing inputs hoisted to the top level so the gateway operation reads them
+    without re-parsing the nested tree.
+
+    Billing is worker-owned (parse-api parity): the worker finalizes the price and
+    reports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =
+    FINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),
+    plus the record-inference enrichment (``usage`` + ``model_family``). The
+    gateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``
+    op — no gateway recomputation).
+    """
+
+    base_credit: Optional[float] = Field(0.0, title='Base Credit')
+    billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
+    credit_usage: Optional[CreditUsage] = None
+    duration_ms: Optional[int] = Field(0, title='Duration Ms')
+    failed_pages: Optional[list[int]] = Field(None, title='Failed Pages')
+    model_family: Optional[str] = Field(None, title='Model Family')
+    output_ref: Optional[str] = Field(None, title='Output Ref')
+    page_count: Optional[int] = Field(0, title='Page Count')
+    prompt_tokens: Optional[int] = Field(0, title='Prompt Tokens')
+    response: dict[str, Any] = Field(..., title='Response')
+    status_code: Optional[int] = Field(200, title='Status Code')
+    token_steps: Optional[list[dict[str, Any]]] = Field(None, title='Token Steps')
+    total_tokens: Optional[int] = Field(0, title='Total Tokens')
+    usage: Optional[dict[str, Any]] = Field(None, title='Usage')
+
+
+class V1AdeParseJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    metadata: Optional[dict[str, Any]] = Field(
+        None,
+        description="The result's metadata block (billing included), present alongside ``output_url`` once a job with ``output_save_url`` has ``completed`` — the delivery moves the content, not the receipt. Same shape as the inline ``result``'s ``metadata``; inline jobs carry it there instead.",
+    )
+    output_url: Optional[str] = Field(
+        None,
+        description='The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result] = Field(
+        None,
+        description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
+    )
+    status: Optional[Status1] = None
+
+
 class V1ExtractPostRequest(BaseModel):
     """
     Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.
@@ -669,14 +975,7 @@ class V1ExtractBuildSchemaJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status1(Enum):
-    pending = 'pending'
-    processing = 'processing'
-    completed = 'completed'
-    failed = 'failed'
-
-
-class Job(BaseModel):
+class Job1(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -690,18 +989,9 @@ class Job(BaseModel):
 
 class V1ExtractBuildSchemaJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job]] = None
+    jobs: Optional[list[Job1]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
-
-
-class ServiceTier2(Enum):
-    """
-    Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
-    """
-
-    standard = 'standard'
-    priority = 'priority'
 
 
 class V1ExtractBuildSchemaJobsPostRequest(BaseModel):
@@ -800,18 +1090,7 @@ class V1ExtractBuildSchemaJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Error(BaseModel):
-    """
-    Present once status is ``failed``.
-    """
-
-    code: Optional[str] = Field(
-        None, description='Stable error code (``internal_error`` when unmapped).'
-    )
-    message: Optional[str] = None
-
-
-class Result(BaseModel):
+class Result1(BaseModel):
     """
     Result of a **v1** build-schema call — VTRA's ``BuildSchemaResponse``.
 
@@ -847,7 +1126,7 @@ class V1ExtractBuildSchemaJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result] = Field(
+    result: Optional[Result1] = Field(
         None, description='Present once status is ``completed``.'
     )
     status: Optional[Status1] = None
@@ -865,7 +1144,7 @@ class V1ExtractJobsGetParametersQuery(BaseModel):
     )
 
 
-class Job1(BaseModel):
+class Job2(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -879,7 +1158,7 @@ class Job1(BaseModel):
 
 class V1ExtractJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job1]] = None
+    jobs: Optional[list[Job2]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
@@ -938,7 +1217,7 @@ class V1ExtractJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Result1(BaseModel):
+class Result2(BaseModel):
     """
     VTRA's ``ExtractResponse`` — the ``/v1/extract`` response body.
 
@@ -974,8 +1253,267 @@ class V1ExtractJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result1] = Field(
+    result: Optional[Result2] = Field(
         None, description='Present once status is ``completed``.'
+    )
+    status: Optional[Status1] = None
+
+
+class V1ParsePostRequest(BaseModel):
+    """
+    Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``
+    (work). The document rides as ``document_ref`` (the gateway's multipart adapter
+    stages the upload / fetches ``document_url`` → data store, runs the pdf_pages
+    pre-flight, then starts the operation).
+    """
+
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(None, title='Custom Prompts')
+    document_ref: str = Field(..., title='Document Ref')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(None, title='Job Id')
+    model_versions: Optional[dict[str, str]] = Field(None, title='Model Versions')
+    password: Optional[str] = Field(None, title='Password')
+    pricing_multiplier: Optional[float] = Field(1.0, title='Pricing Multiplier')
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    split: Optional[str] = Field(None, title='Split')
+    version: Optional[str] = Field(None, title='Version')
+    x_request_id: Optional[str] = Field(None, title='X Request Id')
+
+
+class V1ParsePostRequest1(BaseModel):
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Custom Prompts'
+    )
+    document_ref: bytes = Field(..., description='File upload.')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Job Id'
+    )
+    model_versions: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Model Versions'
+    )
+    password: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Password'
+    )
+    pricing_multiplier: Optional[float] = Field(
+        1.0,
+        description='JSON-serialized string in form data.',
+        title='Pricing Multiplier',
+    )
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    split: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Split'
+    )
+    version: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Version'
+    )
+    x_request_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='X Request Id'
+    )
+
+
+class V1ParsePostResponse(BaseModel):
+    """
+    Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the
+    billing inputs hoisted to the top level so the gateway operation reads them
+    without re-parsing the nested tree.
+
+    Billing is worker-owned (parse-api parity): the worker finalizes the price and
+    reports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =
+    FINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),
+    plus the record-inference enrichment (``usage`` + ``model_family``). The
+    gateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``
+    op — no gateway recomputation).
+    """
+
+    base_credit: Optional[float] = Field(0.0, title='Base Credit')
+    billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
+    credit_usage: Optional[CreditUsage] = None
+    duration_ms: Optional[int] = Field(0, title='Duration Ms')
+    failed_pages: Optional[list[int]] = Field(None, title='Failed Pages')
+    model_family: Optional[str] = Field(None, title='Model Family')
+    output_ref: Optional[str] = Field(None, title='Output Ref')
+    page_count: Optional[int] = Field(0, title='Page Count')
+    prompt_tokens: Optional[int] = Field(0, title='Prompt Tokens')
+    response: dict[str, Any] = Field(..., title='Response')
+    status_code: Optional[int] = Field(200, title='Status Code')
+    token_steps: Optional[list[dict[str, Any]]] = Field(None, title='Token Steps')
+    total_tokens: Optional[int] = Field(0, title='Total Tokens')
+    usage: Optional[dict[str, Any]] = Field(None, title='Usage')
+
+
+class V1ParseJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Job3(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status1] = None
+
+
+class V1ParseJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job3]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class V1ParseJobsPostRequest(BaseModel):
+    """
+    Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``
+    (work). The document rides as ``document_ref`` (the gateway's multipart adapter
+    stages the upload / fetches ``document_url`` → data store, runs the pdf_pages
+    pre-flight, then starts the operation).
+    """
+
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(None, title='Custom Prompts')
+    document_ref: str = Field(..., title='Document Ref')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(None, title='Job Id')
+    model_versions: Optional[dict[str, str]] = Field(None, title='Model Versions')
+    output_save_url: Optional[str] = Field(None, title='Output Save Url')
+    password: Optional[str] = Field(None, title='Password')
+    pricing_multiplier: Optional[float] = Field(1.0, title='Pricing Multiplier')
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+    split: Optional[str] = Field(None, title='Split')
+    version: Optional[str] = Field(None, title='Version')
+    x_request_id: Optional[str] = Field(None, title='X Request Id')
+
+
+class V1ParseJobsPostRequest1(BaseModel):
+    content_type: str = Field(..., title='Content Type')
+    custom_prompts: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Custom Prompts'
+    )
+    document_ref: bytes = Field(..., description='File upload.')
+    filename: str = Field(..., title='Filename')
+    job_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Job Id'
+    )
+    model_versions: Optional[dict[str, str]] = Field(
+        None, description='JSON-serialized string in form data.', title='Model Versions'
+    )
+    output_save_url: Optional[str] = Field(
+        None,
+        description='JSON-serialized string in form data.',
+        title='Output Save Url',
+    )
+    password: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Password'
+    )
+    pricing_multiplier: Optional[float] = Field(
+        1.0,
+        description='JSON-serialized string in form data.',
+        title='Pricing Multiplier',
+    )
+    processing_mode: Optional[str] = Field('sync', title='Processing Mode')
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+    split: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Split'
+    )
+    version: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='Version'
+    )
+    x_request_id: Optional[str] = Field(
+        None, description='JSON-serialized string in form data.', title='X Request Id'
+    )
+
+
+class V1ParseJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status1] = None
+
+
+class Result3(BaseModel):
+    """
+    Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the
+    billing inputs hoisted to the top level so the gateway operation reads them
+    without re-parsing the nested tree.
+
+    Billing is worker-owned (parse-api parity): the worker finalizes the price and
+    reports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =
+    FINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),
+    plus the record-inference enrichment (``usage`` + ``model_family``). The
+    gateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``
+    op — no gateway recomputation).
+    """
+
+    base_credit: Optional[float] = Field(0.0, title='Base Credit')
+    billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
+    credit_usage: Optional[CreditUsage] = None
+    duration_ms: Optional[int] = Field(0, title='Duration Ms')
+    failed_pages: Optional[list[int]] = Field(None, title='Failed Pages')
+    model_family: Optional[str] = Field(None, title='Model Family')
+    output_ref: Optional[str] = Field(None, title='Output Ref')
+    page_count: Optional[int] = Field(0, title='Page Count')
+    prompt_tokens: Optional[int] = Field(0, title='Prompt Tokens')
+    response: dict[str, Any] = Field(..., title='Response')
+    status_code: Optional[int] = Field(200, title='Status Code')
+    token_steps: Optional[list[dict[str, Any]]] = Field(None, title='Token Steps')
+    total_tokens: Optional[int] = Field(0, title='Total Tokens')
+    usage: Optional[dict[str, Any]] = Field(None, title='Usage')
+
+
+class V1ParseJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    metadata: Optional[dict[str, Any]] = Field(
+        None,
+        description="The result's metadata block (billing included), present alongside ``output_url`` once a job with ``output_save_url`` has ``completed`` — the delivery moves the content, not the receipt. Same shape as the inline ``result``'s ``metadata``; inline jobs carry it there instead.",
+    )
+    output_url: Optional[str] = Field(
+        None,
+        description='The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result3] = Field(
+        None,
+        description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
     status: Optional[Status1] = None
 
@@ -1107,7 +1645,7 @@ class V2ExtractJobsGetParametersQuery(BaseModel):
     )
 
 
-class Job2(BaseModel):
+class Job4(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -1121,7 +1659,7 @@ class Job2(BaseModel):
 
 class V2ExtractJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job2]] = None
+    jobs: Optional[list[Job4]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
@@ -1231,7 +1769,7 @@ class V2ExtractJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Result2(BaseModel):
+class Result4(BaseModel):
     """
     Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``
     response body (``docs/extract-v2-contract.md`` → Response).
@@ -1294,7 +1832,7 @@ class V2ExtractJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result2] = Field(
+    result: Optional[Result4] = Field(
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
@@ -1410,7 +1948,7 @@ class V2ParseJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status10(Enum):
+class Status16(Enum):
     """
     The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
     """
@@ -1421,7 +1959,7 @@ class Status10(Enum):
     failed = 'failed'
 
 
-class Job3(BaseModel):
+class Job5(BaseModel):
     completed_at: Optional[str] = Field(
         None, description='ISO-8601 timestamp for when the job finished, if terminal.'
     )
@@ -1439,7 +1977,7 @@ class Job3(BaseModel):
     model_version: Optional[str] = Field(
         None, description='The model snapshot used to parse the document.'
     )
-    status: Optional[Status10] = Field(
+    status: Optional[Status16] = Field(
         None,
         description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
@@ -1450,14 +1988,14 @@ class V2ParseJobsGetResponse(BaseModel):
         None,
         description='Whether more jobs exist beyond this page; request the next ``page`` to fetch them.',
     )
-    jobs: Optional[list[Job3]] = Field(
+    jobs: Optional[list[Job5]] = Field(
         None, description="The caller's parse jobs for this page, newest first."
     )
     page: Optional[int] = Field(None, description='The 0-indexed page number.')
     page_size: Optional[int] = Field(None, description='Items per page.')
 
 
-class ServiceTier8(Enum):
+class ServiceTier12(Enum):
     """
     Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
     """
@@ -1466,7 +2004,7 @@ class ServiceTier8(Enum):
     priority = 'priority'
 
 
-class Status11(Enum):
+class Status17(Enum):
     """
     The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.
     """
@@ -1485,13 +2023,13 @@ class V2ParseJobsPostResponse(BaseModel):
         ...,
         description='The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Status11 = Field(
+    status: Status17 = Field(
         ...,
         description="The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.",
     )
 
 
-class Error3(BaseModel):
+class Error5(BaseModel):
     """
     Present once the job has ``failed`` — the failure code + message.
     """
@@ -1500,7 +2038,7 @@ class Error3(BaseModel):
     message: Optional[str] = None
 
 
-class Status12(Enum):
+class Status18(Enum):
     """
     The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
     """
@@ -1559,14 +2097,14 @@ class V2WorkflowJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status13(Enum):
+class Status19(Enum):
     pending = 'pending'
     processing = 'processing'
     completed = 'completed'
     failed = 'failed'
 
 
-class Job4(BaseModel):
+class Job6(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -1575,17 +2113,17 @@ class Job4(BaseModel):
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status13] = None
+    status: Optional[Status19] = None
 
 
 class V2WorkflowJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job4]] = None
+    jobs: Optional[list[Job6]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
 
-class ServiceTier9(Enum):
+class ServiceTier13(Enum):
     """
     Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
     """
@@ -1600,10 +2138,10 @@ class V2WorkflowJobsPostResponse(BaseModel):
         None,
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status13] = None
+    status: Optional[Status19] = None
 
 
-class Error4(BaseModel):
+class Error6(BaseModel):
     """
     Present once status is ``failed``.
     """
@@ -1614,7 +2152,7 @@ class Error4(BaseModel):
     message: Optional[str] = None
 
 
-class Result3(BaseModel):
+class Result5(BaseModel):
     """
     Result returned by V2WorkflowOperationWorkflow.
 
@@ -1655,7 +2193,7 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
         None, description='Present once the job is terminal.'
     )
     created_at: Optional[str] = None
-    error: Optional[Error4] = Field(
+    error: Optional[Error6] = Field(
         None, description='Present once status is ``failed``.'
     )
     job_id: Optional[str] = Field(
@@ -1668,10 +2206,10 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result3] = Field(
+    result: Optional[Result5] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status13] = None
+    status: Optional[Status19] = None
 
 
 class BlocksOptions(BaseModel):
@@ -1699,11 +2237,11 @@ class Grounding(BaseModel):
 
     box: Box = Field(
         ...,
-        description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 8 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`.",
+        description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 5 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`.",
     )
     confidence: Optional[float] = Field(
         None,
-        description='How sure the model is of the text in this grounding, in `[0, 1]`. Word-granularity models (`dpt-3-fast`) set it at every level with the same weakest-link rule: a word `atomic_grounding` entry carries the lowest per-character OCR confidence in the word, and each parent grounding (element, `table_cell`, `table`, page) carries the lowest confidence among its transcribed words. Omitted where no transcribed word carries a score: models that ground at line granularity (`dpt-3-pro`), blocks whose text the model wrote rather than read (captioned figures and similar), and blocks with markdown suppressed.',
+        description='How sure the model is of the text in this grounding, in `[0, 1]` with at most 2 decimal places. Word-granularity models (`dpt-3-fast`) set it at every level with the same weakest-link rule: a word `atomic_grounding` entry carries the lowest per-character OCR confidence in the word, and each parent grounding (element, `table_cell`, `table`, page) carries the lowest confidence among its transcribed words. Omitted where no transcribed word carries a score: models that ground at line granularity (`dpt-3-pro`), blocks whose text the model wrote rather than read (captioned figures and similar), and blocks with markdown suppressed.',
         title='Confidence',
     )
     page: int = Field(
@@ -1818,7 +2356,7 @@ class V2ParseJobsPostRequest(BaseModel):
         None,
         description="Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data. A presigned URL must stay valid until the job COMPLETES, not just past submit: an already-expired URL, or one whose remaining validity is too short for the document's page count, is rejected at submit (422). By default the URL must retain at least 15 minutes of validity at submit, plus 3 seconds per document page; the 422 message names the exact window required. Sign with credentials that outlive the expected job duration — a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
     )
-    service_tier: Optional[ServiceTier8] = Field(
+    service_tier: Optional[ServiceTier12] = Field(
         None,
         description='Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -1968,7 +2506,7 @@ class V2WorkflowJobsPostRequest(BaseModel):
         ],
         title='Output',
     )
-    service_tier: Optional[ServiceTier9] = Field(
+    service_tier: Optional[ServiceTier13] = Field(
         None,
         description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -2009,7 +2547,7 @@ class V2WorkflowJobsPostRequest1(BaseModel):
         ],
         title='Output',
     )
-    service_tier: Optional[ServiceTier9] = Field(
+    service_tier: Optional[ServiceTier13] = Field(
         None,
         description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -2170,7 +2708,7 @@ class V2ParseJobsJobIdGetResponse(BaseModel):
     created_at: Optional[str] = Field(
         None, description='ISO-8601 timestamp for when the job was created.'
     )
-    error: Optional[Error3] = Field(
+    error: Optional[Error5] = Field(
         None,
         description='Present once the job has ``failed`` — the failure code + message.',
     )
@@ -2194,7 +2732,7 @@ class V2ParseJobsJobIdGetResponse(BaseModel):
         None,
         description='The parse response, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
-    status: Optional[Status12] = Field(
+    status: Optional[Status18] = Field(
         None,
         description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
