@@ -2239,10 +2239,10 @@ class Grounding(BaseModel):
         ...,
         description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 5 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`.",
     )
-    confidence: Optional[float] = Field(
+    min_ocr_confidence: Optional[float] = Field(
         None,
-        description='How sure the model is of the text in this grounding, in `[0, 1]` with at most 2 decimal places. Word-granularity models (`dpt-3-fast`) set it at every level with the same weakest-link rule: a word `atomic_grounding` entry carries the lowest per-character OCR confidence in the word, and each parent grounding (element, `table_cell`, `table`, page) carries the lowest confidence among its transcribed words. Omitted where no transcribed word carries a score: models that ground at line granularity (`dpt-3-pro`), blocks whose text the model wrote rather than read (captioned figures and similar), and blocks with markdown suppressed.',
-        title='Confidence',
+        description='The lowest OCR confidence of the text in this grounding, in `[0, 1]` with at most 2 decimal places. Word-granularity models (`dpt-3-fast`) set it at every level with the same weakest-link rule: a word `atomic_grounding` entry carries the lowest per-character OCR confidence in the word, and each parent grounding (element, `table_cell`, `table`, page) carries the lowest confidence among its transcribed words. Omitted where no transcribed word carries a score: models that ground at line granularity (`dpt-3-pro`), blocks whose text the model wrote rather than read (captioned figures and similar), and blocks with markdown suppressed.',
+        title='Min Ocr Confidence',
     )
     page: int = Field(
         ...,
@@ -2580,7 +2580,7 @@ class Element(BaseModel):
 
     atomic_grounding: Optional[list[Grounding]] = Field(
         None,
-        description="Fine-grained grounding segments, at whichever granularity the model reads at: one entry per visual line for `dpt-3-pro`, one per **word** — each with its `confidence` — for `dpt-3-fast`, including the words inside table cells. Present only on leaf elements — every type except `table`. `[]` in three cases: an element whose markdown is suppressed via `blocks.<type>.markdown=false`; a `table_cell` on a line-granularity model (a cell has no finer granularity than itself there); and a `table_cell` on a word-granularity model whose words cannot be located in the rendered cell text — a `|` escaped on the way into a pipe table, or a character escaped on the way into an HTML table — where the segments are dropped rather than risk reporting offsets that point at the wrong characters. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
+        description="Fine-grained grounding segments, at whichever granularity the model reads at: one entry per visual line for `dpt-3-pro`, one per **word** — each with its `min_ocr_confidence` — for `dpt-3-fast`, including the words inside table cells. Present only on leaf elements — every type except `table`. `[]` in three cases: an element whose markdown is suppressed via `blocks.<type>.markdown=false`; a `table_cell` on a line-granularity model (a cell has no finer granularity than itself there); and a `table_cell` on a word-granularity model whose words cannot be located in the rendered cell text — a `|` escaped on the way into a pipe table, or a character escaped on the way into an HTML table — where the segments are dropped rather than risk reporting offsets that point at the wrong characters. Any other leaf the model could not segment finer carries a single entry covering the element's full range and box. Omitted entirely when `options.atomic_grounding` is `false`.",
         title='Atomic Grounding',
     )
     children: Optional[list[Element]] = Field(
