@@ -37,7 +37,8 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
     `"unicode_codepoints"`).
   - `box` (`V2ParseBox`) -- `{xmin, ymin, xmax, ymax}` as `[0, 1]` fractions of
     the page width/height (a page node's box is the full page `{0, 0, 1, 1}`).
-  - `confidence` -- an optional `[0, 1]` probability (at most 2 decimal places).
+  - `min_ocr_confidence` -- an optional `[0, 1]` OCR score (at most 2 decimal
+    places) -- the lowest OCR confidence of the text in this grounding.
     Word-granularity models
     (`dpt-3-fast`) set it at **every** grounding level with the same weakest-link
     rule: a word `atomic_grounding` segment carries the lowest per-character OCR
@@ -46,12 +47,14 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
     is `None` wherever no transcribed word carries a score: line-granularity
     models (`dpt-3-pro`), blocks whose text the model wrote rather than read
     (captioned figures and similar), and blocks with markdown suppressed. When
-    asserting on it, treat missing and `None` alike (`if confidence is not None`).
+    asserting on it, treat missing and `None` alike
+    (`if min_ocr_confidence is not None`). The pre-rename `confidence` field is
+    retained (deprecated) and populated only by older gateway responses.
   - Leaf elements additionally carry `atomic_grounding` -- a list of
     `V2ParseNodeGrounding` segments at whichever granularity the model reads at:
     one entry per visual line for `dpt-3-pro`, one per word for `dpt-3-fast`.
     Each segment reuses the node-grounding shape (`page`, `range`, `box`,
-    `confidence`). Omitted when `options.atomic_grounding` is `false`.
+    `min_ocr_confidence`). Omitted when `options.atomic_grounding` is `false`.
 - With `options.inline_markdown=true`, the document root, each page, and each
   element also carry their own `markdown` slice.
 - `metadata` (`V2ParseMetadata`) -- `job_id`, `model_version`, `page_count`,

@@ -76,7 +76,10 @@ class V2ParseNodeGrounding(BaseModel):
     page: Optional[int] = None
     range: Optional[V2ParseRange] = None
     box: Optional[V2ParseBox] = None
-    # How sure the model is of the text in this grounding, in `[0, 1]` with at
+    # Deprecated: renamed to `min_ocr_confidence` upstream; retained for backward
+    # compatibility and populated only by older gateway responses.
+    confidence: Optional[float] = None
+    # The lowest OCR confidence of the text in this grounding, in `[0, 1]` with at
     # most 2 decimal places.
     # Word-granularity models (`dpt-3-fast`) set it at every level with the same
     # weakest-link rule: a word `atomic_grounding` entry carries the lowest
@@ -86,7 +89,7 @@ class V2ParseNodeGrounding(BaseModel):
     # models that ground at line granularity (`dpt-3-pro`), blocks whose text the
     # model wrote rather than read (captioned figures and similar), and blocks
     # with markdown suppressed.
-    confidence: Optional[float] = None
+    min_ocr_confidence: Optional[float] = None
 
 
 # --- `structure`: the logical document tree ------------------------------------
@@ -109,7 +112,7 @@ class V2ParseElement(BaseModel):
     grounding: Optional[V2ParseNodeGrounding] = None
     # Fine-grained grounding segments at whichever granularity the model reads at:
     # one entry per visual line for `dpt-3-pro`, one per word (each with its
-    # `confidence`) for `dpt-3-fast`. Present on leaf elements only; omitted
+    # `min_ocr_confidence`) for `dpt-3-fast`. Present on leaf elements only; omitted
     # entirely when `options.atomic_grounding` is false.
     atomic_grounding: Optional[List[V2ParseNodeGrounding]] = None
     # The element's slice of the top-level `markdown`; only when

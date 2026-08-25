@@ -10,6 +10,7 @@ from landingai_ade.types.v2 import (
     V2GroundResult,
     V2ExtractResult,
     V2ParseResponse,
+    V2ParseNodeGrounding,
     V2BuildSchemaResponse,
 )
 
@@ -183,14 +184,14 @@ def test_parse_response_inline_grounding_and_metadata() -> None:
                                 "page": 1,
                                 "range": {"start": 0, "end": 4},
                                 "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
-                                "confidence": 0.87,
+                                "min_ocr_confidence": 0.87,
                             },
                             "atomic_grounding": [
                                 {
                                     "page": 1,
                                     "range": {"start": 0, "end": 4},
                                     "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
-                                    "confidence": 0.87,
+                                    "min_ocr_confidence": 0.87,
                                 }
                             ],
                         }
@@ -223,11 +224,16 @@ def test_parse_response_inline_grounding_and_metadata() -> None:
     assert el.atomic_grounding is not None and len(el.atomic_grounding) == 1
     seg = el.atomic_grounding[0]
     assert seg.range is not None and seg.range.start == 0
-    # Word-granularity models (`dpt-3-fast`) carry `confidence` at every grounding
-    # level: on each word `atomic_grounding` segment and on the parent node-level
-    # `grounding` (the lowest confidence among the node's transcribed words).
-    assert seg.confidence == 0.87
-    assert el.grounding.confidence == 0.87
+    # Word-granularity models (`dpt-3-fast`) carry `min_ocr_confidence` at every
+    # grounding level: on each word `atomic_grounding` segment and on the parent
+    # node-level `grounding` (the lowest OCR confidence among the node's
+    # transcribed words).
+    assert seg.min_ocr_confidence == 0.87
+    assert el.grounding.min_ocr_confidence == 0.87
+    # The pre-rename `confidence` key still deserializes onto the deprecated field
+    # for older gateway responses.
+    legacy = V2ParseNodeGrounding.model_validate({"page": 1, "confidence": 0.5})
+    assert legacy.confidence == 0.5 and legacy.min_ocr_confidence is None
     assert r.metadata is not None
     assert r.metadata.output_markdown_chars == 4
     assert r.metadata.range_units == "unicode_codepoints"

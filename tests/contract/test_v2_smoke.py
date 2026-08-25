@@ -114,19 +114,24 @@ def test_parse_sync_inline_grounding_and_metadata(staging_client: LandingAIADE) 
 
 
 def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None:
-    # `confidence` is an optional per-grounding probability in [0, 1]. On
+    # `min_ocr_confidence` is an optional per-grounding OCR score in [0, 1]. On
     # word-granularity models (`dpt-3-fast`) it is set at every level: each word
     # `atomic_grounding` segment and each parent node-level `grounding` carry it.
     # Line-granularity models (`dpt-3-pro`) omit it. Since no model is pinned here,
     # tolerate either: assert every present value is a valid probability, wherever
-    # it appears (atomic segments and node-level grounding alike).
+    # it appears (atomic segments and node-level grounding alike). The pre-rename
+    # `confidence` field is checked the same way for older gateway responses.
     pdf = Path(__file__).parent / "sample.pdf"
     resp = staging_client.v2.parse(document=pdf, options={"atomic_grounding": True})
     assert isinstance(resp, V2ParseResponse)
     assert resp.structure is not None
 
     def _check(grounding: Optional[V2ParseNodeGrounding]) -> None:
-        if grounding is not None and grounding.confidence is not None:
+        if grounding is None:
+            return
+        if grounding.min_ocr_confidence is not None:
+            assert 0.0 <= grounding.min_ocr_confidence <= 1.0
+        if grounding.confidence is not None:
             assert 0.0 <= grounding.confidence <= 1.0
 
     def _walk(elements: List[V2ParseElement]) -> None:
