@@ -105,9 +105,12 @@ class BaseModel(pydantic.BaseModel):
 
         class Config(pydantic.BaseConfig):  # pyright: ignore[reportDeprecated]
             extra: Any = pydantic.Extra.allow  # type: ignore
+            allow_population_by_field_name = True
     else:
         model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="allow", defer_build=coerce_boolean(os.environ.get("DEFER_PYDANTIC_BUILD", "true"))
+            extra="allow",
+            populate_by_name=True,
+            defer_build=coerce_boolean(os.environ.get("DEFER_PYDANTIC_BUILD", "true")),
         )
 
     def to_dict(
@@ -210,6 +213,7 @@ class BaseModel(pydantic.BaseModel):
         if _fields_set is None:
             _fields_set = set()
 
+        consumed_keys: set[str] = set()
         model_fields = get_model_fields(__cls)
         for name, field in model_fields.items():
             key = field.alias
@@ -219,14 +223,16 @@ class BaseModel(pydantic.BaseModel):
             if key in values:
                 fields_values[name] = _construct_field(value=values[key], field=field, key=key)
                 _fields_set.add(name)
+                consumed_keys.add(key)
             else:
                 fields_values[name] = field_get_default(field)
 
         extra_field_type = _get_extra_fields_type(__cls)
 
+        # Aliases that populated a field must not also be stored as extras (e.g. class vs class_).
         _extra = {}
         for key, value in values.items():
-            if key not in model_fields:
+            if key not in model_fields and key not in consumed_keys:
                 parsed = construct_type(value=value, type_=extra_field_type) if extra_field_type is not None else value
 
                 if PYDANTIC_V1:
