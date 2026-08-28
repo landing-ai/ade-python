@@ -37,19 +37,16 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
     `"unicode_codepoints"`).
   - `box` (`V2ParseBox`) -- `{xmin, ymin, xmax, ymax}` as `[0, 1]` fractions of
     the page width/height (a page node's box is the full page `{0, 0, 1, 1}`).
-  - `confidence` -- an optional `[0, 1]` probability (at most 2 decimal places).
-    Word-granularity models
-    (`dpt-3-fast`) set it at **every** grounding level with the same weakest-link
-    rule: a word `atomic_grounding` segment carries the lowest per-character OCR
-    confidence in the word, and each parent grounding (element, `table_cell`,
-    `table`, page) carries the lowest confidence among its transcribed words. It
-    is `None` wherever no transcribed word carries a score: line-granularity
-    models (`dpt-3-pro`), blocks whose text the model wrote rather than read
-    (captioned figures and similar), and blocks with markdown suppressed. When
-    asserting on it, treat missing and `None` alike (`if confidence is not None`).
+  - `confidence` -- an optional `[0, 1]` probability. It is present **only** on
+    word-granularity `atomic_grounding` segments (`dpt-3-verity`), where it is the
+    lowest per-character OCR confidence in the word -- so a word is only as
+    trustworthy as its weakest character. It is `None` on node-level `grounding`
+    and on models that ground at line granularity (`dpt-3-pro`). When asserting on
+    it, treat missing and `None` alike (`if confidence is not None`).
   - Leaf elements additionally carry `atomic_grounding` -- a list of
     `V2ParseNodeGrounding` segments at whichever granularity the model reads at:
-    one entry per visual line for `dpt-3-pro`, one per word for `dpt-3-fast`.
+    one entry per visual line for `dpt-3-pro`, one per word (each with its
+    `confidence`) for `dpt-3-verity`.
     Each segment reuses the node-grounding shape (`page`, `range`, `box`,
     `confidence`). Omitted when `options.atomic_grounding` is `false`.
 - With `options.inline_markdown=true`, the document root, each page, and each

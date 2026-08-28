@@ -128,7 +128,6 @@ INLINE_PARSE_BODY: Dict[str, Any] = {
                             "page": 1,
                             "range": {"start": 0, "end": 9},
                             "box": {"xmin": 0.1, "ymin": 0.1, "xmax": 0.9, "ymax": 0.2},
-                            "confidence": 0.87,
                         },
                         "atomic_grounding": [
                             {
@@ -374,11 +373,11 @@ def test_parse_sync_inline_grounding_structure() -> None:
     assert el.atomic_grounding is not None and len(el.atomic_grounding) == 1
     seg = el.atomic_grounding[0]
     assert seg.range is not None and seg.range.start == 0
-    # Word-granularity models (`dpt-3-fast`) attach `confidence` at every grounding
-    # level: on each `atomic_grounding` word segment, and on the parent node-level
-    # `grounding` (the lowest confidence among the node's transcribed words).
+    # Word-granularity models (`dpt-3-verity`) attach `confidence` only on each
+    # `atomic_grounding` word segment (the lowest per-character OCR confidence in
+    # the word); the parent node-level `grounding` omits it.
     assert seg.confidence == 0.87
-    assert el.grounding.confidence == 0.87
+    assert el.grounding.confidence is None
 
     assert result.metadata is not None
     assert result.metadata.output_markdown_chars == 9
