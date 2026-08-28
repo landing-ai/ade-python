@@ -521,7 +521,8 @@ jobs:
             under tests/api_resources/. The contract file hits LIVE staging, so it must assert only
             what staging is guaranteed to return: NEVER pin `model=` there (a model family the spec
             documents may not be servable in whatever way the staging cluster happens to be
-            provisioned — `dpt-3-fast` needs a GPU-backed booking, and against one without it the
+            provisioned — the word-granularity family, currently `dpt-3-verity` and formerly
+            `dpt-3-fast`, needs a GPU-backed booking, and against one without it the
             request hangs until the gate times out; that is an environment property, not an SDK
             contract, so no live test should depend on it), and for an optional field assert
             absent-or-valid ("if present, it is in range"), never that it is populated. Assertions
