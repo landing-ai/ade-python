@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Iterator, Optional
+from typing import List, Tuple, Iterator, Optional
 from pathlib import Path
 
 import pytest
@@ -113,32 +113,75 @@ def test_parse_sync_inline_grounding_and_metadata(staging_client: LandingAIADE) 
     assert resp.metadata.output_markdown_chars is not None
 
 
-def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None:
-    # `confidence` is an optional per-grounding probability in [0, 1]. On
-    # word-granularity models (`dpt-3-verity`) it is set only on each word
-    # `atomic_grounding` segment; node-level `grounding` omits it, as do
-    # line-granularity models (`dpt-3-pro`). Since no model is pinned here,
-    # tolerate either: assert every present value is a valid probability, wherever
-    # it appears (atomic segments and node-level grounding alike).
-    pdf = Path(__file__).parent / "sample.pdf"
-    resp = staging_client.v2.parse(document=pdf, options={"atomic_grounding": True})
-    assert isinstance(resp, V2ParseResponse)
-    assert resp.structure is not None
+def _split_confidences(resp: V2ParseResponse) -> Tuple[List[float], List[float]]:
+    # Walk the structure tree once and return the confidence values that are actually
+    # set, split by where they were found: node-level `grounding` (page and element
+    # nodes) vs word `atomic_grounding` segments. Returning the values rather than
+    # asserting inline is what lets a caller assert a count -- an in-tree `if
+    # confidence is not None` check passes vacuously when nothing carries a score,
+    # which is exactly how this contract went unverified.
+    node: List[float] = []
+    atomic: List[float] = []
 
-    def _check(grounding: Optional[V2ParseNodeGrounding]) -> None:
+    def _node(grounding: Optional[V2ParseNodeGrounding]) -> None:
         if grounding is not None and grounding.confidence is not None:
-            assert 0.0 <= grounding.confidence <= 1.0
+            node.append(grounding.confidence)
 
     def _walk(elements: List[V2ParseElement]) -> None:
         for el in elements:
-            _check(el.grounding)
+            _node(el.grounding)
             for seg in el.atomic_grounding or []:
-                _check(seg)
+                if seg.confidence is not None:
+                    atomic.append(seg.confidence)
             _walk(el.children or [])
 
+    assert resp.structure is not None
     for page in resp.structure.children:
-        _check(page.grounding)
+        _node(page.grounding)
         _walk(page.children)
+    return node, atomic
+
+
+def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None:
+    # `confidence` is an optional `[0, 1]` probability that lives ONLY on word
+    # `atomic_grounding` segments. Node-level `grounding` -- element, `table_cell`,
+    # `table`, page -- never carries it on ANY model: the weakest-link roll-up the
+    # gateway used to do was removed upstream. That half of the contract is
+    # model-independent, so it is asserted here on the default model.
+    #
+    # The positive half (words actually carrying scores) needs a word-granularity
+    # model and lives in the test below -- on the default `dpt-3-pro` nothing carries
+    # a score at all, so the `atomic` range check here is vacuous by design.
+    pdf = Path(__file__).parent / "sample.pdf"
+    resp = staging_client.v2.parse(document=pdf, options={"atomic_grounding": True})
+    assert isinstance(resp, V2ParseResponse)
+
+    node, atomic = _split_confidences(resp)
+    assert node == [], f"node-level grounding must not carry confidence, got {node[:3]}"
+    assert all(0.0 <= c <= 1.0 for c in atomic)
+
+
+def test_parse_atomic_grounding_confidence_word_granularity(staging_client: LandingAIADE) -> None:
+    # The positive half of the confidence contract: pin a word-granularity model so
+    # the path is actually exercised.
+    #
+    # Split out rather than folded into the test above because pinning costs
+    # something: `dpt-3-verity` is GPU-gated on staging, so a cluster booked without
+    # a GPU hangs this request until CONTRACT_TIMEOUT. Isolated, that infra case reds
+    # one obviously-named test instead of the general grounding contract. (Latency is
+    # not the concern -- verity and pro both parse the sample in ~12s.)
+    #
+    # `>= 1` scored segment, not "every segment": the model legitimately leaves some
+    # unscored -- text it wrote rather than read, cells whose words it could not
+    # locate in the rendered text -- 297 of 299 on this sample.
+    pdf = Path(__file__).parent / "sample.pdf"
+    resp = staging_client.v2.parse(document=pdf, model="dpt-3-verity", options={"atomic_grounding": True})
+    assert isinstance(resp, V2ParseResponse)
+
+    node, atomic = _split_confidences(resp)
+    assert node == [], f"node-level grounding must not carry confidence, got {node[:3]}"
+    assert atomic, "word-granularity parse returned no scored atomic segments"
+    assert all(0.0 <= c <= 1.0 for c in atomic)
 
 
 def test_ground_sync(staging_client: LandingAIADE) -> None:
