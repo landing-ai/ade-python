@@ -14,6 +14,8 @@ from landingai_ade.types.v2 import (
     V2ParseElement,
     V2ExtractResult,
     V2ParseResponse,
+    V2SplitResponse,
+    V2ClassifyResponse,
     V2ParseNodeGrounding,
 )
 
@@ -152,6 +154,52 @@ def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None
     for page in resp.structure.children:
         _check_node(page.grounding)
         _walk(page.children)
+
+
+def test_classify_sync(staging_client: LandingAIADE) -> None:
+    # Do not pin `model=`: the default classify pipeline is what staging is
+    # guaranteed to serve. Assert only the response contract, not a specific
+    # predicted class (that depends on the document and model).
+    pdf = Path(__file__).parent / "sample.pdf"
+    res = staging_client.v2.classify(
+        classes=[
+            {"class": "report", "description": "A business or financial report"},
+            {"class": "invoice", "description": "A billing invoice"},
+        ],
+        document=pdf,
+    )
+    assert isinstance(res, V2ClassifyResponse)
+    assert res.classification, "expected at least one page classification"
+    for item in res.classification:
+        assert isinstance(item.class_, str) and item.class_
+        assert isinstance(item.page, int)
+        # Optional field: absent-or-valid.
+        if item.suggested_class is not None:
+            assert isinstance(item.suggested_class, str)
+    assert res.metadata.page_count >= 1
+    # Optional metadata field: assert absent-or-valid, never that it is populated.
+    if res.metadata.credit_usage is not None:
+        assert res.metadata.credit_usage >= 0
+
+
+def test_split_sync(staging_client: LandingAIADE) -> None:
+    # Split takes Markdown; use the inline sample so no file is needed. Do not
+    # pin `model=` -- the default split snapshot is what staging serves.
+    res = staging_client.v2.split(
+        split_class=[{"name": "report", "description": "The report body"}],
+        markdown=SAMPLE_MARKDOWN,
+    )
+    assert isinstance(res, V2SplitResponse)
+    assert isinstance(res.splits, list)
+    for seg in res.splits:
+        assert isinstance(seg.classification, str)
+        assert isinstance(seg.pages, list)
+        assert isinstance(seg.markdowns, list)
+        # Optional field: absent-or-valid.
+        if seg.identifier is not None:
+            assert isinstance(seg.identifier, str)
+    assert res.metadata.job_id
+    assert res.metadata.page_count >= 1
 
 
 def test_ground_sync(staging_client: LandingAIADE) -> None:

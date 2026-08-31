@@ -8,8 +8,8 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 
 | Layer | Location | What it covers |
 | --- | --- | --- |
-| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2ClassifyResponse` / `V2SplitResponse` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_classify_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
 | Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
@@ -112,11 +112,57 @@ each extracted field back to the `structure` blocks it was quoted from:
 accepts a plain `dict` or a pydantic model (so a parse response's `.structure` can
 be passed directly). `/v2/ground` is synchronous-only (no async jobs route).
 
+## Current classify-response shape
+
+`POST /v1/classify` (and the completed `classify_jobs` result) returns a
+`V2ClassifyResponse` — served on the ADE host, so it lives under `client.v2`
+alongside parse/extract. It carries:
+
+- `classification` — one `V2ClassificationItem` per page, in page order:
+  - `class_` — the predicted class label, or `"unknown"`. The wire key is
+    `class` (a Python keyword), so the field is `class_` with the alias carrying
+    the wire name.
+  - `page` — 0-indexed page number.
+  - `reason` — why the page was classified this way.
+  - `suggested_class` — optional; a class the model proposes when the prediction
+    is `"unknown"`. Absent/`None` otherwise.
+- `metadata` (`V2ClassifyMetadata`) — `page_count`, `duration_ms`, and
+  `openapi_spec` (required per the spec), plus optional `credit_usage`,
+  `filename`, `job_id`, `org_id`, and `version`.
+
+`client.v2.classify(...)` takes `classes` (the candidate classes, each a mapping
+with a `class` name and optional `description`), plus exactly one of `document`
+(a file) or `document_url`; the request is multipart and `classes` is sent as a
+JSON-encoded form field. The async surface (`client.v2.classify_jobs`) mirrors
+`parse_jobs` (`create` / `get` / `list` / `wait`, with a `service_tier`), and a
+completed classify `Job` carries a `V2ClassifyResponse` on `result`. A 504 on the
+sync call raises `V2SyncTimeoutError` pointing at `classify_jobs`.
+
+## Current split-response shape
+
+`POST /v1/split` returns a `V2SplitResponse` — also an ADE-host route surfaced
+under `client.v2`. It is synchronous-only (no async jobs route). It carries:
+
+- `splits` — a list of `V2Split` segments, in page order. Consecutive pages with
+  the same classification merge into one segment; an identifier change starts a
+  new one. Each segment has `classification`, `markdowns` (the per-page Markdown,
+  in order), `pages` (0-indexed), and an optional `identifier` (present when the
+  matching split classification requested one; the key is always present on the
+  wire but may be null, which deserializes to `None`).
+- `metadata` (`V2SplitMetadata`) — `credit_usage`, `duration_ms`, `filename`,
+  `job_id`, `page_count`, and `version` (all required per the spec), plus optional
+  `org_id`.
+
+`client.v2.split(...)` takes `split_class` (the split classification entries, each
+a mapping with a `name` and optional `description` / `identifier`; at most 19),
+plus exactly one of `markdown` (an inline string or a file) or `markdown_url`; the
+request is multipart and `split_class` is sent as a JSON-encoded form field.
+
 ## Async job envelopes
 
-`normalize_parse_job`, `normalize_extract_job`, and `normalize_build_schema_job`
-fold the upstream job envelopes into the unified `Job`. All are tolerant of
-field-name drift:
+`normalize_parse_job`, `normalize_extract_job`, `normalize_classify_job`, and
+`normalize_build_schema_job` fold the upstream job envelopes into the unified
+`Job`. All are tolerant of field-name drift:
 
 - The parse response lives under `result` (older envelopes used `data`).
 - Failures arrive as a structured `error` object (`{code, message}`); older parse

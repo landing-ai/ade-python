@@ -8,11 +8,13 @@ from landingai_ade.types.v2 import (
     JobStatus,
     V2ExtractResult,
     V2ParseResponse,
+    V2ClassifyResponse,
     V2BuildSchemaResponse,
 )
 from landingai_ade.resources.v2._normalize import (
     normalize_parse_job,
     normalize_extract_job,
+    normalize_classify_job,
     normalize_build_schema_job,
 )
 
@@ -194,6 +196,40 @@ def test_normalize_extract_job_unknown_status_defaults_to_pending() -> None:
     job = normalize_extract_job(raw)
     assert job.status is JobStatus.PENDING
     assert job.raw["status"] == "some_brand_new_status"
+
+
+def test_normalize_classify_job_iso_and_result() -> None:
+    raw: Dict[str, Any] = {
+        "job_id": "classify-1",
+        "status": "completed",
+        "created_at": "2026-01-02T03:04:05Z",
+        "completed_at": "2026-01-02T03:04:09Z",
+        "result": {
+            "classification": [{"class": "invoice", "page": 0, "reason": "totals present"}],
+            "metadata": {"page_count": 1, "duration_ms": 10, "openapi_spec": "https://x/openapi.json"},
+        },
+    }
+    job = normalize_classify_job(raw)
+    assert job.status is JobStatus.COMPLETED
+    assert job.created_at is not None and job.created_at.year == 2026
+    assert isinstance(job.result, V2ClassifyResponse)
+    assert job.result.classification[0].class_ == "invoice"
+
+
+def test_normalize_classify_job_error_object() -> None:
+    raw = {"job_id": "classify-2", "status": "failed", "error": {"code": "internal_error", "message": "boom"}}
+    job = normalize_classify_job(raw)
+    assert job.status is JobStatus.FAILED
+    assert job.error is not None and job.error.code == "internal_error"
+    assert job.result is None
+
+
+def test_normalize_classify_job_minimal_create_envelope_defaults_to_pending() -> None:
+    raw = {"job_id": "classify-x"}
+    job = normalize_classify_job(raw)
+    assert job.job_id == "classify-x"
+    assert job.status is JobStatus.PENDING
+    assert job.result is None
 
 
 def test_normalize_build_schema_job_iso_and_result() -> None:

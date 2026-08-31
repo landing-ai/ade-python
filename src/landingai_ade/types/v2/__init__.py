@@ -16,6 +16,11 @@ from .parse_response import (
     V2ParseGroundingEntry as V2ParseGroundingEntry,
     V2ParseGroundingElement as V2ParseGroundingElement,
 )
+from .split_response import (
+    V2Split as V2Split,
+    V2SplitMetadata as V2SplitMetadata,
+    V2SplitResponse as V2SplitResponse,
+)
 from .ground_response import (
     V2GroundResult as V2GroundResult,
     V2GroundBilling as V2GroundBilling,
@@ -25,6 +30,11 @@ from .extract_response import (
     V2ExtractResult as V2ExtractResult,
     V2ExtractBilling as V2ExtractBilling,
     V2ExtractMetadata as V2ExtractMetadata,
+)
+from .classify_response import (
+    V2ClassifyMetadata as V2ClassifyMetadata,
+    V2ClassifyResponse as V2ClassifyResponse,
+    V2ClassificationItem as V2ClassificationItem,
 )
 from .build_schema_response import (
     V2BuildSchemaBilling as V2BuildSchemaBilling,

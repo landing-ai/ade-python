@@ -10,6 +10,8 @@ from landingai_ade.types.v2 import (
     V2GroundResult,
     V2ExtractResult,
     V2ParseResponse,
+    V2SplitResponse,
+    V2ClassifyResponse,
     V2BuildSchemaResponse,
 )
 
@@ -66,6 +68,51 @@ def test_job_raw_default_is_independent_per_instance() -> None:
     job_a.raw["org_id"] = "o1"
     assert job_b.raw == {}
     assert job_a.raw is not job_b.raw
+
+
+def test_classify_response_deserializes_with_class_alias_and_optionals() -> None:
+    resp = V2ClassifyResponse.model_validate(
+        {
+            "classification": [
+                {"class": "invoice", "page": 0, "reason": "totals present"},
+                {"class": "unknown", "page": 1, "reason": "no signal", "suggested_class": "cover"},
+            ],
+            "metadata": {"page_count": 2, "duration_ms": 5, "openapi_spec": "https://x/openapi.json"},
+        }
+    )
+    # `class` is a Python keyword, so it deserializes onto `class_` via its alias.
+    assert resp.classification[0].class_ == "invoice"
+    assert resp.classification[0].suggested_class is None
+    assert resp.classification[1].suggested_class == "cover"
+    # Optional metadata absent from the payload defaults to None.
+    assert resp.metadata.page_count == 2
+    assert resp.metadata.credit_usage is None
+    assert resp.metadata.version is None
+
+
+def test_split_response_deserializes_and_treats_null_identifier_as_none() -> None:
+    resp = V2SplitResponse.model_validate(
+        {
+            "splits": [
+                {"classification": "invoice", "identifier": "INV-1", "markdowns": ["a"], "pages": [0]},
+                {"classification": "receipt", "identifier": None, "markdowns": ["b"], "pages": [1]},
+            ],
+            "metadata": {
+                "credit_usage": 0.1,
+                "duration_ms": 3,
+                "filename": "d.md",
+                "job_id": "split-1",
+                "org_id": None,
+                "page_count": 2,
+                "version": "split-20251105",
+            },
+        }
+    )
+    assert resp.splits[0].identifier == "INV-1"
+    # A null identifier and an absent one are the same state (None).
+    assert resp.splits[1].identifier is None
+    assert resp.metadata.org_id is None
+    assert resp.metadata.version == "split-20251105"
 
 
 def test_job_raw_default_is_independent_per_instance_via_construct() -> None:
