@@ -68,6 +68,29 @@ class BuildSchemaWarning(BaseModel):
     )
 
 
+class ClassifyClass(BaseModel):
+    """
+    One classification option: a class name plus an optional description.
+
+    Wire key ``class`` (VTRA's ``ClassifyClass``); the field is ``class_name``
+    because ``class`` is a Python keyword, with the alias carrying the wire
+    name. ``populate_by_name`` lets the Temporal round-trip (which serializes by
+    FIELD name) rebuild the object on the worker side.
+    """
+
+    class_: str = Field(
+        ...,
+        alias='class',
+        description='Class name assigned to a page when it matches.',
+        title='Class',
+    )
+    description: Optional[str] = Field(
+        None,
+        description='What this class represents. Improves classification.',
+        title='Description',
+    )
+
+
 class CreditUsage(BaseModel):
     """
     The standard credit-usage shape a billable WORK result carries.
@@ -219,6 +242,86 @@ class Range(BaseModel):
     )
 
 
+class Split(BaseModel):
+    """
+    One split segment: consecutive pages of one classification (an
+    identifier change starts a new segment).
+    """
+
+    classification: str = Field(
+        ...,
+        description='The split classification name this segment was assigned.',
+        title='Classification',
+    )
+    identifier: Optional[str] = Field(
+        ...,
+        description='The identifier value extracted for this segment, when the matching split classification requested one. Null otherwise.',
+        title='Identifier',
+    )
+    markdowns: list[str] = Field(
+        ...,
+        description='The Markdown content of each page in this segment, in order.',
+        title='Markdowns',
+    )
+    pages: list[int] = Field(
+        ...,
+        description='0-indexed page numbers belonging to this segment, in order.',
+        title='Pages',
+    )
+
+
+class SplitMetadata(BaseModel):
+    """
+    Information about a split request.
+    """
+
+    credit_usage: float = Field(
+        ...,
+        description='Credits consumed by this request: the input Markdown length in characters divided by 5000. Billed usage rounds this up to the next 0.1 credit.',
+        title='Credit Usage',
+    )
+    duration_ms: int = Field(
+        ..., description='Total processing time in milliseconds.', title='Duration Ms'
+    )
+    filename: str = Field(
+        ...,
+        description="Display name of the split document: the URL path's file name for `markdown_url` inputs, or a generated name for inline and uploaded Markdown.",
+        title='Filename',
+    )
+    job_id: str = Field(
+        ...,
+        description="The split job identifier — server-minted and unique per request. Correlates with the request's entry in your billing dashboard.",
+        title='Job Id',
+    )
+    org_id: Optional[str] = Field(..., description='Organization ID.', title='Org Id')
+    page_count: int = Field(
+        ...,
+        description='Total number of pages in the input Markdown.',
+        title='Page Count',
+    )
+    version: str = Field(
+        ...,
+        description='The exact split model snapshot that processed the document, e.g. `split-20251105`.',
+        title='Version',
+    )
+
+
+class SplitResponse(BaseModel):
+    """
+    The split result: the merged `splits` segments and request `metadata`.
+    """
+
+    metadata: SplitMetadata = Field(
+        ...,
+        description='Information about the request: file name, page count, duration, credits, and the resolved model version.',
+    )
+    splits: list[Split] = Field(
+        ...,
+        description='The split segments, in page order. Consecutive pages with the same classification merge into one segment; an identifier change starts a new segment.',
+        title='Splits',
+    )
+
+
 class Format(Enum):
     markdown = 'markdown'
     html = 'html'
@@ -278,6 +381,42 @@ class V1BuildSchemaMetadata(BaseModel):
         None,
         description='Structured warnings from the schema-generation process. Each is a ``{code, msg}`` object (e.g. code ``nonconformant_schema``).',
         title='Warnings',
+    )
+
+
+class V1ClassifyMetadata(BaseModel):
+    """
+    Response metadata for a classify call — VTRA's ``ClassifyMetadata``.
+    """
+
+    credit_usage: Optional[float] = Field(
+        0.0, description='Credits billed for this request.', title='Credit Usage'
+    )
+    duration_ms: int = Field(
+        ...,
+        description='End-to-end request duration in milliseconds.',
+        title='Duration Ms',
+    )
+    filename: Optional[str] = Field(
+        '', description='Name of the classified file.', title='Filename'
+    )
+    job_id: Optional[str] = Field(
+        '',
+        description='Gateway job id (workflow id). Matches the billing row id in vision-agent.',
+        title='Job Id',
+    )
+    openapi_spec: str = Field(
+        ...,
+        description='URL of the OpenAPI spec covering this API, for inspection and client generation.',
+    )
+    org_id: Optional[str] = Field(None, description='Organization ID.', title='Org Id')
+    page_count: int = Field(
+        ..., description='Number of pages classified.', title='Page Count'
+    )
+    version: Optional[str] = Field(
+        None,
+        description='Resolved classify pipeline version that produced this response.',
+        title='Version',
     )
 
 
@@ -552,7 +691,14 @@ class V1AdeParsePostRequest1(BaseModel):
     custom_prompts: Optional[dict[str, str]] = Field(
         None, description='JSON-serialized string in form data.', title='Custom Prompts'
     )
-    document_ref: bytes = Field(..., description='File upload.')
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to process. Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.',
+    )
     filename: str = Field(..., title='Filename')
     job_id: Optional[str] = Field(
         None, description='JSON-serialized string in form data.', title='Job Id'
@@ -596,6 +742,7 @@ class V1AdeParsePostResponse(BaseModel):
 
     base_credit: Optional[float] = Field(0.0, title='Base Credit')
     billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    billing_suppressed: Optional[bool] = Field(False, title='Billing Suppressed')
     completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
     credit_usage: Optional[CreditUsage] = None
     duration_ms: Optional[int] = Field(0, title='Duration Ms')
@@ -690,7 +837,14 @@ class V1AdeParseJobsPostRequest1(BaseModel):
     custom_prompts: Optional[dict[str, str]] = Field(
         None, description='JSON-serialized string in form data.', title='Custom Prompts'
     )
-    document_ref: bytes = Field(..., description='File upload.')
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to process. Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.',
+    )
     filename: str = Field(..., title='Filename')
     job_id: Optional[str] = Field(
         None, description='JSON-serialized string in form data.', title='Job Id'
@@ -763,6 +917,7 @@ class Result(BaseModel):
 
     base_credit: Optional[float] = Field(0.0, title='Base Credit')
     billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    billing_suppressed: Optional[bool] = Field(False, title='Billing Suppressed')
     completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
     credit_usage: Optional[CreditUsage] = None
     duration_ms: Optional[int] = Field(0, title='Duration Ms')
@@ -807,6 +962,213 @@ class V1AdeParseJobsJobIdGetResponse(BaseModel):
     result: Optional[Result] = Field(
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
+    )
+    status: Optional[Status1] = None
+
+
+class V1ClassifyPostRequest(BaseModel):
+    """
+    Input to ``V1ClassifyOperationWorkflow`` (gateway) and, threaded
+    unchanged, to ``ClassifyWorkflow`` (work) — the ``/v1/classify`` request
+    body. Mirrors VTRA's ``ClassifyRequest``.
+    """
+
+    classes: list[ClassifyClass] = Field(
+        ...,
+        description="The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string.",
+        title='Classes',
+    )
+    content_type: Optional[str] = Field('', title='Content Type')
+    document_ref: str = Field(..., title='Document Ref')
+    filename: Optional[str] = Field('', title='Filename')
+    model: Optional[str] = Field(
+        None,
+        description='Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version.',
+        title='Model',
+    )
+
+
+class V1ClassifyPostRequest1(BaseModel):
+    classes: list[ClassifyClass] = Field(
+        ...,
+        description="The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string. JSON-serialized string in form data.",
+        title='Classes',
+    )
+    content_type: Optional[str] = Field('', title='Content Type')
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to process. Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.',
+    )
+    filename: Optional[str] = Field('', title='Filename')
+    model: Optional[str] = Field(
+        None,
+        description='Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version. JSON-serialized string in form data.',
+        title='Model',
+    )
+
+
+class ClassificationItem(BaseModel):
+    class_: str = Field(
+        ..., alias='class', description="Predicted class label, or 'unknown'."
+    )
+    page: int = Field(
+        ..., description='Page number, zero-indexed (the first page is 0).'
+    )
+    reason: str = Field(..., description='Why the page was classified this way.')
+    suggested_class: Optional[str] = Field(
+        None, description="A class the model proposes when the prediction is 'unknown'."
+    )
+
+
+class V1ClassifyPostResponse(BaseModel):
+    """
+    Result returned by ``V1ClassifyOperationWorkflow`` — the
+    ``/v1/classify`` response body (VTRA's ``ClassifyResponse``).
+    """
+
+    classification: list[ClassificationItem] = Field(
+        ...,
+        description='One classification result per page, in page order.',
+        title='Classification',
+    )
+    metadata: V1ClassifyMetadata = Field(
+        ..., description='Metadata for the classification request.'
+    )
+
+
+class V1ClassifyJobsGetParametersQuery(BaseModel):
+    page: Optional[int] = Field(
+        0, description='Page number (0-indexed).', ge=0, title='Page'
+    )
+    page_size: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    )
+    status: Optional[str] = Field(
+        None, description='Filter by job status.', title='Status'
+    )
+
+
+class Job1(BaseModel):
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+    failure_reason: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    model_version: Optional[str] = None
+    status: Optional[Status1] = None
+
+
+class V1ClassifyJobsGetResponse(BaseModel):
+    has_more: Optional[bool] = None
+    jobs: Optional[list[Job1]] = None
+    page: Optional[int] = None
+    page_size: Optional[int] = None
+
+
+class V1ClassifyJobsPostRequest(BaseModel):
+    """
+    Input to ``V1ClassifyOperationWorkflow`` (gateway) and, threaded
+    unchanged, to ``ClassifyWorkflow`` (work) — the ``/v1/classify`` request
+    body. Mirrors VTRA's ``ClassifyRequest``.
+    """
+
+    classes: list[ClassifyClass] = Field(
+        ...,
+        description="The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string.",
+        title='Classes',
+    )
+    content_type: Optional[str] = Field('', title='Content Type')
+    document_ref: str = Field(..., title='Document Ref')
+    filename: Optional[str] = Field('', title='Filename')
+    model: Optional[str] = Field(
+        None,
+        description='Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version.',
+        title='Model',
+    )
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class V1ClassifyJobsPostRequest1(BaseModel):
+    classes: list[ClassifyClass] = Field(
+        ...,
+        description="The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string. JSON-serialized string in form data.",
+        title='Classes',
+    )
+    content_type: Optional[str] = Field('', title='Content Type')
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to process. Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.',
+    )
+    filename: Optional[str] = Field('', title='Filename')
+    model: Optional[str] = Field(
+        None,
+        description='Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version. JSON-serialized string in form data.',
+        title='Model',
+    )
+    service_tier: Optional[ServiceTier2] = Field(
+        None,
+        description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
+    )
+
+
+class V1ClassifyJobsPostResponse(BaseModel):
+    created_at: Optional[str] = None
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    status: Optional[Status1] = None
+
+
+class Result1(BaseModel):
+    """
+    Result returned by ``V1ClassifyOperationWorkflow`` — the
+    ``/v1/classify`` response body (VTRA's ``ClassifyResponse``).
+    """
+
+    classification: list[ClassificationItem] = Field(
+        ...,
+        description='One classification result per page, in page order.',
+        title='Classification',
+    )
+    metadata: V1ClassifyMetadata = Field(
+        ..., description='Metadata for the classification request.'
+    )
+
+
+class V1ClassifyJobsJobIdGetResponse(BaseModel):
+    completed_at: Optional[str] = Field(
+        None, description='Present once the job is terminal.'
+    )
+    created_at: Optional[str] = None
+    error: Optional[Error] = Field(
+        None, description='Present once status is ``failed``.'
+    )
+    job_id: Optional[str] = Field(
+        None,
+        description='The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
+    )
+    progress: Optional[float] = Field(
+        None,
+        description='Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.',
+        ge=0.0,
+        le=1.0,
+    )
+    result: Optional[Result1] = Field(
+        None, description='Present once status is ``completed``.'
     )
     status: Optional[Status1] = None
 
@@ -975,7 +1337,7 @@ class V1ExtractBuildSchemaJobsGetParametersQuery(BaseModel):
     )
 
 
-class Job1(BaseModel):
+class Job2(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -989,7 +1351,7 @@ class Job1(BaseModel):
 
 class V1ExtractBuildSchemaJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job1]] = None
+    jobs: Optional[list[Job2]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
@@ -1090,7 +1452,7 @@ class V1ExtractBuildSchemaJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Result1(BaseModel):
+class Result2(BaseModel):
     """
     Result of a **v1** build-schema call — VTRA's ``BuildSchemaResponse``.
 
@@ -1126,7 +1488,7 @@ class V1ExtractBuildSchemaJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result1] = Field(
+    result: Optional[Result2] = Field(
         None, description='Present once status is ``completed``.'
     )
     status: Optional[Status1] = None
@@ -1144,7 +1506,7 @@ class V1ExtractJobsGetParametersQuery(BaseModel):
     )
 
 
-class Job2(BaseModel):
+class Job3(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -1158,7 +1520,7 @@ class Job2(BaseModel):
 
 class V1ExtractJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job2]] = None
+    jobs: Optional[list[Job3]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
@@ -1217,7 +1579,7 @@ class V1ExtractJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Result2(BaseModel):
+class Result3(BaseModel):
     """
     VTRA's ``ExtractResponse`` — the ``/v1/extract`` response body.
 
@@ -1253,7 +1615,7 @@ class V1ExtractJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result2] = Field(
+    result: Optional[Result3] = Field(
         None, description='Present once status is ``completed``.'
     )
     status: Optional[Status1] = None
@@ -1286,7 +1648,14 @@ class V1ParsePostRequest1(BaseModel):
     custom_prompts: Optional[dict[str, str]] = Field(
         None, description='JSON-serialized string in form data.', title='Custom Prompts'
     )
-    document_ref: bytes = Field(..., description='File upload.')
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to process. Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.',
+    )
     filename: str = Field(..., title='Filename')
     job_id: Optional[str] = Field(
         None, description='JSON-serialized string in form data.', title='Job Id'
@@ -1330,6 +1699,7 @@ class V1ParsePostResponse(BaseModel):
 
     base_credit: Optional[float] = Field(0.0, title='Base Credit')
     billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    billing_suppressed: Optional[bool] = Field(False, title='Billing Suppressed')
     completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
     credit_usage: Optional[CreditUsage] = None
     duration_ms: Optional[int] = Field(0, title='Duration Ms')
@@ -1357,7 +1727,7 @@ class V1ParseJobsGetParametersQuery(BaseModel):
     )
 
 
-class Job3(BaseModel):
+class Job4(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -1371,7 +1741,7 @@ class Job3(BaseModel):
 
 class V1ParseJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job3]] = None
+    jobs: Optional[list[Job4]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
@@ -1408,7 +1778,14 @@ class V1ParseJobsPostRequest1(BaseModel):
     custom_prompts: Optional[dict[str, str]] = Field(
         None, description='JSON-serialized string in form data.', title='Custom Prompts'
     )
-    document_ref: bytes = Field(..., description='File upload.')
+    document: Optional[bytes] = Field(
+        None,
+        description='The file to process. Provide either `document` or `document_url`, not both.',
+    )
+    document_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.',
+    )
     filename: str = Field(..., title='Filename')
     job_id: Optional[str] = Field(
         None, description='JSON-serialized string in form data.', title='Job Id'
@@ -1454,7 +1831,7 @@ class V1ParseJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Result3(BaseModel):
+class Result4(BaseModel):
     """
     Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the
     billing inputs hoisted to the top level so the gateway operation reads them
@@ -1470,6 +1847,7 @@ class Result3(BaseModel):
 
     base_credit: Optional[float] = Field(0.0, title='Base Credit')
     billable_pages: Optional[int] = Field(0, title='Billable Pages')
+    billing_suppressed: Optional[bool] = Field(False, title='Billing Suppressed')
     completion_tokens: Optional[int] = Field(0, title='Completion Tokens')
     credit_usage: Optional[CreditUsage] = None
     duration_ms: Optional[int] = Field(0, title='Duration Ms')
@@ -1511,11 +1889,30 @@ class V1ParseJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result3] = Field(
+    result: Optional[Result4] = Field(
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
     status: Optional[Status1] = None
+
+
+class V1SplitPostRequest(BaseModel):
+    markdown: Optional[Union[bytes, str]] = Field(
+        None,
+        description='Markdown content to split, as an inline string or an uploaded file. Provide either `markdown` or `markdown_url`, not both.',
+    )
+    markdown_url: Optional[str] = Field(
+        None,
+        description='A publicly accessible URL to the Markdown file to split. Provide either `markdown` or `markdown_url`, not both.',
+    )
+    model: Optional[str] = Field(
+        None,
+        description='The split model version to use. Accepts a dated snapshot (`split-20251105`), `split-latest`, or `split` (both aliases resolve to the latest snapshot). Defaults to the latest snapshot. The resolved version is echoed back as `metadata.version`.',
+    )
+    split_class: str = Field(
+        ...,
+        description='The split classification entries, as a JSON-encoded array of objects with `name` (required), `description`, and `identifier` keys. At most 19 entries. Sent as a JSON-serialized string in form data.',
+    )
 
 
 class V2ExtractPostRequest(BaseModel):
@@ -1645,7 +2042,7 @@ class V2ExtractJobsGetParametersQuery(BaseModel):
     )
 
 
-class Job4(BaseModel):
+class Job5(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -1659,7 +2056,7 @@ class Job4(BaseModel):
 
 class V2ExtractJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job4]] = None
+    jobs: Optional[list[Job5]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
@@ -1769,7 +2166,7 @@ class V2ExtractJobsPostResponse(BaseModel):
     status: Optional[Status1] = None
 
 
-class Result4(BaseModel):
+class Result5(BaseModel):
     """
     Result returned by V2ExtractOperationWorkflow — the ``/v2/extract``
     response body (``docs/extract-v2-contract.md`` → Response).
@@ -1832,7 +2229,7 @@ class V2ExtractJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result4] = Field(
+    result: Optional[Result5] = Field(
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
@@ -1948,7 +2345,7 @@ class V2ParseJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status16(Enum):
+class Status19(Enum):
     """
     The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
     """
@@ -1959,7 +2356,7 @@ class Status16(Enum):
     failed = 'failed'
 
 
-class Job5(BaseModel):
+class Job6(BaseModel):
     completed_at: Optional[str] = Field(
         None, description='ISO-8601 timestamp for when the job finished, if terminal.'
     )
@@ -1977,7 +2374,7 @@ class Job5(BaseModel):
     model_version: Optional[str] = Field(
         None, description='The model snapshot used to parse the document.'
     )
-    status: Optional[Status16] = Field(
+    status: Optional[Status19] = Field(
         None,
         description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
@@ -1988,14 +2385,14 @@ class V2ParseJobsGetResponse(BaseModel):
         None,
         description='Whether more jobs exist beyond this page; request the next ``page`` to fetch them.',
     )
-    jobs: Optional[list[Job5]] = Field(
+    jobs: Optional[list[Job6]] = Field(
         None, description="The caller's parse jobs for this page, newest first."
     )
     page: Optional[int] = Field(None, description='The 0-indexed page number.')
     page_size: Optional[int] = Field(None, description='Items per page.')
 
 
-class ServiceTier12(Enum):
+class ServiceTier14(Enum):
     """
     Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
     """
@@ -2004,7 +2401,7 @@ class ServiceTier12(Enum):
     priority = 'priority'
 
 
-class Status17(Enum):
+class Status20(Enum):
     """
     The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.
     """
@@ -2023,13 +2420,13 @@ class V2ParseJobsPostResponse(BaseModel):
         ...,
         description='The unique identifier for the created parse job. Poll ``GET /v2/parse/jobs/{job_id}`` for its status and result. Format: ``<service>-<26-character Crockford base32 ULID>`` matching ``^(parse|extract)-[0-9a-hjkmnp-tv-z]{26}$``. Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Status17 = Field(
+    status: Status20 = Field(
         ...,
         description="The job's status at creation — normally ``pending`` (a just-created job that is still running is reported as ``pending``), but may already be a terminal ``completed`` / ``failed`` if the job finished before the create response was rendered.",
     )
 
 
-class Error5(BaseModel):
+class Error6(BaseModel):
     """
     Present once the job has ``failed`` — the failure code + message.
     """
@@ -2038,7 +2435,7 @@ class Error5(BaseModel):
     message: Optional[str] = None
 
 
-class Status18(Enum):
+class Status21(Enum):
     """
     The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.
     """
@@ -2097,14 +2494,14 @@ class V2WorkflowJobsGetParametersQuery(BaseModel):
     )
 
 
-class Status19(Enum):
+class Status22(Enum):
     pending = 'pending'
     processing = 'processing'
     completed = 'completed'
     failed = 'failed'
 
 
-class Job6(BaseModel):
+class Job7(BaseModel):
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
     failure_reason: Optional[str] = None
@@ -2113,17 +2510,17 @@ class Job6(BaseModel):
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status19] = None
+    status: Optional[Status22] = None
 
 
 class V2WorkflowJobsGetResponse(BaseModel):
     has_more: Optional[bool] = None
-    jobs: Optional[list[Job6]] = None
+    jobs: Optional[list[Job7]] = None
     page: Optional[int] = None
     page_size: Optional[int] = None
 
 
-class ServiceTier13(Enum):
+class ServiceTier15(Enum):
     """
     Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.
     """
@@ -2138,10 +2535,10 @@ class V2WorkflowJobsPostResponse(BaseModel):
         None,
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status19] = None
+    status: Optional[Status22] = None
 
 
-class Error6(BaseModel):
+class Error7(BaseModel):
     """
     Present once status is ``failed``.
     """
@@ -2152,7 +2549,7 @@ class Error6(BaseModel):
     message: Optional[str] = None
 
 
-class Result5(BaseModel):
+class Result6(BaseModel):
     """
     Result returned by V2WorkflowOperationWorkflow.
 
@@ -2193,7 +2590,7 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
         None, description='Present once the job is terminal.'
     )
     created_at: Optional[str] = None
-    error: Optional[Error6] = Field(
+    error: Optional[Error7] = Field(
         None, description='Present once status is ``failed``.'
     )
     job_id: Optional[str] = Field(
@@ -2206,10 +2603,10 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    result: Optional[Result5] = Field(
+    result: Optional[Result6] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status19] = None
+    status: Optional[Status22] = None
 
 
 class BlocksOptions(BaseModel):
@@ -2356,7 +2753,7 @@ class V2ParseJobsPostRequest(BaseModel):
         None,
         description="Public URL the full response is delivered to; the API response then carries ``output_url`` instead of inline data. A presigned URL must stay valid until the job COMPLETES, not just past submit: an already-expired URL, or one whose remaining validity is too short for the document's page count, is rejected at submit (422). By default the URL must retain at least 15 minutes of validity at submit, plus 3 seconds per document page; the 422 message names the exact window required. Sign with credentials that outlive the expected job duration — a URL signed with temporary (assumed-role/session) credentials dies when that session expires, regardless of the URL's stated expiry.",
     )
-    service_tier: Optional[ServiceTier12] = Field(
+    service_tier: Optional[ServiceTier14] = Field(
         None,
         description='Async service tier (``POST /jobs`` only). ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -2506,7 +2903,7 @@ class V2WorkflowJobsPostRequest(BaseModel):
         ],
         title='Output',
     )
-    service_tier: Optional[ServiceTier13] = Field(
+    service_tier: Optional[ServiceTier15] = Field(
         None,
         description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -2547,7 +2944,7 @@ class V2WorkflowJobsPostRequest1(BaseModel):
         ],
         title='Output',
     )
-    service_tier: Optional[ServiceTier13] = Field(
+    service_tier: Optional[ServiceTier15] = Field(
         None,
         description='Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``.',
     )
@@ -2708,7 +3105,7 @@ class V2ParseJobsJobIdGetResponse(BaseModel):
     created_at: Optional[str] = Field(
         None, description='ISO-8601 timestamp for when the job was created.'
     )
-    error: Optional[Error5] = Field(
+    error: Optional[Error6] = Field(
         None,
         description='Present once the job has ``failed`` — the failure code + message.',
     )
@@ -2732,7 +3129,7 @@ class V2ParseJobsJobIdGetResponse(BaseModel):
         None,
         description='The parse response, present once the job has ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
-    status: Optional[Status18] = Field(
+    status: Optional[Status21] = Field(
         None,
         description="The job's current status: ``pending``, ``processing``, ``completed``, or ``failed``.",
     )
