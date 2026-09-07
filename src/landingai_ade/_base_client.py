@@ -361,6 +361,20 @@ _HttpxClientT = TypeVar("_HttpxClientT", bound=Union[httpx.Client, httpx.AsyncCl
 _DefaultStreamT = TypeVar("_DefaultStreamT", bound=Union[Stream[Any], AsyncStream[Any]])
 
 
+def _redact_binary_for_logging(value: Any) -> Any:
+    """Replace raw binary payloads (e.g. uploaded file contents) with a short
+    placeholder so debug logs don't dump megabytes of unreadable bytes."""
+    if isinstance(value, (bytes, bytearray)):
+        return f"<{len(value)} bytes>"
+    if isinstance(value, tuple):
+        return tuple(_redact_binary_for_logging(item) for item in value)
+    if isinstance(value, list):
+        return [_redact_binary_for_logging(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _redact_binary_for_logging(item) for key, item in value.items()}
+    return value
+
+
 class BaseClient(Generic[_HttpxClientT, _DefaultStreamT]):
     _client: _HttpxClientT
     _version: str
@@ -484,15 +498,17 @@ class BaseClient(Generic[_HttpxClientT, _DefaultStreamT]):
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 "Request options: %s",
-                model_dump(
-                    options,
-                    exclude_unset=True,
-                    # Pydantic v1 can't dump every type we support in content, so we exclude it for now.
-                    exclude={
-                        "content",
-                    }
-                    if PYDANTIC_V1
-                    else {},
+                _redact_binary_for_logging(
+                    model_dump(
+                        options,
+                        exclude_unset=True,
+                        # Pydantic v1 can't dump every type we support in content, so we exclude it for now.
+                        exclude={
+                            "content",
+                        }
+                        if PYDANTIC_V1
+                        else {},
+                    )
                 ),
             )
         kwargs: dict[str, Any] = {}
