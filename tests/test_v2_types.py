@@ -10,6 +10,8 @@ from landingai_ade.types.v2 import (
     V2GroundResult,
     V2ExtractResult,
     V2ParseResponse,
+    V2SplitResponse,
+    V2ClassifyResponse,
     V2BuildSchemaResponse,
 )
 
@@ -311,6 +313,75 @@ def test_build_schema_response_retains_unknown_fields() -> None:
         extraction_schema="{}",
         # `openapi_spec` is required and non-null per the spec.
         metadata={"job_id": "bs", "duration_ms": 1, "openapi_spec": "https://x/openapi.json"},  # type: ignore[arg-type]
+        surprise=1,  # type: ignore[call-arg]
+    )
+    assert r.to_dict()["surprise"] == 1
+
+
+def test_classify_response_builds_from_dicts() -> None:
+    r = V2ClassifyResponse(
+        classification=[  # type: ignore[arg-type]
+            {"class": "invoice", "page": 0, "reason": "has header"},
+            {"class": "unknown", "page": 1, "reason": "no signal", "suggested_class": "receipt"},
+        ],
+        metadata={  # type: ignore[arg-type]
+            "page_count": 2,
+            "duration_ms": 42,
+            "openapi_spec": "https://api.example/openapi.json",
+        },
+    )
+    # The reserved `class` wire key deserializes onto the aliased `class_` field.
+    assert r.classification[0].class_ == "invoice"
+    assert r.classification[0].suggested_class is None
+    assert r.classification[1].suggested_class == "receipt"
+    # Optional metadata fields default to None when the gateway omits them.
+    assert r.metadata.credit_usage is None and r.metadata.org_id is None
+    assert r.metadata.openapi_spec.endswith("openapi.json")
+
+
+def test_classify_response_retains_unknown_fields() -> None:
+    r = V2ClassifyResponse(
+        classification=[],
+        metadata={"page_count": 0, "duration_ms": 1, "openapi_spec": "https://x/openapi.json"},  # type: ignore[arg-type]
+        surprise=1,  # type: ignore[call-arg]
+    )
+    assert r.to_dict()["surprise"] == 1
+
+
+def test_split_response_builds_from_dicts() -> None:
+    r = V2SplitResponse(
+        splits=[  # type: ignore[arg-type]
+            {"classification": "invoice", "identifier": "INV-1", "markdowns": ["# a"], "pages": [0, 1]},
+            {"classification": "receipt", "identifier": None, "markdowns": ["# b"], "pages": [2]},
+        ],
+        metadata={  # type: ignore[arg-type]
+            "filename": "doc.md",
+            "org_id": None,
+            "page_count": 3,
+            "duration_ms": 11,
+            "credit_usage": 0.1,
+            "job_id": "split-1",
+            "version": "split-20251105",
+        },
+    )
+    assert r.splits[0].identifier == "INV-1" and r.splits[0].pages == [0, 1]
+    # `identifier` / `org_id` are required-but-nullable; a null wire value survives.
+    assert r.splits[1].identifier is None
+    assert r.metadata.org_id is None and r.metadata.version == "split-20251105"
+
+
+def test_split_response_retains_unknown_fields() -> None:
+    r = V2SplitResponse(
+        splits=[],
+        metadata={  # type: ignore[arg-type]
+            "filename": "d.md",
+            "org_id": None,
+            "page_count": 0,
+            "duration_ms": 1,
+            "credit_usage": 0.0,
+            "job_id": "s",
+            "version": "split-x",
+        },
         surprise=1,  # type: ignore[call-arg]
     )
     assert r.to_dict()["surprise"] == 1

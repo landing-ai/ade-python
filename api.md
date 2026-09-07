@@ -64,7 +64,7 @@ Methods:
 
 The `client.v2` sub-client targets LandingAI's next-generation ADE gateway, which lives on its own host (`api.ade.[env].landing.ai`) rather than the V1 host (`api.va.[env].landing.ai`). It is **additive**: `client.v2.*` is a separate surface from the top-level `client.*` (V1) methods documented above, and using it does not change any V1 behavior. See the [README](README.md#environments) for environment selection and usage examples.
 
-`client.v2.parse_jobs` and `client.v2.extract_jobs` both return a single, unified <a href="./src/landingai_ade/types/v2/job.py">`Job`</a> shape, even though the underlying parse/extract job envelopes differ upstream -- `Job.raw` retains the full original envelope as an escape hatch for any field not surfaced on the typed model.
+`client.v2.parse_jobs`, `client.v2.extract_jobs`, and `client.v2.classify_jobs` all return a single, unified <a href="./src/landingai_ade/types/v2/job.py">`Job`</a> shape, even though the underlying job envelopes differ upstream -- `Job.raw` retains the full original envelope as an escape hatch for any field not surfaced on the typed model.
 
 Types:
 
@@ -77,6 +77,9 @@ from landingai_ade.types.v2 import (
     V2BuildSchemaMetadata,
     V2BuildSchemaResponse,
     V2BuildSchemaWarning,
+    V2Classification,
+    V2ClassifyMetadata,
+    V2ClassifyResponse,
     V2ExtractBilling,
     V2ExtractMetadata,
     V2ExtractResult,
@@ -96,14 +99,19 @@ from landingai_ade.types.v2 import (
     V2ParseRange,
     V2ParseResponse,
     V2ParseStructure,
+    V2Split,
+    V2SplitMetadata,
+    V2SplitResponse,
 )
 ```
 
-- <code><a href="./src/landingai_ade/types/v2/job.py">Job</a></code> -- unified job shape: `job_id`, `status` (<code><a href="./src/landingai_ade/types/v2/job.py">JobStatus</a></code>: `pending` / `processing` / `completed` / `failed` / `cancelled`), `created_at`, `completed_at`, `progress`, `result` (a `V2ParseResponse` for parse jobs, a `V2ExtractResult` for extract jobs, a `V2BuildSchemaResponse` for build-schema jobs, or `None` until completion), `error` (<code><a href="./src/landingai_ade/types/v2/job.py">JobError</a></code>), `metadata` (the result's metadata receipt as a `dict`, populated top-level only when `output_save_url` was set and the result was delivered to `output_url` instead of inline; `None` otherwise, since inline jobs carry it on `result.metadata`), `raw` (the full original envelope as a `dict`), and the `.is_terminal` property.
+- <code><a href="./src/landingai_ade/types/v2/job.py">Job</a></code> -- unified job shape: `job_id`, `status` (<code><a href="./src/landingai_ade/types/v2/job.py">JobStatus</a></code>: `pending` / `processing` / `completed` / `failed` / `cancelled`), `created_at`, `completed_at`, `progress`, `result` (a `V2ParseResponse` for parse jobs, a `V2ExtractResult` for extract jobs, a `V2ClassifyResponse` for classify jobs, a `V2BuildSchemaResponse` for build-schema jobs, or `None` until completion), `error` (<code><a href="./src/landingai_ade/types/v2/job.py">JobError</a></code>), `metadata` (the result's metadata receipt as a `dict`, populated top-level only when `output_save_url` was set and the result was delivered to `output_url` instead of inline; `None` otherwise, since inline jobs carry it on `result.metadata`), `raw` (the full original envelope as a `dict`), and the `.is_terminal` property.
 - <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseResponse</a></code> -- `markdown`, `structure`, `grounding`, `metadata` (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseMetadata</a></code>, which nests <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseBilling</a></code> and carries `output_markdown_chars`, `range_units`, and `openapi_spec`). `structure` is a typed <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseStructure</a></code> tree (`document` → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParsePage</a></code> → <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseElement</a></code>); each node below the root carries its spatial data inline in a <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseNodeGrounding</a></code> (`page`, <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseRange</a></code>, <code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseBox</a></code>, normalized page coordinates, and an optional `confidence` in `[0, 1]` that is present only on word-granularity `atomic_grounding` segments (`dpt-3-verity`), where it is the lowest per-character OCR confidence in the word, and that is `None` on node-level grounding and on line-granularity models (`dpt-3-pro`)), and leaf elements additionally carry an `atomic_grounding` list. With `options.inline_markdown`, each node also carries its `markdown` slice. The legacy top-level `grounding` tree (<code><a href="./src/landingai_ade/types/v2/parse_response.py">V2ParseGrounding</a></code> → `V2ParseGroundingPage` → `V2ParseGroundingElement` → `V2ParseGroundingEntry`) is retained for older gateway responses. Element `type`/page `status` are permissive strings and unknown keys are retained.
 - <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractResult</a></code> -- `extraction`, `extraction_metadata`, `markdown`, `output_ref`, `schema_violation_error` (set when `strict=False` and the schema had unextractable fields), `warnings`, and `metadata` (<code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractMetadata</a></code>, which carries `model_version`, `input_markdown_chars`, `output_extraction_chars`, `range_units`, `openapi_spec`, and nests <code><a href="./src/landingai_ade/types/v2/extract_response.py">V2ExtractBilling</a></code>).
 - <code><a href="./src/landingai_ade/types/v2/build_schema_response.py">V2BuildSchemaResponse</a></code> -- `extraction_schema` (the generated JSON Schema serialized as a string) and `metadata` (<code><a href="./src/landingai_ade/types/v2/build_schema_response.py">V2BuildSchemaMetadata</a></code>: `job_id`, `duration_ms`, `openapi_spec`, `filename`/`org_id`/`version` (retained for compatibility), a `warnings` list of <code><a href="./src/landingai_ade/types/v2/build_schema_response.py">V2BuildSchemaWarning</a></code> (`code`, `msg`), and nested <code><a href="./src/landingai_ade/types/v2/build_schema_response.py">V2BuildSchemaBilling</a></code>).
 - <code><a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundResult</a></code> -- `grounding` (a tree mirroring the input `extraction_metadata`, each `{value, ranges}` leaf replaced by the list of `structure` blocks its ranges overlap) and `metadata` (<code><a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundMetadata</a></code>: `job_id`, `duration_ms`, `openapi_spec`, and nested <code><a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundBilling</a></code>).
+- <code><a href="./src/landingai_ade/types/v2/classify_response.py">V2ClassifyResponse</a></code> -- `classification` (one <code><a href="./src/landingai_ade/types/v2/classify_response.py">V2Classification</a></code> per page, in page order: `class_` (aliased from the wire `class`), `page` (0-indexed), `reason`, and optional `suggested_class`) and `metadata` (<code><a href="./src/landingai_ade/types/v2/classify_response.py">V2ClassifyMetadata</a></code>: required `page_count`, `duration_ms`, `openapi_spec`, plus optional `credit_usage`, `filename`, `job_id`, `org_id`, `version`).
+- <code><a href="./src/landingai_ade/types/v2/split_response.py">V2SplitResponse</a></code> -- `splits` (the merged segments, in page order: each <code><a href="./src/landingai_ade/types/v2/split_response.py">V2Split</a></code> carries `classification`, a required-but-nullable `identifier`, `markdowns`, and `pages`) and `metadata` (<code><a href="./src/landingai_ade/types/v2/split_response.py">V2SplitMetadata</a></code>: `filename`, `org_id` (nullable), `page_count`, `duration_ms`, `credit_usage`, `job_id`, `version`).
 
 Methods:
 
@@ -133,7 +141,22 @@ Methods:
 
   Synchronous ground. Maps each extracted field back to the `structure` blocks it was quoted from by overlapping `extraction_metadata` ranges against every block's inline `grounding.range`. Both `extraction_metadata` (e.g. `client.v2.extract(...).extraction_metadata`) and `structure` (e.g. `client.v2.parse(...).structure`) accept a `dict` or a pydantic model. Block ids resolve only against the `structure` supplied here, so pass the parse result the extraction actually came from. `/v2/ground` is synchronous-only (no async jobs route).
 
+- <code title="post /v2/classify">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">classify</a>(\*, classes, document=..., document_url=..., model=...) -> <a href="./src/landingai_ade/types/v2/classify_response.py">V2ClassifyResponse</a></code>
+
+  Synchronous classify. Provide exactly one of `document` (file) or `document_url`, plus `classes` (an iterable of mappings, each with a `class` name and optional `description`), and get one predicted class per page. `classes` is JSON-encoded onto the multipart body automatically. Raises `V2SyncTimeoutError` on a 504; use `classify_jobs` for long-running documents.
+
+- <code title="post /v2/classify/jobs">client.v2.classify_jobs.<a href="./src/landingai_ade/resources/v2/classify.py">create</a>(\*, classes, document=..., document_url=..., model=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
+- <code title="get /v2/classify/jobs/{job_id}">client.v2.classify_jobs.<a href="./src/landingai_ade/resources/v2/classify.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
+- <code title="get /v2/classify/jobs">client.v2.classify_jobs.<a href="./src/landingai_ade/resources/v2/classify.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
+- <code>client.v2.classify_jobs.<a href="./src/landingai_ade/resources/v2/classify.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
+
+  Same polling/timeout semantics as `parse_jobs.wait`. Classify jobs have no `cancelled` status, so `raise_on_failure` only ever triggers on `failed`.
+
+- <code title="post /v2/split">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">split</a>(\*, split_class, markdown=..., markdown_url=..., model=..., save_to=...) -> <a href="./src/landingai_ade/types/v2/split_response.py">V2SplitResponse</a></code>
+
+  Synchronous split. Provide exactly one of `markdown` (inline string or file) or `markdown_url`, plus `split_class` (an iterable of mappings, each with a `name` and optional `description`/`identifier`; at most 19 entries), and get the Markdown split into segments. `split_class` is JSON-encoded onto the multipart body automatically. `/v2/split` is synchronous-only (no async jobs route).
+
 Notes:
 
-- `parse_jobs.list` and `extract_jobs.list` both return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
-- All `client.v2.*` methods accept the usual `extra_headers`, `extra_query`, `extra_body`, and `timeout` overrides; sync methods additionally accept `save_to` (parse/extract only, not the job-creation methods) to write the response to disk, mirroring V1's `save_to`.
+- `parse_jobs.list`, `extract_jobs.list`, and `classify_jobs.list` all return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
+- All `client.v2.*` methods accept the usual `extra_headers`, `extra_query`, `extra_body`, and `timeout` overrides; the sync `parse`, `extract`, and `split` methods additionally accept `save_to` (not the job-creation methods) to write the response to disk, mirroring V1's `save_to`.

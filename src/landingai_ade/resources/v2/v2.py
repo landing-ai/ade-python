@@ -1,7 +1,7 @@
 # src/landingai_ade/resources/v2/v2.py
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Type, Union, Mapping, Optional
+from typing import TYPE_CHECKING, Type, Union, Mapping, Iterable, Optional
 from pathlib import Path
 
 import httpx
@@ -10,13 +10,20 @@ from pydantic import BaseModel
 from ._base import V2ResourceMixin
 from ..._types import Body, Omit, Query, Headers, NotGiven, FileTypes, omit, not_given
 from ..._compat import cached_property
-from ...types.v2 import V2GroundResult, V2ExtractResult, V2ParseResponse
+from ...types.v2 import V2GroundResult, V2ExtractResult, V2ParseResponse, V2SplitResponse, V2ClassifyResponse
 from ..._resource import SyncAPIResource, AsyncAPIResource
 
 if TYPE_CHECKING:
     from .parse import ParseResource, ParseJobsResource, AsyncParseResource, AsyncParseJobsResource
+    from .split import SplitResource, AsyncSplitResource
     from .ground import GroundResource, AsyncGroundResource
     from .extract import ExtractResource, ExtractJobsResource, AsyncExtractResource, AsyncExtractJobsResource
+    from .classify import (
+        ClassifyResource,
+        ClassifyJobsResource,
+        AsyncClassifyResource,
+        AsyncClassifyJobsResource,
+    )
 
 __all__ = ["V2Resource", "AsyncV2Resource"]
 
@@ -24,10 +31,10 @@ __all__ = ["V2Resource", "AsyncV2Resource"]
 class V2Resource(SyncAPIResource, V2ResourceMixin):
     """Container for the V2 (ADE) surface: ``client.v2.<resource>``.
 
-    ``parse``, ``extract``, and ``ground`` are wired up; each sub-resource
-    does its own lazy import inside its cached property body -- mirroring
-    ``LandingAIADE.parse_jobs`` -- so that this module keeps importing standalone
-    regardless of which sub-resources exist yet.
+    ``parse``, ``extract``, ``ground``, ``classify``, and ``split`` are wired up;
+    each sub-resource does its own lazy import inside its cached property body --
+    mirroring ``LandingAIADE.parse_jobs`` -- so that this module keeps importing
+    standalone regardless of which sub-resources exist yet.
     """
 
     @cached_property
@@ -136,6 +143,78 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
         return self._ground.run(
             extraction_metadata=extraction_metadata,
             structure=structure,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _classify(self) -> ClassifyResource:
+        from .classify import ClassifyResource
+
+        return ClassifyResource(self._client)
+
+    @cached_property
+    def classify_jobs(self) -> ClassifyJobsResource:
+        from .classify import ClassifyJobsResource
+
+        return ClassifyJobsResource(self._client)
+
+    def classify(
+        self,
+        *,
+        classes: Iterable[Mapping[str, object]],
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2ClassifyResponse:
+        """Classify the pages of a document synchronously. See ``ClassifyResource.run`` for full documentation."""
+        return self._classify.run(
+            classes=classes,
+            document=document,
+            document_url=document_url,
+            model=model,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _split(self) -> SplitResource:
+        from .split import SplitResource
+
+        return SplitResource(self._client)
+
+    def split(
+        self,
+        *,
+        split_class: Iterable[Mapping[str, object]],
+        markdown: Optional[FileTypes] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2SplitResponse:
+        """Split a Markdown document into segments synchronously. See ``SplitResource.run`` for full documentation."""
+        return self._split.run(
+            split_class=split_class,
+            markdown=markdown,
+            markdown_url=markdown_url,
+            model=model,
+            save_to=save_to,
             extra_headers=extra_headers,
             extra_query=extra_query,
             extra_body=extra_body,
@@ -252,6 +331,78 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         return await self._ground.run(
             extraction_metadata=extraction_metadata,
             structure=structure,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _classify(self) -> AsyncClassifyResource:
+        from .classify import AsyncClassifyResource
+
+        return AsyncClassifyResource(self._client)
+
+    @cached_property
+    def classify_jobs(self) -> AsyncClassifyJobsResource:
+        from .classify import AsyncClassifyJobsResource
+
+        return AsyncClassifyJobsResource(self._client)
+
+    async def classify(
+        self,
+        *,
+        classes: Iterable[Mapping[str, object]],
+        document: Optional[FileTypes] | Omit = omit,
+        document_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2ClassifyResponse:
+        """Async mirror of :meth:`V2Resource.classify`."""
+        return await self._classify.run(
+            classes=classes,
+            document=document,
+            document_url=document_url,
+            model=model,
+            extra_headers=extra_headers,
+            extra_query=extra_query,
+            extra_body=extra_body,
+            timeout=timeout,
+        )
+
+    @cached_property
+    def _split(self) -> AsyncSplitResource:
+        from .split import AsyncSplitResource
+
+        return AsyncSplitResource(self._client)
+
+    async def split(
+        self,
+        *,
+        split_class: Iterable[Mapping[str, object]],
+        markdown: Optional[FileTypes] | Omit = omit,
+        markdown_url: Optional[str] | Omit = omit,
+        model: Optional[str] | Omit = omit,
+        save_to: str | Path | None = None,
+        # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+        # The extra values given here take precedence over values defined on the client or passed to this method.
+        extra_headers: Headers | None = None,
+        extra_query: Query | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = not_given,
+    ) -> V2SplitResponse:
+        """Async mirror of :meth:`V2Resource.split`."""
+        return await self._split.run(
+            split_class=split_class,
+            markdown=markdown,
+            markdown_url=markdown_url,
+            model=model,
+            save_to=save_to,
             extra_headers=extra_headers,
             extra_query=extra_query,
             extra_body=extra_body,

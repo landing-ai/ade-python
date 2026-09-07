@@ -14,6 +14,8 @@ from landingai_ade.types.v2 import (
     V2ParseElement,
     V2ExtractResult,
     V2ParseResponse,
+    V2SplitResponse,
+    V2ClassifyResponse,
     V2ParseNodeGrounding,
 )
 
@@ -167,6 +169,47 @@ def test_ground_sync(staging_client: LandingAIADE) -> None:
     assert isinstance(grounded, V2GroundResult)
     assert isinstance(grounded.grounding, dict)
     assert grounded.metadata.job_id
+
+
+def test_classify_sync(staging_client: LandingAIADE) -> None:
+    # Never pin `model=`: the classify model family may not be servable on whatever
+    # the staging cluster is provisioned with. Assert only the guaranteed shape.
+    pdf = Path(__file__).parent / "sample.pdf"
+    res = staging_client.v2.classify(
+        classes=[{"class": "invoice", "description": "A billing document"}, {"class": "other"}],
+        document=pdf,
+    )
+    assert isinstance(res, V2ClassifyResponse)
+    assert isinstance(res.classification, list)
+    # `openapi_spec` is required by the spec; `page_count` is a non-negative count.
+    assert res.metadata.openapi_spec
+    assert res.metadata.page_count >= 0
+    for item in res.classification:
+        assert isinstance(item.class_, str)
+        assert isinstance(item.page, int)
+        # `suggested_class` is optional: absent-or-valid, never asserted populated.
+        if item.suggested_class is not None:
+            assert isinstance(item.suggested_class, str)
+
+
+def test_split_sync(staging_client: LandingAIADE) -> None:
+    # Split takes Markdown (fast, no GPU booking); assert only the guaranteed shape.
+    res = staging_client.v2.split(
+        split_class=[{"name": "report", "description": "A financial report"}],
+        markdown=SAMPLE_MARKDOWN,
+    )
+    assert isinstance(res, V2SplitResponse)
+    assert isinstance(res.splits, list)
+    # `job_id` / `version` are required by the spec.
+    assert res.metadata.job_id
+    assert res.metadata.version
+    assert res.metadata.page_count >= 0
+    for seg in res.splits:
+        assert isinstance(seg.classification, str)
+        assert isinstance(seg.markdowns, list)
+        # `identifier` is required-but-nullable: absent-or-valid.
+        if seg.identifier is not None:
+            assert isinstance(seg.identifier, str)
 
 
 def test_parse_jobs(staging_client: LandingAIADE) -> None:

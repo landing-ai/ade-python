@@ -8,9 +8,9 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 
 | Layer | Location | What it covers |
 | --- | --- | --- |
-| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
-| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
-| Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
+| Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2ClassifyResponse` / `V2SplitResponse` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
+| Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_classify_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
+| Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP (incl. `test_classify.py` / `test_split.py`): host routing, multipart/JSON bodies, options serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
 Run the offline suites with `rye run pytest tests/test_v2_types.py
@@ -96,6 +96,44 @@ its `normalize_build_schema_job` handling are retained internally, so a build-sc
   this version), a `warnings` list of `V2BuildSchemaWarning` (`{code, msg}`, e.g.
   code `nonconformant_schema`), and `billing` (`V2BuildSchemaBilling`).
 
+## Current classify-response shape
+
+`POST /v2/classify` (and the completed `classify_jobs` result) returns a
+`V2ClassifyResponse` with:
+
+- `classification` — one `V2Classification` per page, in page order: `class_`
+  (aliased from the reserved wire key `class`), `page` (0-indexed), `reason`, and
+  an optional `suggested_class` (proposed only when the prediction is `'unknown'`).
+- `metadata` (`V2ClassifyMetadata`) — required `page_count`, `duration_ms`,
+  `openapi_spec`; optional `credit_usage`, `filename`, `job_id`, `org_id`,
+  `version` (each `None` when the gateway omits it).
+
+`client.v2.classify(...)` takes `classes` (an iterable of mappings, each with a
+`class` name and optional `description`) plus exactly one of `document` (file) or
+`document_url`. `classes` is JSON-encoded onto the multipart body. The async
+`client.v2.classify_jobs` surface (`create` / `get` / `list` / `wait`) mirrors
+`parse_jobs`; `create` additionally accepts `service_tier` (there is no
+`output_save_url` on classify). Classify jobs have no `cancelled` status.
+
+## Current split-response shape
+
+`POST /v2/split` returns a `V2SplitResponse` with:
+
+- `splits` — the merged segments, in page order. Consecutive pages with the same
+  classification merge into one segment; an identifier change starts a new one.
+  Each `V2Split` carries `classification`, a required-but-nullable `identifier`
+  (`None` when the matching split class requested none), `markdowns` (one string
+  per page in the segment), and `pages` (0-indexed).
+- `metadata` (`V2SplitMetadata`) — `filename`, `org_id` (nullable), `page_count`,
+  `duration_ms`, `credit_usage`, `job_id`, `version`. Every field is required by
+  the spec.
+
+`client.v2.split(...)` takes `split_class` (an iterable of mappings, each with a
+`name` and optional `description`/`identifier`; at most 19 entries) plus exactly
+one of `markdown` (inline string or file) or `markdown_url`. `split_class` is
+JSON-encoded onto the multipart body. `/v2/split` is synchronous-only (no async
+jobs route).
+
 ## Current ground-response shape
 
 `POST /v2/ground` returns a `V2GroundResult` — a pure, stateless join that maps
@@ -114,9 +152,9 @@ be passed directly). `/v2/ground` is synchronous-only (no async jobs route).
 
 ## Async job envelopes
 
-`normalize_parse_job`, `normalize_extract_job`, and `normalize_build_schema_job`
-fold the upstream job envelopes into the unified `Job`. All are tolerant of
-field-name drift:
+`normalize_parse_job`, `normalize_extract_job`, `normalize_classify_job`, and
+`normalize_build_schema_job` fold the upstream job envelopes into the unified
+`Job`. All are tolerant of field-name drift:
 
 - The parse response lives under `result` (older envelopes used `data`).
 - Failures arrive as a structured `error` object (`{code, message}`); older parse
