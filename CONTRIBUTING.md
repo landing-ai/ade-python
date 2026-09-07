@@ -152,9 +152,27 @@ two attributed commits (paths shown for V1; the V2 loop uses the `v2-aide`/`v2_m
    These reference models are an input for the AI step and for review — they are **not** shipped and
    do **not** replace `src/landingai_ade/types/*`.
 2. **AI** — `anthropics/claude-code-action` (automation mode) wires the resources, methods, param
-   types, tests, and docs from the spec diff, following existing conventions.
+   types, tests, and docs from the spec diff, following existing conventions. Every AI step pins
+   `--model "claude-opus-5[1m]"` (the same pin as `ade-typescript`); left unpinned, the action
+   floats with whatever Claude Code release it ships, and the two SDKs silently diverge. Right after
+   each AI step the run prints the agent's tool calls — tool name and argument names only, no
+   values — to the step log (a `jq` filter held in the workflow's top-level `env`), and the commit
+   step prints `git diff --cached --stat`, so what the agent did and changed can be audited after
+   the fact. No agent-controlled value is logged: the spec is untrusted input, and a prompt-injected
+   agent could encode a credential into narration or a file path and carry it past secret masking.
 
-Every spec-sync PR (and any PR to `main`) must pass `.github/workflows/pr-gates.yml`:
+Every spec-sync PR (and any PR to `main`) must pass `.github/workflows/pr-gates.yml` and the CI
+`lint` job, which includes:
+
+- **check-v2-paths** (`scripts/spec-sync/check-v2-paths.sh`, identical in both SDK repos; run by
+  `./scripts/lint` and inside the spec-sync run's own lint step so the AI repair pass sees it) —
+  cross-checks the URL paths the `client.v2` resources use against `specs/v2-aide.json` in both
+  directions. Forward: every `/vN/` literal in the V2 resources must be a `/v2/*` spec route (or the
+  hidden build-schema surface) — a `/v1/*` route is reported as out of scope, a missing one as not
+  in the spec; in #153 the AI pass rewrote the gateway's new `/v1/classify` and `/v1/split` routes
+  as `client.v2.classify`/`split` hitting non-existent `/v2/classify`/`/v2/split` (404 on staging).
+  Reverse: every `/v2/*` spec route outside the not-auto-wired `/v2/workflow*` namespace must be
+  *sent* at a `_v2_url(...)` call site — a docstring mention does not count.
 
 - **surface-lock** (`scripts/spec-sync/surface-lock.sh`, `griffe`) — baseline is the **last release
   tag**, so any change to *released* public surface fails mechanically. Merged-but-unreleased surface
@@ -178,8 +196,16 @@ changes.
 **V2 status:** the V2 loop is **implemented** (the `spec-sync-v2` job + `specs/v2-aide.json` +
 `specs/_generated/v2_models.py`). Its baseline is the full current spec, so it ships live but quiet
 and fires only on a future real change; `/v2/workflow` is intentionally deferred (kept in the
-baseline and excluded in the AI prompt). Its AI step is hardened beyond V1's — no shell, and a
-product-code allowlist enforced before formatting/staging (see `.github/workflows/spec-sync.yml`).
+baseline, excluded in the AI prompt, and excluded from the reverse check in `check-v2-paths.sh`). Its AI step is
+hardened beyond V1's — no shell, and a product-code allowlist enforced before formatting/staging
+(see `.github/workflows/spec-sync.yml`).
+
+**V2 scope:** `client.v2` is backed by the spec's `/v2/*` routes **only**. The AIDE spec also
+carries `/v1/*` compatibility routes (`/v1/ade/*`, `/v1/classify`, `/v1/split`, …); those are the V1
+surface and are never wired into `client.v2` — the AI prompt says so, and `check-v2-paths` rejects
+any wired path the snapshot does not have, so a `/v1/*` route can no longer be "translated" into a
+`/v2/*` one. A new `/v1/*` route in the V2 spec is therefore expected to produce a PR that wires
+only the in-scope `/v2/*` changes (if any) and mentions the unwired routes in its description.
 
 The same pipeline shape ports to `ade-typescript` with `openapi-typescript` (mechanical) and
 `api-extractor` (surface-lock), tracked separately.

@@ -12,6 +12,23 @@ concurrency:
 permissions:
   contents: read            # all writes go through SPEC_SYNC_TOKEN, never GITHUB_TOKEN
 
+env:
+  # jq program for the "tool-call summary" step that follows each claude-code-action step. It prints
+  # ONLY fixed metadata: the tool name and the NAMES of the arguments it was given — never argument
+  # values. A prompt-injected agent that has Read its own environment could hex- or base64-encode a
+  # credential into a file path, and neither a character allowlist nor GitHub's literal secret
+  # masking would catch that; the same goes for assistant text, tool results and file contents, so
+  # none of those are printed either. What the agent actually changed is listed from a trusted
+  # source instead: the commit step prints `git diff --cached --stat`. Held here, in the trusted
+  # workflow file, so the summary can run right after the AI step without executing anything the
+  # agent could have edited.
+  TOOL_CALL_SUMMARY_JQ: >-
+    (if type == "array" then .[] else . end)
+    | select(.type == "assistant") | .message.content[]?
+    | select(.type == "tool_use")
+    | "[tool] " + (.name | tostring | if test("^[A-Za-z]{1,32}$") then . else "<redacted>" end)
+      + " " + ((.input // {}) | keys | map(if test("^[A-Za-z_]{1,32}$") then . else "<redacted>" end) | join(","))
+
 jobs:
   spec-sync:
     # Guard so the scheduled/dispatch job only runs on the canonical repo — forks lack the
@@ -181,10 +198,35 @@ jobs:
             step commits and pushes your edits.
           # Pin the model: the action otherwise inherits Claude Code's default, which floats
           # across CLI releases and makes spec-sync output non-reproducible. `[1m]` = 1M context.
+          # claude-opus-5 is the pin in BOTH SDK repos (ade-python and ade-typescript) — keep them
+          # equal, or the two SDKs quietly diverge on the same spec change.
           claude_args: |
-            --model "claude-opus-4-8[1m]"
+            --model "claude-opus-5[1m]"
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
+
+      # Print the agent's tool calls — tool name and argument NAMES only, never values — to the step
+      # log, so the shape of what the agent did can be audited later (the commit step lists what it
+      # changed, from the trusted checkout):
+      # the action logs only the init and result summaries, and #153 had to be root-caused without
+      # any trace. Deliberately NO argument values, assistant text, tool results or commands: this agent
+      # holds credential-bearing inputs and processes an untrusted spec, and a prompt-injected agent
+      # could carry a transformed or chunked credential past GitHub's literal secret masking in
+      # free-form narration. Runs straight off the action's own output file with the jq program held
+      # in this workflow's top-level env, so it executes nothing the agent could have edited.
+      # Best-effort.
+      - name: AI wiring tool-call summary
+        if: always() && steps.ai_wiring.outputs.execution_file != ''
+        continue-on-error: true
+        env:
+          TRANSCRIPT: ${{ steps.ai_wiring.outputs.execution_file }}
+        run: |
+          echo "::group::AI wiring tool-call summary"
+          set -o pipefail
+          # Prefix every line: nothing the agent could influence may start at column 0, where a leading
+          # `::` would be parsed as a workflow command (e.g. ::stop-commands::) even inside a group.
+          jq -r "$TOOL_CALL_SUMMARY_JQ" "$TRANSCRIPT" | tr -d '\r' | sed 's/^/  /' || echo "  tool-call summary unavailable (unexpected file shape)"
+          echo "::endgroup::"
 
       # Deterministic: commit whatever the AI edited and push to the sync branch. This guarantees
       # the AI changes actually reach the PR (the action's automation mode does not push), and it
@@ -194,6 +236,8 @@ jobs:
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         run: |
           git add -A
+          # Trusted list of what the AI pass changed (the tool-call summary above logs no values).
+          git diff --cached --stat
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
             echo "summary=Mechanical-only PR (AI wiring added no changes). Human review required before merge." >> "$GITHUB_OUTPUT"
@@ -452,21 +496,34 @@ jobs:
             specs/_generated/v2_models.py. Wire the client.v2 SDK to match the spec diff. This is
             the V2 surface (client.v2.*), NOT V1 — do not touch V1 resources.
 
+            SCOPE — exactly which routes back client.v2: the `/v2/*` paths in this spec, and
+            nothing else. This spec is the AIDE gateway's and ALSO carries `/v1/*` routes (for
+            example /v1/ade/parse, /v1/classify, /v1/split): that is the V1-compatibility surface,
+            tracked by the separate V1 spec-sync job against its own spec, and it is NOT part of
+            client.v2. Do not wire a `/v1/*` route into client.v2, and never "translate" one into a
+            `/v2/...` URL. Every path you write into a resource must appear verbatim under `paths`
+            in specs/v2-aide.json — a trusted step (scripts/spec-sync/check-v2-paths.sh) verifies
+            this after you finish and rejects any path the spec does not have. A diff whose only new
+            ROUTES are `/v1/*` is not "nothing to do": still wire every in-scope change listed
+            below (a new request field on /v2/parse, say) and leave the `/v1/*` routes alone.
+
             OUT OF SCOPE — do NOT implement: /v2/workflow, /v2/workflow/jobs, and
             /v2/workflow/jobs/{job_id}. That surface is intentionally deferred; skip it entirely
             even though it appears in the spec and reference models. If the spec diff touches only
-            workflow, make no changes.
+            workflow and/or `/v1/*` routes, make no changes.
 
             First read the ENTIRE mechanical commit diff, which a trusted step has already written
             to `.spec-sync-diff.txt` in the repo root (you have no shell — use Read, do not try to
-            run git) — the
-            operation/path hunks AND changed entries under `components.schemas` — to find every
-            change backing client.v2. A response-field addition often changes ONLY a component
-            schema (e.g. /v2/parse references #/components/schemas/ParseResponse) and its generated
-            model, not the operation hunk, so for every changed schema trace its `$ref` consumers to
-            the non-workflow operations that use it. Cover: (a) newly added /v2 routes; (b) field or
-            schema changes on existing operations, INCLUDING component-only changes; (c) changes to
-            /v1/files, which backs client.v2.files (src/landingai_ade/resources/v2/files.py).
+            run git; the file runs to thousands of lines, so page through it with offset/limit until
+            you have seen the final hunk) — the operation/path hunks AND changed entries under
+            `components.schemas` — to find every change backing client.v2. A response-field
+            addition often changes ONLY a component schema (e.g. /v2/parse references
+            #/components/schemas/ParseResponse) and its generated model, not the operation hunk, so
+            for every changed schema trace its `$ref` consumers to the non-workflow `/v2/*`
+            operations that use it. Cover: (a) newly added `/v2/*` routes; (b) request-field,
+            response-field or schema changes on existing `/v2/*` operations, INCLUDING
+            component-only changes. A new optional request field on /v2/parse is exactly case (b)
+            and must be wired even when the same diff is dominated by unrelated `/v1/*` additions.
 
             Distinguish REQUEST fields — wire as a new optional keyword parameter on the existing
             method (see the additive-changes rule below) — from RESPONSE-model fields — add the
@@ -544,6 +601,12 @@ jobs:
             you then access attributes on the value, which yields `reportUnknown*` errors; and do
             not add `# type: ignore` to silence an annotation you could have written correctly.
 
+            Before you finish, self-check coverage: list every operation hunk and every changed
+            component schema in `.spec-sync-diff.txt`, mark each IN SCOPE (`/v2/*`, non-workflow) or
+            OUT OF SCOPE (`/v1/*`, `/v2/workflow*`), confirm every in-scope item maps to an edit you
+            made, and confirm every URL path you wrote exists under `paths` in specs/v2-aide.json.
+            Close any gap before you stop.
+
             Additive-changes rule: BACKWARD-COMPATIBLE ADDITIONS ONLY. You MAY add a new optional
             keyword parameter (with a default) to an existing parse/extract method to wire an
             additive request field — surface-lock permits that. You must NOT remove or rename a
@@ -552,7 +615,11 @@ jobs:
             all; the diff you need is already in `.spec-sync-diff.txt`. A later workflow step
             commits and pushes your edits.
           # Pin the model: the action otherwise inherits Claude Code's default, which floats
-          # across CLI releases and makes spec-sync output non-reproducible. `[1m]` = 1M context.
+          # across CLI releases and makes spec-sync output non-reproducible. `[1m]` = 1M context —
+          # the mechanical diff alone can run to ~100K tokens. claude-opus-5 is the pin in BOTH SDK
+          # repos; keep them equal. (On the drift behind #153 the then-pinned claude-opus-4-8
+          # rewrote new /v1 routes as non-existent /v2 ones and skipped the in-scope field, while
+          # ade-typescript's unpinned run — opus-5 by default — wired exactly the right thing, twice.)
           #
           # NO Bash tool. `Bash(git diff:*)` was allowed here so the agent could inspect the
           # mechanical diff, but `git diff` is NOT inert: an agent that writes `.git/config` can
@@ -561,9 +628,32 @@ jobs:
           # hardening applies. A trusted step precomputes the diff into .spec-sync-diff.txt
           # instead, so the agent keeps the input and loses the execution primitive.
           claude_args: |
-            --model "claude-opus-4-8[1m]"
+            --model "claude-opus-5[1m]"
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep"
+
+      # Print the agent's tool calls — tool name and argument NAMES only, never values — to the step
+      # log, so the shape of what the agent did can be audited later (the commit step lists what it
+      # changed, from the trusted checkout):
+      # the action logs only the init and result summaries, and #153 had to be root-caused without
+      # any trace. Deliberately NO argument values, assistant text, tool results or commands: the spec this
+      # agent reads is untrusted input, and a prompt-injected agent that has Read its own environment
+      # could carry a transformed or chunked credential past GitHub's literal secret masking in
+      # free-form narration. Runs BEFORE anything AI-authored can execute, straight off the action's
+      # own output file, with the jq program held in this workflow's top-level env (not in a repo
+      # script the agent could have edited). Best-effort.
+      - name: AI wiring tool-call summary
+        if: always() && steps.ai_wiring.outputs.execution_file != ''
+        continue-on-error: true
+        env:
+          TRANSCRIPT: ${{ steps.ai_wiring.outputs.execution_file }}
+        run: |
+          echo "::group::AI wiring tool-call summary"
+          set -o pipefail
+          # Prefix every line: nothing the agent could influence may start at column 0, where a leading
+          # `::` would be parsed as a workflow command (e.g. ::stop-commands::) even inside a group.
+          jq -r "$TOOL_CALL_SUMMARY_JQ" "$TRANSCRIPT" | tr -d '\r' | sed 's/^/  /' || echo "  tool-call summary unavailable (unexpected file shape)"
+          echo "::endgroup::"
 
       # ---- Harden before running ANY trusted command over the AI's edits --------------------
       #
@@ -642,10 +732,13 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          # Run both even if the first fails, so the repair pass sees every error at once.
+          # Run all three even if one fails, so the repair pass sees every error at once.
           status=0
           rye run check:ruff 2>&1 | tee .spec-sync-lint.log || status=1
           rye run typecheck 2>&1 | tee -a .spec-sync-lint.log || status=1
+          # Both directions: a wired path the spec lacks (#153 invented /v2/classify and /v2/split)
+          # and a /v2 spec route nothing sends. grep + jq over source only — as safe here as ruff.
+          ./scripts/spec-sync/check-v2-paths.sh specs/v2-aide.json src/landingai_ade/resources/v2 2>&1 | tee -a .spec-sync-lint.log || status=1
           exit $status
 
       - name: AI lint repair (edits only)
@@ -662,10 +755,11 @@ jobs:
           # the top of this file); SPEC_SYNC_TOKEN is reserved for the trusted push step.
           github_token: ${{ github.token }}
           prompt: |
-            `./scripts/lint` failed on the client.v2 wiring you just wrote. Read
+            The trusted lint step failed on the client.v2 wiring you just wrote. Read
             .spec-sync-lint.log in the repo root — it is the captured output of that run (ruff
-            check, then pyright in STRICT mode, then an import check) — and fix every error it
-            reports.
+            check, then pyright in STRICT mode and mypy, then scripts/spec-sync/check-v2-paths.sh,
+            which cross-checks the URL paths the V2 resources send against specs/v2-aide.json) —
+            and fix every error it reports.
 
             Fix the CAUSE, not the symptom. Specifically, do NOT silence anything: no
             `# type: ignore`, no `cast(Any, ...)`, no widening an annotation to `object`/`Any`, no
@@ -674,15 +768,41 @@ jobs:
             landingai_ade.types.v2 (a recursive helper over parse elements takes
             `List[V2ParseElement]`, not `object`). Keep the behavior the wiring was written to have.
 
+            A `check-v2-paths` error means one of two things. (a) A resource sends a path that is
+            not under `paths` in specs/v2-aide.json: remove that method/resource together with its
+            registration in src/landingai_ade/resources/v2/v2.py, its types, tests and docs — never
+            invent or "translate" a path (a /v1/... route is NOT a /v2/... route; only `/v2/*`
+            backs client.v2). (b) A `/v2/*` route in the spec has no resource sending it: wire it,
+            mirroring src/landingai_ade/resources/v2/parse.py and extract.py. Paths under
+            /v2/workflow* are out of scope for every AI pass, this one included: never add,
+            remove or edit a workflow resource, and if a `check-v2-paths` error concerns a
+            /v2/workflow* path, leave it for a maintainer.
+
             You may only edit src/, tests/, docs/, and api.md — the same allowlist as before. Do
             NOT edit scripts/, .github/, specs/, pyproject.toml, or any dotfile (including
             .spec-sync-lint.log itself: it is an input, and it is deleted before anything is
             committed). You have NO shell and no git access at all.
           # NO Bash tool — see the wiring step above for why `Bash(git diff:*)` was removed.
+          # Same model pin as the wiring step, for the same reasons.
           claude_args: |
-            --model "claude-opus-4-8[1m]"
+            --model "claude-opus-5[1m]"
             --max-turns 60
             --allowedTools "Edit,Write,Read,Glob,Grep"
+
+      # Same tool-call summary as after the wiring step — see there for why it is the log, and why
+      # it runs before anything AI-authored executes.
+      - name: AI lint repair tool-call summary
+        if: always() && steps.ai_lint_fix.outputs.execution_file != ''
+        continue-on-error: true
+        env:
+          TRANSCRIPT: ${{ steps.ai_lint_fix.outputs.execution_file }}
+        run: |
+          echo "::group::AI lint repair tool-call summary"
+          set -o pipefail
+          # Prefix every line: nothing the agent could influence may start at column 0, where a leading
+          # `::` would be parsed as a workflow command (e.g. ::stop-commands::) even inside a group.
+          jq -r "$TOOL_CALL_SUMMARY_JQ" "$TRANSCRIPT" | tr -d '\r' | sed 's/^/  /' || echo "  tool-call summary unavailable (unexpected file shape)"
+          echo "::endgroup::"
 
       # The repair pass is exactly as untrusted as the wiring pass, so repeat the hardening too:
       # it could have written .venv/** or .git/hooks/** just as the wiring pass could, and the
@@ -722,6 +842,7 @@ jobs:
           status=0
           rye run check:ruff || status=1
           rye run typecheck || status=1
+          ./scripts/spec-sync/check-v2-paths.sh specs/v2-aide.json src/landingai_ade/resources/v2 || status=1
           exit $status
 
       # LAST line of defence, and it must come after the last step that executes anything.
@@ -774,6 +895,8 @@ jobs:
           # wiring commit.
           rm -f .spec-sync-lint.log .spec-sync-diff.txt
           git add -A
+          # Trusted list of what the AI passes changed (the tool-call summaries above log no values).
+          git diff --cached --stat
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
             echo "changed=false" >> "$GITHUB_OUTPUT"

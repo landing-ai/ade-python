@@ -12,5 +12,8 @@ else
   rye run lint
 fi
 
+echo "==> Checking client.v2 routes against the spec snapshot"
+./scripts/spec-sync/check-v2-paths.sh specs/v2-aide.json src/landingai_ade/resources/v2
+
 echo "==> Making sure it imports"
 rye run python -c 'import landingai_ade'

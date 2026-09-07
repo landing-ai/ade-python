@@ -66,6 +66,17 @@ non-workflow V2 drift.
   - Inspect the mechanical diff (`git diff HEAD~1..HEAD`) for **every changed operation backing
     `client.v2`** — new `/v2` routes, field/schema changes on existing operations, and changes to
     `/v1/files` (which backs `client.v2.files`). Workflow is explicitly excluded.
+
+    > **Note (2026-09-07):** `client.v2.files` and `/v1/files` are gone (removed with #129), and
+    > the scope is now stated the other way round: **only `/v2/*` routes back `client.v2`**. The
+    > AIDE spec also carries `/v1/*` compatibility routes (`/v1/ade/*`, `/v1/classify`,
+    > `/v1/split`, …); those are the V1 surface and are never wired here. The prompt says so, and
+    > `scripts/spec-sync/check-v2-paths.sh` enforces it mechanically: every URL a V2 resource sends
+    > must be a `/v2/*` route of the snapshot, and every `/v2/*` snapshot route outside the
+    > not-auto-wired `/v2/workflow*` namespace must be sent at a `_v2_url(...)` call site.
+    > Motivation: #153, where the AI pass rewrote the new `/v1/classify` and
+    > `/v1/split` routes as `client.v2.classify`/`split` hitting non-existent `/v2/*` paths and
+    > skipped the in-scope `password` field on `/v2/parse`.
   - For a **field change on an existing operation**, wire it into the existing resource/method
     (adding a new *optional* keyword parameter is permitted — surface-lock allows backward-
     compatible additions). For a **new route**, mirror `resources/v2/extract.py` + `parse.py`:
