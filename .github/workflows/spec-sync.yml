@@ -13,19 +13,23 @@ permissions:
   contents: read            # all writes go through SPEC_SYNC_TOKEN, never GITHUB_TOKEN
 
 env:
-  # jq program for the "transcript summary" step that follows each claude-code-action step: the
-  # agent's own text blocks plus each tool call as name + target path/pattern — never tool results,
-  # never file contents. Held here, in the trusted workflow file, so the summary can run right after
-  # the AI step without executing anything the agent could have edited.
-  TRANSCRIPT_SUMMARY_JQ: >-
+  # jq program for the "tool-call summary" step that follows each claude-code-action step. It prints
+  # ONLY fixed metadata: the tool name and, for path-like arguments, the value after a strict
+  # character-class check (anything else becomes <redacted>). It deliberately prints NO assistant
+  # text, tool results, file contents, grep patterns or shell commands: the spec the agent reads is
+  # untrusted input, and a prompt-injected agent that has Read its own environment could smuggle a
+  # transformed or chunked credential out through free-form narration, which GitHub's literal secret
+  # masking would not catch. Held here, in the trusted workflow file, so the summary can run right
+  # after the AI step without executing anything the agent could have edited.
+  TOOL_CALL_SUMMARY_JQ: >-
     (if type == "array" then .[] else . end)
     | select(.type == "assistant") | .message.content[]?
-    | if .type == "text" then "\n[assistant] " + .text
-      elif .type == "tool_use" then "[tool] " + .name + " "
-        + ((.input // {}) | to_entries
-           | map(select(.key | IN("file_path", "path", "pattern", "glob", "command", "offset", "limit")))
-           | map(.key + "=" + (.value | tostring)) | join(" "))
-      else empty end
+    | select(.type == "tool_use")
+    | "[tool] " + (.name | tostring | if test("^[A-Za-z]{1,32}$") then . else "<redacted>" end) + " "
+      + ((.input // {}) | to_entries
+         | map(select(.key | IN("file_path", "path", "glob", "offset", "limit")))
+         | map(.key + "=" + (.value | tostring | if test("^[A-Za-z0-9_./*{}$-]{1,200}$") then . else "<redacted>" end))
+         | join(" "))
 
 jobs:
   spec-sync:
@@ -203,21 +207,26 @@ jobs:
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
 
-      # Print the agent's own narration and tool calls (not tool results, not file contents) to the
-      # step log, so a wiring decision can be audited later — the action logs only the init and
-      # result summaries, and #153 had to be root-caused without any trace. Runs straight off the
-      # action's own output file with the jq program held in this workflow's top-level env, so it
-      # executes nothing the agent could have edited. The LOG, deliberately not an artifact: logs
-      # are secret-masked and artifacts are not, and a prompt-injected agent could Read its own
-      # environment into the transcript. Best-effort.
-      - name: AI wiring transcript summary
+      # Print the agent's tool calls — tool name plus path-like arguments that pass a strict character
+      # check, nothing else — to the step log, so what the agent read and edited can be audited later:
+      # the action logs only the init and result summaries, and #153 had to be root-caused without
+      # any trace. Deliberately NO assistant text, tool results, patterns or commands: this agent
+      # holds credential-bearing inputs and processes an untrusted spec, and a prompt-injected agent
+      # could carry a transformed or chunked credential past GitHub's literal secret masking in
+      # free-form narration. Runs straight off the action's own output file with the jq program held
+      # in this workflow's top-level env, so it executes nothing the agent could have edited.
+      # Best-effort.
+      - name: AI wiring tool-call summary
         if: always() && steps.ai_wiring.outputs.execution_file != ''
         continue-on-error: true
         env:
           TRANSCRIPT: ${{ steps.ai_wiring.outputs.execution_file }}
         run: |
-          echo "::group::AI wiring transcript summary"
-          jq -r "$TRANSCRIPT_SUMMARY_JQ" "$TRANSCRIPT" || echo "transcript summary unavailable (unexpected file shape)"
+          echo "::group::AI wiring tool-call summary"
+          set -o pipefail
+          # Prefix every line: nothing the agent could influence may start at column 0, where a leading
+          # `::` would be parsed as a workflow command (e.g. ::stop-commands::) even inside a group.
+          jq -r "$TOOL_CALL_SUMMARY_JQ" "$TRANSCRIPT" | tr -d '\r' | sed 's/^/  /' || echo "  tool-call summary unavailable (unexpected file shape)"
           echo "::endgroup::"
 
       # Deterministic: commit whatever the AI edited and push to the sync branch. This guarantees
@@ -595,7 +604,7 @@ jobs:
             component schema in `.spec-sync-diff.txt`, mark each IN SCOPE (`/v2/*`, non-workflow) or
             OUT OF SCOPE (`/v1/*`, `/v2/workflow*`), confirm every in-scope item maps to an edit you
             made, and confirm every URL path you wrote exists under `paths` in specs/v2-aide.json.
-            Close any gap before you stop; state the resulting list in your final message.
+            Close any gap before you stop.
 
             Additive-changes rule: BACKWARD-COMPATIBLE ADDITIONS ONLY. You MAY add a new optional
             keyword parameter (with a default) to an existing parse/extract method to wire an
@@ -622,21 +631,26 @@ jobs:
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep"
 
-      # Print the agent's own narration and tool calls (not tool results, not file contents) to the
-      # step log, so a wiring decision can be audited later — the action logs only the init and
-      # result summaries, and #153 had to be root-caused without any trace. Runs BEFORE anything
-      # AI-authored can execute, straight off the action's own output file, with the jq program held
-      # in this workflow's top-level env (not in a repo script the agent could have edited). The LOG,
-      # deliberately not an artifact: logs are secret-masked and artifacts are not, and a
-      # prompt-injected agent could Read its own environment into the transcript. Best-effort.
-      - name: AI wiring transcript summary
+      # Print the agent's tool calls — tool name plus path-like arguments that pass a strict character
+      # check, nothing else — to the step log, so what the agent read and edited can be audited later:
+      # the action logs only the init and result summaries, and #153 had to be root-caused without
+      # any trace. Deliberately NO assistant text, tool results, patterns or commands: the spec this
+      # agent reads is untrusted input, and a prompt-injected agent that has Read its own environment
+      # could carry a transformed or chunked credential past GitHub's literal secret masking in
+      # free-form narration. Runs BEFORE anything AI-authored can execute, straight off the action's
+      # own output file, with the jq program held in this workflow's top-level env (not in a repo
+      # script the agent could have edited). Best-effort.
+      - name: AI wiring tool-call summary
         if: always() && steps.ai_wiring.outputs.execution_file != ''
         continue-on-error: true
         env:
           TRANSCRIPT: ${{ steps.ai_wiring.outputs.execution_file }}
         run: |
-          echo "::group::AI wiring transcript summary"
-          jq -r "$TRANSCRIPT_SUMMARY_JQ" "$TRANSCRIPT" || echo "transcript summary unavailable (unexpected file shape)"
+          echo "::group::AI wiring tool-call summary"
+          set -o pipefail
+          # Prefix every line: nothing the agent could influence may start at column 0, where a leading
+          # `::` would be parsed as a workflow command (e.g. ::stop-commands::) even inside a group.
+          jq -r "$TOOL_CALL_SUMMARY_JQ" "$TRANSCRIPT" | tr -d '\r' | sed 's/^/  /' || echo "  tool-call summary unavailable (unexpected file shape)"
           echo "::endgroup::"
 
       # ---- Harden before running ANY trusted command over the AI's edits --------------------
@@ -770,16 +784,19 @@ jobs:
             --max-turns 60
             --allowedTools "Edit,Write,Read,Glob,Grep"
 
-      # Same transcript summary as after the wiring step — see there for why it is the log, and why
+      # Same tool-call summary as after the wiring step — see there for why it is the log, and why
       # it runs before anything AI-authored executes.
-      - name: AI lint repair transcript summary
+      - name: AI lint repair tool-call summary
         if: always() && steps.ai_lint_fix.outputs.execution_file != ''
         continue-on-error: true
         env:
           TRANSCRIPT: ${{ steps.ai_lint_fix.outputs.execution_file }}
         run: |
-          echo "::group::AI lint repair transcript summary"
-          jq -r "$TRANSCRIPT_SUMMARY_JQ" "$TRANSCRIPT" || echo "transcript summary unavailable (unexpected file shape)"
+          echo "::group::AI lint repair tool-call summary"
+          set -o pipefail
+          # Prefix every line: nothing the agent could influence may start at column 0, where a leading
+          # `::` would be parsed as a workflow command (e.g. ::stop-commands::) even inside a group.
+          jq -r "$TOOL_CALL_SUMMARY_JQ" "$TRANSCRIPT" | tr -d '\r' | sed 's/^/  /' || echo "  tool-call summary unavailable (unexpected file shape)"
           echo "::endgroup::"
 
       # The repair pass is exactly as untrusted as the wiring pass, so repeat the hardening too:

@@ -72,8 +72,9 @@ non-workflow V2 drift.
     > AIDE spec also carries `/v1/*` compatibility routes (`/v1/ade/*`, `/v1/classify`,
     > `/v1/split`, …); those are the V1 surface and are never wired here. The prompt says so, and
     > `scripts/spec-sync/check-v2-paths.sh` enforces it mechanically: every URL a V2 resource sends
-    > must exist in the snapshot, and every `/v2/*` snapshot route must be sent by a resource (or
-    > be listed as deferred). Motivation: #153, where the AI pass rewrote the new `/v1/classify` and
+    > must be a `/v2/*` route of the snapshot, and every `/v2/*` snapshot route outside the
+    > not-auto-wired `/v2/workflow*` namespace must be sent at a `_v2_url(...)` call site.
+    > Motivation: #153, where the AI pass rewrote the new `/v1/classify` and
     > `/v1/split` routes as `client.v2.classify`/`split` hitting non-existent `/v2/*` paths and
     > skipped the in-scope `password` field on `/v2/parse`.
   - For a **field change on an existing operation**, wire it into the existing resource/method
