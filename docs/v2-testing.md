@@ -59,6 +59,37 @@ The legacy top-level `grounding` tree (`V2ParseGrounding` and friends) is retain
 on the model for backward compatibility with older gateway responses; current
 responses omit it in favor of the inline `grounding` above.
 
+### Encrypted PDFs (`password`)
+
+`options.password` is a **supported** parse option — earlier snapshots documented
+it as unimplemented (any value returned a 422), so a 422 mentioning the password
+is no longer the expected outcome of merely supplying one.
+
+- `client.v2.parse(...)` and `client.v2.parse_jobs.create(...)` both take a
+  top-level `password=` kwarg. It is folded into `options.password` (an explicit
+  `options["password"]` wins) and kept as a top-level form field for older
+  gateways — `_build_parse_body` in `resources/v2/parse.py` owns that merge, so
+  both routes behave identically.
+- The document is decrypted once at the start of processing and the password is
+  not retained with the result, so nothing in `V2ParseResponse` echoes it. There
+  is no response-model change to assert.
+- The field is PDF-only. Three failures are documented, each a 422 carrying a
+  stable `code` in the `ErrorResponse` body (`{code, message}`):
+  `password_unsupported_content_type` (password supplied for an image or an
+  Office document), `encrypted_pdf_wrong_password`, and
+  `encrypted_pdf_password_required` (a locked PDF sent without one).
+
+Testing it: `/v2/parse` declares only `200`, `206` and `422`, so *any* rejection
+is a 422 — that much is a spec guarantee and safe to assert live
+(`test_parse_sync_password_requires_pdf` in `tests/contract/test_v2_smoke.py`
+sends a password with a non-PDF byte payload and asserts the status only).
+Asserting a specific `code` needs a controlled response body and belongs in
+`tests/api_resources/v2/test_parse.py`
+(`test_parse_sync_surfaces_encrypted_pdf_error_code`); do not assert it live, and
+do not add an encrypted-PDF fixture to the contract suite — the correct-password
+success path cannot be pinned without one, and staging is not guaranteed to have
+the field deployed ahead of the snapshot.
+
 ## Current extract-response shape
 
 `POST /v2/extract` (and the completed `extract_jobs` result) returns a

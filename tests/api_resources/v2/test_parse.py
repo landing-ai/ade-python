@@ -8,7 +8,7 @@ import httpx
 import respx
 import pytest
 
-from landingai_ade import LandingAIADE
+from landingai_ade import LandingAIADE, UnprocessableEntityError
 from landingai_ade.types.v2 import Job, JobStatus, V2ParseResponse
 from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
@@ -226,6 +226,40 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="pw")
     sent = route.calls.last.request.content
     assert b'"password": "explicit"' in sent
+
+
+@pytest.mark.parametrize(
+    "code",
+    ["password_unsupported_content_type", "encrypted_pdf_wrong_password", "encrypted_pdf_password_required"],
+)
+@respx.mock
+def test_parse_sync_surfaces_encrypted_pdf_error_code(code: str) -> None:
+    # `options.password` is a genuinely supported option (an earlier snapshot
+    # documented it as unimplemented, so ANY value 422'd). The three documented
+    # password failures each come back as a 422 whose `ErrorResponse` body carries
+    # a stable snake_case `code`; the SDK must surface both, not flatten the body.
+    # Live coverage can only assert the status (see tests/contract/test_v2_smoke.py),
+    # so the code itself is pinned here against a controlled response.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    body: Dict[str, Any] = {"code": code, "message": "the document could not be decrypted"}
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(422, json=body))
+    # `UnprocessableEntityError` pins the 422 (its `status_code` is `Literal[422]`).
+    with pytest.raises(UnprocessableEntityError) as excinfo:
+        client.v2.parse(document=b"pdf", password="hunter2")
+    assert excinfo.value.response.json() == body
+
+
+@respx.mock
+def test_parse_job_create_surfaces_encrypted_pdf_error_code() -> None:
+    # `/v2/parse/jobs` carries the same `options.password` contract, including the
+    # omitted-password case for a locked PDF, so the documented code must surface
+    # identically on the async route.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    body: Dict[str, Any] = {"code": "encrypted_pdf_password_required", "message": "password required"}
+    respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(return_value=httpx.Response(422, json=body))
+    with pytest.raises(UnprocessableEntityError) as excinfo:
+        client.v2.parse_jobs.create(document=b"pdf")
+    assert excinfo.value.response.json() == body
 
 
 def test_parse_job_create_omits_explicit_none_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:

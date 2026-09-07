@@ -96,9 +96,15 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
               field.
 
-          password: Password for encrypted document files. Sent to the server as
-              `options.password` (an explicit `options["password"]` takes precedence) and,
-              for older gateways, as a top-level form field.
+          password: Password for an encrypted PDF. Sent to the server as `options.password`
+              (an explicit `options["password"]` takes precedence) and, for older
+              gateways, as a top-level form field. The document is decrypted once at the
+              start of processing and the password is not retained with the result. PDFs
+              only -- the server answers 422 with a documented `code`: supplying a
+              password for an image or an Office document gives
+              `password_unsupported_content_type`, a wrong password gives
+              `encrypted_pdf_wrong_password`, and a locked PDF sent without one gives
+              `encrypted_pdf_password_required`.
 
           save_to: Optional output path. If a directory, auto-generates the filename
               (e.g. {input_file}_parse_output.json, or parse_output.json when no
@@ -227,9 +233,15 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
               field.
 
-          password: Password for encrypted document files. Sent to the server as
-              `options.password` (an explicit `options["password"]` takes precedence) and,
-              for older gateways, as a top-level form field.
+          password: Password for an encrypted PDF. Sent to the server as `options.password`
+              (an explicit `options["password"]` takes precedence) and, for older
+              gateways, as a top-level form field. The document is decrypted once at the
+              start of processing and the password is not retained with the result. PDFs
+              only -- the server answers 422 with a documented `code`: supplying a
+              password for an image or an Office document gives
+              `password_unsupported_content_type`, a wrong password gives
+              `encrypted_pdf_wrong_password`, and a locked PDF sent without one gives
+              `encrypted_pdf_password_required`.
 
           output_save_url: If zero data retention (ZDR) is enabled, a URL the parsed output should be
               saved to instead of being returned in the job result.

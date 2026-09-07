@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from pydantic import Field, BaseModel
 
-from landingai_ade import LandingAIADE
+from landingai_ade import LandingAIADE, APIStatusError
 from landingai_ade.types.v2 import (
     JobStatus,
     V2GroundResult,
@@ -152,6 +152,24 @@ def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None
     for page in resp.structure.children:
         _check_node(page.grounding)
         _walk(page.children)
+
+
+def test_parse_sync_password_requires_pdf(staging_client: LandingAIADE) -> None:
+    # `options.password` is now a supported parse option (an earlier snapshot
+    # documented it as unimplemented). The one half of its contract staging is
+    # guaranteed to honor is the rejection: the option is PDF-only, and
+    # `/v2/parse` declares only 200/206/422, so a non-PDF payload carrying a
+    # password can only come back as a 422. Assert the status and nothing more --
+    # the specific `code` (`password_unsupported_content_type`) needs a controlled
+    # response body and is pinned in tests/api_resources/v2/test_parse.py, and the
+    # success path would need an encrypted-PDF fixture plus a guarantee that this
+    # cluster runs the snapshot's gateway, which is an environment property.
+    with pytest.raises(APIStatusError) as excinfo:
+        staging_client.v2.parse(
+            document=("notes.txt", b"plain text, not a PDF", "text/plain"),
+            password="hunter2",
+        )
+    assert excinfo.value.status_code == 422
 
 
 def test_ground_sync(staging_client: LandingAIADE) -> None:
