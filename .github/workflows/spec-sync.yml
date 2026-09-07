@@ -14,22 +14,20 @@ permissions:
 
 env:
   # jq program for the "tool-call summary" step that follows each claude-code-action step. It prints
-  # ONLY fixed metadata: the tool name and, for path-like arguments, the value after a strict
-  # character-class check (anything else becomes <redacted>). It deliberately prints NO assistant
-  # text, tool results, file contents, grep patterns or shell commands: the spec the agent reads is
-  # untrusted input, and a prompt-injected agent that has Read its own environment could smuggle a
-  # transformed or chunked credential out through free-form narration, which GitHub's literal secret
-  # masking would not catch. Held here, in the trusted workflow file, so the summary can run right
-  # after the AI step without executing anything the agent could have edited.
+  # ONLY fixed metadata: the tool name and the NAMES of the arguments it was given — never argument
+  # values. A prompt-injected agent that has Read its own environment could hex- or base64-encode a
+  # credential into a file path, and neither a character allowlist nor GitHub's literal secret
+  # masking would catch that; the same goes for assistant text, tool results and file contents, so
+  # none of those are printed either. What the agent actually changed is listed from a trusted
+  # source instead: the commit step prints `git diff --cached --stat`. Held here, in the trusted
+  # workflow file, so the summary can run right after the AI step without executing anything the
+  # agent could have edited.
   TOOL_CALL_SUMMARY_JQ: >-
     (if type == "array" then .[] else . end)
     | select(.type == "assistant") | .message.content[]?
     | select(.type == "tool_use")
-    | "[tool] " + (.name | tostring | if test("^[A-Za-z]{1,32}$") then . else "<redacted>" end) + " "
-      + ((.input // {}) | to_entries
-         | map(select(.key | IN("file_path", "path", "glob", "offset", "limit")))
-         | map(.key + "=" + (.value | tostring | if test("^[A-Za-z0-9_./*{}$-]{1,200}$") then . else "<redacted>" end))
-         | join(" "))
+    | "[tool] " + (.name | tostring | if test("^[A-Za-z]{1,32}$") then . else "<redacted>" end)
+      + " " + ((.input // {}) | keys | map(if test("^[A-Za-z_]{1,32}$") then . else "<redacted>" end) | join(","))
 
 jobs:
   spec-sync:
@@ -207,10 +205,11 @@ jobs:
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep,Bash(rye *),Bash(./scripts/*),Bash(git diff:*)"
 
-      # Print the agent's tool calls — tool name plus path-like arguments that pass a strict character
-      # check, nothing else — to the step log, so what the agent read and edited can be audited later:
+      # Print the agent's tool calls — tool name and argument NAMES only, never values — to the step
+      # log, so the shape of what the agent did can be audited later (the commit step lists what it
+      # changed, from the trusted checkout):
       # the action logs only the init and result summaries, and #153 had to be root-caused without
-      # any trace. Deliberately NO assistant text, tool results, patterns or commands: this agent
+      # any trace. Deliberately NO argument values, assistant text, tool results or commands: this agent
       # holds credential-bearing inputs and processes an untrusted spec, and a prompt-injected agent
       # could carry a transformed or chunked credential past GitHub's literal secret masking in
       # free-form narration. Runs straight off the action's own output file with the jq program held
@@ -237,6 +236,8 @@ jobs:
         if: steps.drift.outputs.code == '10' && steps.existing.outputs.open != 'true'
         run: |
           git add -A
+          # Trusted list of what the AI pass changed (the tool-call summary above logs no values).
+          git diff --cached --stat
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
             echo "summary=Mechanical-only PR (AI wiring added no changes). Human review required before merge." >> "$GITHUB_OUTPUT"
@@ -631,10 +632,11 @@ jobs:
             --max-turns 250
             --allowedTools "Edit,Write,Read,Glob,Grep"
 
-      # Print the agent's tool calls — tool name plus path-like arguments that pass a strict character
-      # check, nothing else — to the step log, so what the agent read and edited can be audited later:
+      # Print the agent's tool calls — tool name and argument NAMES only, never values — to the step
+      # log, so the shape of what the agent did can be audited later (the commit step lists what it
+      # changed, from the trusted checkout):
       # the action logs only the init and result summaries, and #153 had to be root-caused without
-      # any trace. Deliberately NO assistant text, tool results, patterns or commands: the spec this
+      # any trace. Deliberately NO argument values, assistant text, tool results or commands: the spec this
       # agent reads is untrusted input, and a prompt-injected agent that has Read its own environment
       # could carry a transformed or chunked credential past GitHub's literal secret masking in
       # free-form narration. Runs BEFORE anything AI-authored can execute, straight off the action's
@@ -771,7 +773,10 @@ jobs:
             registration in src/landingai_ade/resources/v2/v2.py, its types, tests and docs — never
             invent or "translate" a path (a /v1/... route is NOT a /v2/... route; only `/v2/*`
             backs client.v2). (b) A `/v2/*` route in the spec has no resource sending it: wire it,
-            mirroring src/landingai_ade/resources/v2/parse.py and extract.py.
+            mirroring src/landingai_ade/resources/v2/parse.py and extract.py. Paths under
+            /v2/workflow* are out of scope for every AI pass, this one included: never add,
+            remove or edit a workflow resource, and if a `check-v2-paths` error concerns a
+            /v2/workflow* path, leave it for a maintainer.
 
             You may only edit src/, tests/, docs/, and api.md — the same allowlist as before. Do
             NOT edit scripts/, .github/, specs/, pyproject.toml, or any dotfile (including
@@ -890,6 +895,8 @@ jobs:
           # wiring commit.
           rm -f .spec-sync-lint.log .spec-sync-diff.txt
           git add -A
+          # Trusted list of what the AI passes changed (the tool-call summaries above log no values).
+          git diff --cached --stat
           if git diff --cached --quiet; then
             echo "AI step produced no changes."
             echo "changed=false" >> "$GITHUB_OUTPUT"

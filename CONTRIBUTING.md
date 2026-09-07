@@ -155,11 +155,11 @@ two attributed commits (paths shown for V1; the V2 loop uses the `v2-aide`/`v2_m
    types, tests, and docs from the spec diff, following existing conventions. Every AI step pins
    `--model "claude-opus-5[1m]"` (the same pin as `ade-typescript`); left unpinned, the action
    floats with whatever Claude Code release it ships, and the two SDKs silently diverge. Right after
-   each AI step the run prints the agent's tool calls — tool name plus path-like arguments that pass
-   a strict character check, nothing else — to the step log (a `jq` filter held in the workflow's
-   top-level `env`), so what the agent read and edited can be audited after the fact. Free-form
-   agent text is deliberately not logged: the spec is untrusted input, and narration from a
-   prompt-injected agent could carry a transformed credential past secret masking.
+   each AI step the run prints the agent's tool calls — tool name and argument names only, no
+   values — to the step log (a `jq` filter held in the workflow's top-level `env`), and the commit
+   step prints `git diff --cached --stat`, so what the agent did and changed can be audited after
+   the fact. No agent-controlled value is logged: the spec is untrusted input, and a prompt-injected
+   agent could encode a credential into narration or a file path and carry it past secret masking.
 
 Every spec-sync PR (and any PR to `main`) must pass `.github/workflows/pr-gates.yml` and the CI
 `lint` job, which includes:
