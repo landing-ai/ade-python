@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from pathlib import Path
 
 import httpx
@@ -13,6 +13,26 @@ from landingai_ade.types.v2 import Job, JobStatus, V2ParseResponse
 from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 APIKEY = "My Apikey"
+
+
+def multipart_field(body: bytes, name: str) -> Optional[str]:
+    """The value of a top-level multipart form field, or None when absent.
+
+    Substring checks on the raw body cannot tell the top-level `password` field from
+    the copy inside the JSON-encoded `options` field, and the two must agree.
+    """
+    marker = f'name="{name}"'.encode()
+    start = body.find(marker)
+    if start == -1:
+        return None
+    value_start = body.find(b"\r\n\r\n", start)
+    if value_start == -1:
+        return None
+    value_start += 4
+    value_end = body.find(b"\r\n--", value_start)
+    return body[value_start : value_end if value_end != -1 else len(body)].decode()
+
+
 PARSE_BODY: Dict[str, Any] = {
     "markdown": "# Hello",
     "structure": {"type": "document", "children": []},
@@ -192,15 +212,16 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
 
 @respx.mock
 def test_parse_sync_folds_password_into_options() -> None:
-    # The current gateway reads the document password from `options.password`;
-    # the kwarg must land there (and stay as a top-level field for older
-    # gateways).
+    # The gateway reads the document password from `options.password`; the kwarg lands
+    # there and ONLY there. A second top-level copy (which the 2026-07-13 spec had, and
+    # no snapshot since) would double the secret's exposure and could disagree with the
+    # copy in `options` -- see `_build_parse_body`. ade-typescript asserts the same.
     client = LandingAIADE(apikey=APIKEY, environment="production")
     route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     client.v2.parse(document=b"pdf", password="hunter2")
     sent = route.calls.last.request.content
     assert b'{"password": "hunter2"}' in sent
-    assert b'name="password"' in sent
+    assert multipart_field(sent, "password") is None
 
 
 @respx.mock
@@ -223,9 +244,20 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     assert b'"pages": [2]' in sent
     assert b'"password": "pw"' in sent
 
-    client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="pw")
+    # An explicit `options["password"]` wins over the kwarg, and the kwarg value must
+    # not survive anywhere on the wire.
+    client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="kwarg-only")
     sent = route.calls.last.request.content
     assert b'"password": "explicit"' in sent
+    assert b"kwarg-only" not in sent
+    assert multipart_field(sent, "password") is None
+
+    # An explicit `options["password"] = None` means "no password": the kwarg does not
+    # slip through behind it.
+    client.v2.parse(document=b"pdf", options={"password": None}, password="kwarg-only")
+    sent = route.calls.last.request.content
+    assert b"kwarg-only" not in sent
+    assert multipart_field(sent, "password") is None
 
 
 @pytest.mark.parametrize(
@@ -558,7 +590,7 @@ def test_parse_job_create_folds_password_into_options() -> None:
     client.v2.parse_jobs.create(document=b"pdf", password="hunter2")
     sent = route.calls.last.request.content
     assert b'{"password": "hunter2"}' in sent
-    assert b'name="password"' in sent
+    assert multipart_field(sent, "password") is None  # `options` only, like the sync route
 
 
 @respx.mock

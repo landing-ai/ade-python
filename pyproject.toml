@@ -78,10 +78,16 @@ format = { chain = [
 
 "lint" = { chain = [
   "check:ruff",
+  # Formatting is checked, not just linted: `ruff check` does not enforce layout, so
+  # unformatted code used to merge and then show up as an unrelated hunk in the next
+  # PR whose workflow runs `./scripts/format` (see the `_base_client.py` noise in #156).
+  # Run `./scripts/format` to fix.
+  "check:format",
   "typecheck",
   "check:importable",
 ]}
 "check:ruff" = "ruff check ."
+"check:format" = "ruff format --check ."
 "fix:ruff" = "ruff check --fix ."
 
 "check:importable" = "python -c 'import landingai_ade'"

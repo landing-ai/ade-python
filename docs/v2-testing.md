@@ -66,10 +66,18 @@ it as unimplemented (any value returned a 422), so a 422 mentioning the password
 is no longer the expected outcome of merely supplying one.
 
 - `client.v2.parse(...)` and `client.v2.parse_jobs.create(...)` both take a
-  top-level `password=` kwarg. It is folded into `options.password` (an explicit
-  `options["password"]` wins) and kept as a top-level form field for older
-  gateways — `_build_parse_body` in `resources/v2/parse.py` owns that merge, so
-  both routes behave identically.
+  top-level `password=` kwarg. It is folded into `options.password` and sent
+  there only (an explicit `options["password"]` wins) — `_build_parse_body` in
+  `resources/v2/parse.py` owns that merge, so both routes behave identically.
+  Only the 2026-07-13 snapshot also declared a top-level `password` form field;
+  sending a second copy would double the secret's exposure and could disagree
+  with `options` (`extra_body` overrides raw wire fields one at a time), so the
+  duplicate is gone. `ade-typescript` folds it the same way.
+- The password must not reach a debug log. `_redact_for_logging` in
+  `_base_client.py` redacts it both as a form field and inside the JSON-encoded
+  `options` string — parsing JSON-looking strings rather than pattern-matching
+  them, since `{"password": ...}` decodes to the same key.
+  `tests/test_redact_logging.py` covers it.
 - The document is decrypted once at the start of processing and the password is
   not retained with the result, so nothing in `V2ParseResponse` echoes it. There
   is no response-model change to assert.
