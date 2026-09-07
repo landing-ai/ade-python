@@ -98,6 +98,34 @@
         "title": "BuildSchemaWarning",
         "type": "object"
       },
+      "ClassifyClass": {
+        "description": "One classification option: a class name plus an optional description.\n\nWire key ``class`` (VTRA's ``ClassifyClass``); the field is ``class_name``\nbecause ``class`` is a Python keyword, with the alias carrying the wire\nname. ``populate_by_name`` lets the Temporal round-trip (which serializes by\nFIELD name) rebuild the object on the worker side.",
+        "properties": {
+          "class": {
+            "description": "Class name assigned to a page when it matches.",
+            "title": "Class",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What this class represents. Improves classification.",
+            "title": "Description"
+          }
+        },
+        "required": [
+          "class"
+        ],
+        "title": "ClassifyClass",
+        "type": "object"
+      },
       "CreditUsage": {
         "description": "The standard credit-usage shape a billable WORK result carries.\n\nA billed passthrough operation's work result declares\n``credit_usage: CreditUsage`` and the gateway's default\n``build_success_record`` bills it verbatim — no per-op billing code\n(operations/base.py requires it: a result carrying anything else raises).\n\nStdlib result modules embedding CreditUsage should follow the pdf.py posture\n(no ``from __future__ import annotations``) or use pydantic dataclasses (the\nextract_v2 posture).",
         "properties": {
@@ -675,6 +703,133 @@
         "title": "Range",
         "type": "object"
       },
+      "Split": {
+        "description": "One split segment: consecutive pages of one classification (an\nidentifier change starts a new segment).",
+        "properties": {
+          "classification": {
+            "description": "The split classification name this segment was assigned.",
+            "title": "Classification",
+            "type": "string"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The identifier value extracted for this segment, when the matching split classification requested one. Null otherwise.",
+            "title": "Identifier"
+          },
+          "markdowns": {
+            "description": "The Markdown content of each page in this segment, in order.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Markdowns",
+            "type": "array"
+          },
+          "pages": {
+            "description": "0-indexed page numbers belonging to this segment, in order.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Pages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "classification",
+          "identifier",
+          "pages",
+          "markdowns"
+        ],
+        "title": "Split",
+        "type": "object"
+      },
+      "SplitMetadata": {
+        "description": "Information about a split request.",
+        "properties": {
+          "credit_usage": {
+            "description": "Credits consumed by this request: the input Markdown length in characters divided by 5000. Billed usage rounds this up to the next 0.1 credit.",
+            "title": "Credit Usage",
+            "type": "number"
+          },
+          "duration_ms": {
+            "description": "Total processing time in milliseconds.",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "filename": {
+            "description": "Display name of the split document: the URL path's file name for `markdown_url` inputs, or a generated name for inline and uploaded Markdown.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "job_id": {
+            "description": "The split job identifier — server-minted and unique per request. Correlates with the request's entry in your billing dashboard.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Organization ID.",
+            "title": "Org Id"
+          },
+          "page_count": {
+            "description": "Total number of pages in the input Markdown.",
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "version": {
+            "description": "The exact split model snapshot that processed the document, e.g. `split-20251105`.",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "org_id",
+          "page_count",
+          "duration_ms",
+          "credit_usage",
+          "job_id",
+          "version"
+        ],
+        "title": "SplitMetadata",
+        "type": "object"
+      },
+      "SplitResponse": {
+        "description": "The split result: the merged `splits` segments and request `metadata`.",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/SplitMetadata",
+            "description": "Information about the request: file name, page count, duration, credits, and the resolved model version."
+          },
+          "splits": {
+            "description": "The split segments, in page order. Consecutive pages with the same classification merge into one segment; an identifier change starts a new segment.",
+            "items": {
+              "$ref": "#/components/schemas/Split"
+            },
+            "title": "Splits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "splits",
+          "metadata"
+        ],
+        "title": "SplitResponse",
+        "type": "object"
+      },
       "TableOptions": {
         "additionalProperties": false,
         "properties": {
@@ -773,6 +928,76 @@
           "openapi_spec"
         ],
         "title": "V1BuildSchemaMetadata",
+        "type": "object"
+      },
+      "V1ClassifyMetadata": {
+        "description": "Response metadata for a classify call — VTRA's ``ClassifyMetadata``.",
+        "properties": {
+          "credit_usage": {
+            "default": 0.0,
+            "description": "Credits billed for this request.",
+            "title": "Credit Usage",
+            "type": "number"
+          },
+          "duration_ms": {
+            "description": "End-to-end request duration in milliseconds.",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "filename": {
+            "default": "",
+            "description": "Name of the classified file.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "job_id": {
+            "default": "",
+            "description": "Gateway job id (workflow id). Matches the billing row id in vision-agent.",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "openapi_spec": {
+            "description": "URL of the OpenAPI spec covering this API, for inspection and client generation.",
+            "type": "string"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Organization ID.",
+            "title": "Org Id"
+          },
+          "page_count": {
+            "description": "Number of pages classified.",
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Resolved classify pipeline version that produced this response.",
+            "title": "Version"
+          }
+        },
+        "required": [
+          "page_count",
+          "duration_ms",
+          "openapi_spec"
+        ],
+        "title": "V1ClassifyMetadata",
         "type": "object"
       },
       "V1ExtractMetadata": {
@@ -1244,6 +1469,1312 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/ade/classify": {
+      "post": {
+        "description": "Classify each page of a document into classes you define. Accepts a PDF, an image, or an Office document, plus the list of candidate classes; returns one predicted class per page. Runs synchronously and returns the result inline.",
+        "operationId": "v1-ade-classify_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``V1ClassifyOperationWorkflow`` (gateway) and, threaded\nunchanged, to ``ClassifyWorkflow`` (work) — the ``/v1/classify`` request\nbody. Mirrors VTRA's ``ClassifyRequest``.",
+                "properties": {
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version.",
+                    "title": "Model"
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "classes"
+                ],
+                "title": "ClassifyRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string. JSON-serialized string in form data.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document": {
+                    "description": "The file to process. Provide either `document` or `document_url`, not both.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version. JSON-serialized string in form data.",
+                    "title": "Model"
+                  }
+                },
+                "required": [
+                  "classes"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Result returned by ``V1ClassifyOperationWorkflow`` — the\n``/v1/classify`` response body (VTRA's ``ClassifyResponse``).",
+                  "properties": {
+                    "classification": {
+                      "description": "One classification result per page, in page order.",
+                      "items": {
+                        "properties": {
+                          "class": {
+                            "description": "Predicted class label, or 'unknown'.",
+                            "type": "string"
+                          },
+                          "page": {
+                            "description": "Page number, zero-indexed (the first page is 0).",
+                            "type": "integer"
+                          },
+                          "reason": {
+                            "description": "Why the page was classified this way.",
+                            "type": "string"
+                          },
+                          "suggested_class": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "A class the model proposes when the prediction is 'unknown'."
+                          }
+                        },
+                        "required": [
+                          "class",
+                          "reason",
+                          "page"
+                        ],
+                        "title": "ClassificationItem",
+                        "type": "object"
+                      },
+                      "title": "Classification",
+                      "type": "array"
+                    },
+                    "metadata": {
+                      "$ref": "#/components/schemas/V1ClassifyMetadata",
+                      "description": "Metadata for the classification request."
+                    }
+                  },
+                  "required": [
+                    "classification",
+                    "metadata"
+                  ],
+                  "title": "V1ClassifyResponse",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v1-ade-classify result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Classify",
+        "tags": [
+          "Classify"
+        ]
+      }
+    },
+    "/v1/ade/classify/jobs": {
+      "get": {
+        "description": "List your Classify jobs, newest first.",
+        "operationId": "v1-ade-classify_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this v1-ade-classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Classify Jobs",
+        "tags": [
+          "Classify"
+        ]
+      },
+      "post": {
+        "description": "Classify each page of a document into classes you define. Accepts a PDF, an image, or an Office document, plus the list of candidate classes; returns one predicted class per page. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "v1-ade-classify_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``V1ClassifyOperationWorkflow`` (gateway) and, threaded\nunchanged, to ``ClassifyWorkflow`` (work) — the ``/v1/classify`` request\nbody. Mirrors VTRA's ``ClassifyRequest``.",
+                "properties": {
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version.",
+                    "title": "Model"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "classes"
+                ],
+                "title": "ClassifyRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string. JSON-serialized string in form data.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document": {
+                    "description": "The file to process. Provide either `document` or `document_url`, not both.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version. JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "required": [
+                  "classes"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-ade-classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Classify Jobs",
+        "tags": [
+          "Classify"
+        ]
+      }
+    },
+    "/v1/ade/classify/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Classify job, including its result once the job has completed.",
+        "operationId": "v1-ade-classify_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-ade-classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by ``V1ClassifyOperationWorkflow`` — the\n``/v1/classify`` response body (VTRA's ``ClassifyResponse``).",
+                          "properties": {
+                            "classification": {
+                              "description": "One classification result per page, in page order.",
+                              "items": {
+                                "properties": {
+                                  "class": {
+                                    "description": "Predicted class label, or 'unknown'.",
+                                    "type": "string"
+                                  },
+                                  "page": {
+                                    "description": "Page number, zero-indexed (the first page is 0).",
+                                    "type": "integer"
+                                  },
+                                  "reason": {
+                                    "description": "Why the page was classified this way.",
+                                    "type": "string"
+                                  },
+                                  "suggested_class": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "A class the model proposes when the prediction is 'unknown'."
+                                  }
+                                },
+                                "required": [
+                                  "class",
+                                  "reason",
+                                  "page"
+                                ],
+                                "title": "ClassificationItem",
+                                "type": "object"
+                              },
+                              "title": "Classification",
+                              "type": "array"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V1ClassifyMetadata",
+                              "description": "Metadata for the classification request."
+                            }
+                          },
+                          "required": [
+                            "classification",
+                            "metadata"
+                          ],
+                          "title": "V1ClassifyResponse",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Classify Jobs",
+        "tags": [
+          "Classify"
+        ]
+      }
+    },
+    "/v1/ade/extract": {
+      "post": {
+        "description": "Extract structured data from a Markdown document using a JSON Schema. v1-compatible wire, running the same extraction engine as `/v2/extract`. Runs synchronously and returns the result inline.",
+        "operationId": "v1-ade-extract_run_sync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``. Nothing else — AIDE's own\nextras (``return_reasoning``, ``fallback_model``, ``output_save_url``) stay on\nthe R&D ``/api/extract`` contract, so the customer surface publishes the VTRA\ncontract and only that.",
+                "properties": {
+                  "markdown": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Markdown"
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Model"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Schema"
+                  },
+                  "strict": {
+                    "default": false,
+                    "title": "Strict",
+                    "type": "boolean"
+                  }
+                },
+                "title": "V1ExtractRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown": {
+                    "description": "File upload.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Schema"
+                  },
+                  "strict": {
+                    "default": false,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Strict",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "VTRA's ``ExtractResponse`` — the ``/v1/extract`` response body.\n\n``extraction`` is ALWAYS inline. The internal ``ExtractResult`` returns an\n``output_ref`` instead when the payload is too large for the Temporal wire; on\nthis route that pointer is resolved back to inline content at the render\nboundary, because VTRA always inlines and a client migrating off it has no\n``output_ref`` handling at all.",
+                  "properties": {
+                    "extraction": {
+                      "additionalProperties": true,
+                      "title": "Extraction",
+                      "type": "object"
+                    },
+                    "extraction_metadata": {
+                      "additionalProperties": true,
+                      "title": "Extraction Metadata",
+                      "type": "object"
+                    },
+                    "metadata": {
+                      "$ref": "#/components/schemas/V1ExtractMetadata"
+                    }
+                  },
+                  "title": "V1ExtractResponse",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "v1-ade-extract result"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Extract",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v1/ade/extract/jobs": {
+      "get": {
+        "description": "List your Extract jobs, newest first.",
+        "operationId": "v1-ade-extract_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this v1-ade-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      },
+      "post": {
+        "description": "Extract structured data from a Markdown document using a JSON Schema. v1-compatible wire, running the same extraction engine as `/v2/extract`. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "v1-ade-extract_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``. Nothing else — AIDE's own\nextras (``return_reasoning``, ``fallback_model``, ``output_save_url``) stay on\nthe R&D ``/api/extract`` contract, so the customer surface publishes the VTRA\ncontract and only that.",
+                "properties": {
+                  "markdown": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Markdown"
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Model"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Schema"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "strict": {
+                    "default": false,
+                    "title": "Strict",
+                    "type": "boolean"
+                  }
+                },
+                "title": "V1ExtractRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "markdown": {
+                    "description": "File upload.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "markdown_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Markdown Url"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Schema"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  },
+                  "strict": {
+                    "default": false,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Strict",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-ade-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
+    "/v1/ade/extract/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Extract job, including its result once the job has completed.",
+        "operationId": "v1-ade-extract_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this v1-ade-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "VTRA's ``ExtractResponse`` — the ``/v1/extract`` response body.\n\n``extraction`` is ALWAYS inline. The internal ``ExtractResult`` returns an\n``output_ref`` instead when the payload is too large for the Temporal wire; on\nthis route that pointer is resolved back to inline content at the render\nboundary, because VTRA always inlines and a client migrating off it has no\n``output_ref`` handling at all.",
+                          "properties": {
+                            "extraction": {
+                              "additionalProperties": true,
+                              "title": "Extraction",
+                              "type": "object"
+                            },
+                            "extraction_metadata": {
+                              "additionalProperties": true,
+                              "title": "Extraction Metadata",
+                              "type": "object"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V1ExtractMetadata"
+                            }
+                          },
+                          "title": "V1ExtractResponse",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Extract Jobs",
+        "tags": [
+          "Extract"
+        ]
+      }
+    },
     "/v1/ade/parse": {
       "post": {
         "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body),\n``multipart/form-data`` (file fields are staged automatically),\nor ``application/x-www-form-urlencoded`` (text fields only).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
@@ -1399,9 +2930,13 @@
                     "description": "JSON-serialized string in form data.",
                     "title": "Custom Prompts"
                   },
-                  "document_ref": {
-                    "description": "File upload.",
+                  "document": {
+                    "description": "The file to process. Provide either `document` or `document_url`, not both.",
                     "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.",
                     "type": "string"
                   },
                   "filename": {
@@ -1502,7 +3037,6 @@
                   }
                 },
                 "required": [
-                  "document_ref",
                   "filename",
                   "content_type"
                 ],
@@ -1528,6 +3062,11 @@
                       "default": 0,
                       "title": "Billable Pages",
                       "type": "integer"
+                    },
+                    "billing_suppressed": {
+                      "default": false,
+                      "title": "Billing Suppressed",
+                      "type": "boolean"
                     },
                     "completion_tokens": {
                       "default": 0,
@@ -1968,9 +3507,13 @@
                     "description": "JSON-serialized string in form data.",
                     "title": "Custom Prompts"
                   },
-                  "document_ref": {
-                    "description": "File upload.",
+                  "document": {
+                    "description": "The file to process. Provide either `document` or `document_url`, not both.",
                     "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.",
                     "type": "string"
                   },
                   "filename": {
@@ -2099,7 +3642,6 @@
                   }
                 },
                 "required": [
-                  "document_ref",
                   "filename",
                   "content_type"
                 ],
@@ -2242,6 +3784,11 @@
                               "default": 0,
                               "title": "Billable Pages",
                               "type": "integer"
+                            },
+                            "billing_suppressed": {
+                              "default": false,
+                              "title": "Billing Suppressed",
+                              "type": "boolean"
                             },
                             "completion_tokens": {
                               "default": 0,
@@ -2397,39 +3944,37 @@
         ]
       }
     },
-    "/v1/extract": {
+    "/v1/classify": {
       "post": {
-        "description": "Extract structured data from a Markdown document using a JSON Schema. v1-compatible wire, running the same extraction engine as `/v2/extract`. Runs synchronously and returns the result inline.",
-        "operationId": "v1-extract_run_sync",
+        "description": "Classify each page of a document into classes you define. Accepts a PDF, an image, or an Office document, plus the list of candidate classes; returns one predicted class per page. Runs synchronously and returns the result inline.",
+        "operationId": "classify_run_sync",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``. Nothing else — AIDE's own\nextras (``return_reasoning``, ``fallback_model``, ``output_save_url``) stay on\nthe R&D ``/api/extract`` contract, so the customer surface publishes the VTRA\ncontract and only that.",
+                "description": "Input to ``V1ClassifyOperationWorkflow`` (gateway) and, threaded\nunchanged, to ``ClassifyWorkflow`` (work) — the ``/v1/classify`` request\nbody. Mirrors VTRA's ``ClassifyRequest``.",
                 "properties": {
-                  "markdown": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Markdown"
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
                   },
-                  "markdown_url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Markdown Url"
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
                   },
                   "model": {
                     "anyOf": [
@@ -2441,50 +3986,47 @@
                       }
                     ],
                     "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version.",
                     "title": "Model"
-                  },
-                  "schema": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Schema"
-                  },
-                  "strict": {
-                    "default": false,
-                    "title": "Strict",
-                    "type": "boolean"
                   }
                 },
-                "title": "V1ExtractRequest",
+                "required": [
+                  "document_ref",
+                  "classes"
+                ],
+                "title": "ClassifyRequest",
                 "type": "object"
               }
             },
             "multipart/form-data": {
               "schema": {
                 "properties": {
-                  "markdown": {
-                    "description": "File upload.",
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string. JSON-serialized string in form data.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document": {
+                    "description": "The file to process. Provide either `document` or `document_url`, not both.",
                     "format": "binary",
                     "type": "string"
                   },
-                  "markdown_url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Markdown Url"
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
                   },
                   "model": {
                     "anyOf": [
@@ -2496,29 +4038,13 @@
                       }
                     ],
                     "default": null,
-                    "description": "JSON-serialized string in form data.",
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version. JSON-serialized string in form data.",
                     "title": "Model"
-                  },
-                  "schema": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Schema"
-                  },
-                  "strict": {
-                    "default": false,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Strict",
-                    "type": "boolean"
                   }
                 },
+                "required": [
+                  "classes"
+                ],
                 "type": "object"
               }
             }
@@ -2530,28 +4056,62 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "VTRA's ``ExtractResponse`` — the ``/v1/extract`` response body.\n\n``extraction`` is ALWAYS inline. The internal ``ExtractResult`` returns an\n``output_ref`` instead when the payload is too large for the Temporal wire; on\nthis route that pointer is resolved back to inline content at the render\nboundary, because VTRA always inlines and a client migrating off it has no\n``output_ref`` handling at all.",
+                  "description": "Result returned by ``V1ClassifyOperationWorkflow`` — the\n``/v1/classify`` response body (VTRA's ``ClassifyResponse``).",
                   "properties": {
-                    "extraction": {
-                      "additionalProperties": true,
-                      "title": "Extraction",
-                      "type": "object"
-                    },
-                    "extraction_metadata": {
-                      "additionalProperties": true,
-                      "title": "Extraction Metadata",
-                      "type": "object"
+                    "classification": {
+                      "description": "One classification result per page, in page order.",
+                      "items": {
+                        "properties": {
+                          "class": {
+                            "description": "Predicted class label, or 'unknown'.",
+                            "type": "string"
+                          },
+                          "page": {
+                            "description": "Page number, zero-indexed (the first page is 0).",
+                            "type": "integer"
+                          },
+                          "reason": {
+                            "description": "Why the page was classified this way.",
+                            "type": "string"
+                          },
+                          "suggested_class": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "A class the model proposes when the prediction is 'unknown'."
+                          }
+                        },
+                        "required": [
+                          "class",
+                          "reason",
+                          "page"
+                        ],
+                        "title": "ClassificationItem",
+                        "type": "object"
+                      },
+                      "title": "Classification",
+                      "type": "array"
                     },
                     "metadata": {
-                      "$ref": "#/components/schemas/V1ExtractMetadata"
+                      "$ref": "#/components/schemas/V1ClassifyMetadata",
+                      "description": "Metadata for the classification request."
                     }
                   },
-                  "title": "V1ExtractResponse",
+                  "required": [
+                    "classification",
+                    "metadata"
+                  ],
+                  "title": "V1ClassifyResponse",
                   "type": "object"
                 }
               }
             },
-            "description": "v1-extract result"
+            "description": "classify result"
           },
           "422": {
             "content": {
@@ -2564,9 +4124,489 @@
             "description": "Request validation failed."
           }
         },
-        "summary": "ADE Extract",
+        "summary": "ADE Classify",
         "tags": [
-          "Extract"
+          "Classify"
+        ]
+      }
+    },
+    "/v1/classify/jobs": {
+      "get": {
+        "description": "List your Classify jobs, newest first.",
+        "operationId": "classify_list_jobs",
+        "parameters": [
+          {
+            "description": "Page number (0-indexed).",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Page number (0-indexed).",
+              "minimum": 0,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Number of items per page.",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Number of items per page.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by job status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by job status.",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "jobs": {
+                      "items": {
+                        "properties": {
+                          "completed_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "created_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "failure_reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "job_id": {
+                            "description": "The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                            "type": "string"
+                          },
+                          "model_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "processing",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The caller's jobs, newest first"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE List Classify Jobs",
+        "tags": [
+          "Classify"
+        ]
+      },
+      "post": {
+        "description": "Classify each page of a document into classes you define. Accepts a PDF, an image, or an Office document, plus the list of candidate classes; returns one predicted class per page. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
+        "operationId": "classify_create_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Input to ``V1ClassifyOperationWorkflow`` (gateway) and, threaded\nunchanged, to ``ClassifyWorkflow`` (work) — the ``/v1/classify`` request\nbody. Mirrors VTRA's ``ClassifyRequest``.",
+                "properties": {
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document_ref": {
+                    "title": "Document Ref",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version.",
+                    "title": "Model"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "required": [
+                  "document_ref",
+                  "classes"
+                ],
+                "title": "ClassifyRequest",
+                "type": "object"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "classes": {
+                    "description": "The possible classes that can be assigned to pages in the document. Each entry is an object with a `class` name and an optional `description`. Only one class is assigned per page; unclassifiable pages receive 'unknown'. On a multipart request this is a JSON string. JSON-serialized string in form data.",
+                    "items": {
+                      "$ref": "#/components/schemas/ClassifyClass"
+                    },
+                    "title": "Classes",
+                    "type": "array"
+                  },
+                  "content_type": {
+                    "default": "",
+                    "title": "Content Type",
+                    "type": "string"
+                  },
+                  "document": {
+                    "description": "The file to process. Provide either `document` or `document_url`, not both.",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "document_url": {
+                    "description": "A publicly accessible URL to the file to process. Provide either `document` or `document_url`, not both.",
+                    "type": "string"
+                  },
+                  "filename": {
+                    "default": "",
+                    "title": "Filename",
+                    "type": "string"
+                  },
+                  "model": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "Classify pipeline version, e.g. `classify-20260420`. Accepts `classify-latest`. Defaults to the latest version. JSON-serialized string in form data.",
+                    "title": "Model"
+                  },
+                  "service_tier": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "standard",
+                          "priority"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
+                  }
+                },
+                "required": [
+                  "classes"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job created"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Classify Jobs",
+        "tags": [
+          "Classify"
+        ]
+      }
+    },
+    "/v1/classify/jobs/{job_id}": {
+      "get": {
+        "description": "Get the status of an async Classify job, including its result once the job has completed.",
+        "operationId": "classify_get_job",
+        "parameters": [
+          {
+            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "completed_at": {
+                      "description": "Present once the job is terminal.",
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "error": {
+                      "description": "Present once status is ``failed``.",
+                      "properties": {
+                        "code": {
+                          "description": "Stable error code (``internal_error`` when unmapped).",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "job_id": {
+                      "description": "The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
+                      "type": "string"
+                    },
+                    "progress": {
+                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    "result": {
+                      "anyOf": [
+                        {
+                          "description": "Result returned by ``V1ClassifyOperationWorkflow`` — the\n``/v1/classify`` response body (VTRA's ``ClassifyResponse``).",
+                          "properties": {
+                            "classification": {
+                              "description": "One classification result per page, in page order.",
+                              "items": {
+                                "properties": {
+                                  "class": {
+                                    "description": "Predicted class label, or 'unknown'.",
+                                    "type": "string"
+                                  },
+                                  "page": {
+                                    "description": "Page number, zero-indexed (the first page is 0).",
+                                    "type": "integer"
+                                  },
+                                  "reason": {
+                                    "description": "Why the page was classified this way.",
+                                    "type": "string"
+                                  },
+                                  "suggested_class": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "A class the model proposes when the prediction is 'unknown'."
+                                  }
+                                },
+                                "required": [
+                                  "class",
+                                  "reason",
+                                  "page"
+                                ],
+                                "title": "ClassificationItem",
+                                "type": "object"
+                              },
+                              "title": "Classification",
+                              "type": "array"
+                            },
+                            "metadata": {
+                              "$ref": "#/components/schemas/V1ClassifyMetadata",
+                              "description": "Metadata for the classification request."
+                            }
+                          },
+                          "required": [
+                            "classification",
+                            "metadata"
+                          ],
+                          "title": "V1ClassifyResponse",
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Present once status is ``completed``."
+                    },
+                    "status": {
+                      "enum": [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Job status / result"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found (e.g. no such job)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request validation failed."
+          }
+        },
+        "summary": "ADE Get Classify Jobs",
+        "tags": [
+          "Classify"
         ]
       }
     },
@@ -3290,734 +5330,42 @@
         ]
       }
     },
-    "/v1/extract/jobs": {
-      "get": {
-        "description": "List your Extract jobs, newest first.",
-        "operationId": "v1-extract_list_jobs",
-        "parameters": [
-          {
-            "description": "Page number (0-indexed).",
-            "in": "query",
-            "name": "page",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "description": "Page number (0-indexed).",
-              "minimum": 0,
-              "title": "Page",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Number of items per page.",
-            "in": "query",
-            "name": "page_size",
-            "required": false,
-            "schema": {
-              "default": 10,
-              "description": "Number of items per page.",
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Page Size",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Filter by job status.",
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by job status.",
-              "title": "Status"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "has_more": {
-                      "type": "boolean"
-                    },
-                    "jobs": {
-                      "items": {
-                        "properties": {
-                          "completed_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "created_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "failure_reason": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "job_id": {
-                            "description": "The unique identifier for this v1-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                            "type": "string"
-                          },
-                          "model_version": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "status": {
-                            "enum": [
-                              "pending",
-                              "processing",
-                              "completed",
-                              "failed"
-                            ],
-                            "type": "string"
-                          }
-                        },
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "page": {
-                      "type": "integer"
-                    },
-                    "page_size": {
-                      "type": "integer"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "The caller's jobs, newest first"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE List Extract Jobs",
-        "tags": [
-          "Extract"
-        ]
-      },
+    "/v1/split": {
       "post": {
-        "description": "Extract structured data from a Markdown document using a JSON Schema. v1-compatible wire, running the same extraction engine as `/v2/extract`. Runs asynchronously and returns a job ID; use it to poll for status and retrieve the result once processing completes.",
-        "operationId": "v1-extract_create_job",
+        "description": "Split a Markdown document into segments and return the split response inline.",
+        "operationId": "v1-split_run_sync",
         "requestBody": {
           "content": {
-            "application/json": {
-              "schema": {
-                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``. Nothing else — AIDE's own\nextras (``return_reasoning``, ``fallback_model``, ``output_save_url``) stay on\nthe R&D ``/api/extract`` contract, so the customer surface publishes the VTRA\ncontract and only that.",
-                "properties": {
-                  "markdown": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Markdown"
-                  },
-                  "markdown_url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Markdown Url"
-                  },
-                  "model": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Model"
-                  },
-                  "schema": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Schema"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
-                  },
-                  "strict": {
-                    "default": false,
-                    "title": "Strict",
-                    "type": "boolean"
-                  }
-                },
-                "title": "V1ExtractRequest",
-                "type": "object"
-              }
-            },
             "multipart/form-data": {
               "schema": {
                 "properties": {
                   "markdown": {
-                    "description": "File upload.",
-                    "format": "binary",
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "format": "binary",
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Markdown content to split, as an inline string or an uploaded file. Provide either `markdown` or `markdown_url`, not both."
                   },
                   "markdown_url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Markdown Url"
+                    "description": "A publicly accessible URL to the Markdown file to split. Provide either `markdown` or `markdown_url`, not both.",
+                    "type": "string"
                   },
                   "model": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Model"
-                  },
-                  "schema": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Schema"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
-                  },
-                  "strict": {
-                    "default": false,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Strict",
-                    "type": "boolean"
-                  }
-                },
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "created_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this v1-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Job created"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE Extract Jobs",
-        "tags": [
-          "Extract"
-        ]
-      }
-    },
-    "/v1/extract/jobs/{job_id}": {
-      "get": {
-        "description": "Get the status of an async Extract job, including its result once the job has completed.",
-        "operationId": "v1-extract_get_job",
-        "parameters": [
-          {
-            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "completed_at": {
-                      "description": "Present once the job is terminal.",
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "error": {
-                      "description": "Present once status is ``failed``.",
-                      "properties": {
-                        "code": {
-                          "description": "Stable error code (``internal_error`` when unmapped).",
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this v1-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                      "type": "string"
-                    },
-                    "progress": {
-                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
-                      "maximum": 1,
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "result": {
-                      "anyOf": [
-                        {
-                          "description": "VTRA's ``ExtractResponse`` — the ``/v1/extract`` response body.\n\n``extraction`` is ALWAYS inline. The internal ``ExtractResult`` returns an\n``output_ref`` instead when the payload is too large for the Temporal wire; on\nthis route that pointer is resolved back to inline content at the render\nboundary, because VTRA always inlines and a client migrating off it has no\n``output_ref`` handling at all.",
-                          "properties": {
-                            "extraction": {
-                              "additionalProperties": true,
-                              "title": "Extraction",
-                              "type": "object"
-                            },
-                            "extraction_metadata": {
-                              "additionalProperties": true,
-                              "title": "Extraction Metadata",
-                              "type": "object"
-                            },
-                            "metadata": {
-                              "$ref": "#/components/schemas/V1ExtractMetadata"
-                            }
-                          },
-                          "title": "V1ExtractResponse",
-                          "type": "object"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Present once status is ``completed``."
-                    },
-                    "status": {
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Job status / result"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found (e.g. no such job)."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE Get Extract Jobs",
-        "tags": [
-          "Extract"
-        ]
-      }
-    },
-    "/v1/parse": {
-      "post": {
-        "description": "Run synchronously and return the result inline.\n\nAccepts ``application/json`` (the request fields as the body),\n``multipart/form-data`` (file fields are staged automatically),\nor ``application/x-www-form-urlencoded`` (text fields only).\n\nReturns **504** if the work does not finish within the wait\nwindow — long-running work belongs on the async ``POST\n{path}/jobs`` route, which returns 202 immediately and is polled\nvia ``GET {path}/jobs/{job_id}``. On a 504 the workflow is\nCANCELLED (a sync caller can never collect the result); a retry\nstarts the work over as a fresh job.",
-        "operationId": "parse2_run_sync",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "description": "Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``\n(work). The document rides as ``document_ref`` (the gateway's multipart adapter\nstages the upload / fetches ``document_url`` → data store, runs the pdf_pages\npre-flight, then starts the operation).",
-                "properties": {
-                  "content_type": {
-                    "title": "Content Type",
+                    "description": "The split model version to use. Accepts a dated snapshot (`split-20251105`), `split-latest`, or `split` (both aliases resolve to the latest snapshot). Defaults to the latest snapshot. The resolved version is echoed back as `metadata.version`.",
                     "type": "string"
                   },
-                  "custom_prompts": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Custom Prompts"
-                  },
-                  "document_ref": {
-                    "title": "Document Ref",
+                  "split_class": {
+                    "description": "The split classification entries, as a JSON-encoded array of objects with `name` (required), `description`, and `identifier` keys. At most 19 entries. Sent as a JSON-serialized string in form data.",
                     "type": "string"
-                  },
-                  "filename": {
-                    "title": "Filename",
-                    "type": "string"
-                  },
-                  "job_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Model Versions"
-                  },
-                  "password": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Password"
-                  },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
-                  "split": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "X Request Id"
                   }
                 },
                 "required": [
-                  "document_ref",
-                  "filename",
-                  "content_type"
-                ],
-                "title": "Parse2Request",
-                "type": "object"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "properties": {
-                  "content_type": {
-                    "title": "Content Type",
-                    "type": "string"
-                  },
-                  "custom_prompts": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Custom Prompts"
-                  },
-                  "document_ref": {
-                    "description": "File upload.",
-                    "format": "binary",
-                    "type": "string"
-                  },
-                  "filename": {
-                    "title": "Filename",
-                    "type": "string"
-                  },
-                  "job_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Model Versions"
-                  },
-                  "password": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Password"
-                  },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
-                  "split": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "X Request Id"
-                  }
-                },
-                "required": [
-                  "document_ref",
-                  "filename",
-                  "content_type"
+                  "split_class"
                 ],
                 "type": "object"
               }
@@ -4030,126 +5378,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the\nbilling inputs hoisted to the top level so the gateway operation reads them\nwithout re-parsing the nested tree.\n\nBilling is worker-owned (parse-api parity): the worker finalizes the price and\nreports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =\nFINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),\nplus the record-inference enrichment (``usage`` + ``model_family``). The\ngateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``\nop — no gateway recomputation).",
-                  "properties": {
-                    "base_credit": {
-                      "default": 0.0,
-                      "title": "Base Credit",
-                      "type": "number"
-                    },
-                    "billable_pages": {
-                      "default": 0,
-                      "title": "Billable Pages",
-                      "type": "integer"
-                    },
-                    "completion_tokens": {
-                      "default": 0,
-                      "title": "Completion Tokens",
-                      "type": "integer"
-                    },
-                    "credit_usage": {
-                      "$ref": "#/components/schemas/CreditUsage"
-                    },
-                    "duration_ms": {
-                      "default": 0,
-                      "title": "Duration Ms",
-                      "type": "integer"
-                    },
-                    "failed_pages": {
-                      "items": {
-                        "type": "integer"
-                      },
-                      "title": "Failed Pages",
-                      "type": "array"
-                    },
-                    "model_family": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Model Family"
-                    },
-                    "output_ref": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Output Ref"
-                    },
-                    "page_count": {
-                      "default": 0,
-                      "title": "Page Count",
-                      "type": "integer"
-                    },
-                    "prompt_tokens": {
-                      "default": 0,
-                      "title": "Prompt Tokens",
-                      "type": "integer"
-                    },
-                    "response": {
-                      "additionalProperties": true,
-                      "title": "Response",
-                      "type": "object"
-                    },
-                    "status_code": {
-                      "default": 200,
-                      "title": "Status Code",
-                      "type": "integer"
-                    },
-                    "token_steps": {
-                      "anyOf": [
-                        {
-                          "items": {
-                            "additionalProperties": true,
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Token Steps"
-                    },
-                    "total_tokens": {
-                      "default": 0,
-                      "title": "Total Tokens",
-                      "type": "integer"
-                    },
-                    "usage": {
-                      "anyOf": [
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "default": null,
-                      "title": "Usage"
-                    }
-                  },
-                  "required": [
-                    "response"
-                  ],
-                  "title": "Parse2Result",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SplitResponse"
                 }
               }
             },
-            "description": "parse2 result"
+            "description": "The split response"
           },
           "422": {
             "content": {
@@ -4162,751 +5395,9 @@
             "description": "Request validation failed."
           }
         },
-        "summary": "ADE Parse v1",
+        "summary": "ADE Split",
         "tags": [
-          "Parse v1"
-        ]
-      }
-    },
-    "/v1/parse/jobs": {
-      "get": {
-        "operationId": "parse2_list_jobs",
-        "parameters": [
-          {
-            "description": "Page number (0-indexed).",
-            "in": "query",
-            "name": "page",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "description": "Page number (0-indexed).",
-              "minimum": 0,
-              "title": "Page",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Number of items per page.",
-            "in": "query",
-            "name": "page_size",
-            "required": false,
-            "schema": {
-              "default": 10,
-              "description": "Number of items per page.",
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Page Size",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Filter by job status.",
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by job status.",
-              "title": "Status"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "has_more": {
-                      "type": "boolean"
-                    },
-                    "jobs": {
-                      "items": {
-                        "properties": {
-                          "completed_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "created_at": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "failure_reason": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "job_id": {
-                            "description": "The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                            "type": "string"
-                          },
-                          "model_version": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
-                          "status": {
-                            "enum": [
-                              "pending",
-                              "processing",
-                              "completed",
-                              "failed"
-                            ],
-                            "type": "string"
-                          }
-                        },
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "page": {
-                      "type": "integer"
-                    },
-                    "page_size": {
-                      "type": "integer"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "The caller's jobs, newest first"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE List Parse v1 Jobs",
-        "tags": [
-          "Parse v1"
-        ]
-      },
-      "post": {
-        "operationId": "parse2_create_job",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "description": "Input to ``Parse2OperationWorkflow`` (gateway) and ``Parse2DocumentWorkflow``\n(work). The document rides as ``document_ref`` (the gateway's multipart adapter\nstages the upload / fetches ``document_url`` → data store, runs the pdf_pages\npre-flight, then starts the operation).",
-                "properties": {
-                  "content_type": {
-                    "title": "Content Type",
-                    "type": "string"
-                  },
-                  "custom_prompts": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Custom Prompts"
-                  },
-                  "document_ref": {
-                    "title": "Document Ref",
-                    "type": "string"
-                  },
-                  "filename": {
-                    "title": "Filename",
-                    "type": "string"
-                  },
-                  "job_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Model Versions"
-                  },
-                  "output_save_url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Output Save Url"
-                  },
-                  "password": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Password"
-                  },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
-                  },
-                  "split": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "X Request Id"
-                  }
-                },
-                "required": [
-                  "document_ref",
-                  "filename",
-                  "content_type"
-                ],
-                "title": "Parse2Request",
-                "type": "object"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "properties": {
-                  "content_type": {
-                    "title": "Content Type",
-                    "type": "string"
-                  },
-                  "custom_prompts": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Custom Prompts"
-                  },
-                  "document_ref": {
-                    "description": "File upload.",
-                    "format": "binary",
-                    "type": "string"
-                  },
-                  "filename": {
-                    "title": "Filename",
-                    "type": "string"
-                  },
-                  "job_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Model Versions"
-                  },
-                  "output_save_url": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Output Save Url"
-                  },
-                  "password": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Password"
-                  },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
-                  },
-                  "split": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "X Request Id"
-                  }
-                },
-                "required": [
-                  "document_ref",
-                  "filename",
-                  "content_type"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "created_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                      "type": "string"
-                    },
-                    "status": {
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Job created"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE Parse v1 Jobs",
-        "tags": [
-          "Parse v1"
-        ]
-      }
-    },
-    "/v1/parse/jobs/{job_id}": {
-      "get": {
-        "description": "Poll a job.\n\nReturns ``{job_id, status, created_at}`` plus ``completed_at`` and\n``result`` (on ``completed``) or ``error: {code, message}`` (on\n``failed``). Statuses: ``pending`` → ``processing`` →\n``completed`` | ``failed``.",
-        "operationId": "parse2_get_job",
-        "parameters": [
-          {
-            "description": "The identifier of the job to retrieve, as returned by the create-job request.",
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "description": "The identifier of the job to retrieve, as returned by the create-job request.",
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "completed_at": {
-                      "description": "Present once the job is terminal.",
-                      "type": "string"
-                    },
-                    "created_at": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "error": {
-                      "description": "Present once status is ``failed``.",
-                      "properties": {
-                        "code": {
-                          "description": "Stable error code (``internal_error`` when unmapped).",
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "job_id": {
-                      "description": "The unique identifier for this parse2 job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
-                      "type": "string"
-                    },
-                    "metadata": {
-                      "description": "The result's metadata block (billing included), present alongside ``output_url`` once a job with ``output_save_url`` has ``completed`` — the delivery moves the content, not the receipt. Same shape as the inline ``result``'s ``metadata``; inline jobs carry it there instead.",
-                      "type": [
-                        "object",
-                        "null"
-                      ]
-                    },
-                    "output_url": {
-                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "progress": {
-                      "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
-                      "maximum": 1,
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "result": {
-                      "anyOf": [
-                        {
-                          "description": "Output of ``Parse2DocumentWorkflow``. Carries the customer response plus the\nbilling inputs hoisted to the top level so the gateway operation reads them\nwithout re-parsing the nested tree.\n\nBilling is worker-owned (parse-api parity): the worker finalizes the price and\nreports it on the standard ``credit_usage: CreditUsage`` shape (``credits`` =\nFINAL billed value, ``charge_unit`` = billable pages, ``breakdown`` = itemized),\nplus the record-inference enrichment (``usage`` + ``model_family``). The\ngateway's default biller reads ``credit_usage`` verbatim (a ``JobContract.billed()``\nop — no gateway recomputation).",
-                          "properties": {
-                            "base_credit": {
-                              "default": 0.0,
-                              "title": "Base Credit",
-                              "type": "number"
-                            },
-                            "billable_pages": {
-                              "default": 0,
-                              "title": "Billable Pages",
-                              "type": "integer"
-                            },
-                            "completion_tokens": {
-                              "default": 0,
-                              "title": "Completion Tokens",
-                              "type": "integer"
-                            },
-                            "credit_usage": {
-                              "$ref": "#/components/schemas/CreditUsage"
-                            },
-                            "duration_ms": {
-                              "default": 0,
-                              "title": "Duration Ms",
-                              "type": "integer"
-                            },
-                            "failed_pages": {
-                              "items": {
-                                "type": "integer"
-                              },
-                              "title": "Failed Pages",
-                              "type": "array"
-                            },
-                            "model_family": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Model Family"
-                            },
-                            "output_ref": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Output Ref"
-                            },
-                            "page_count": {
-                              "default": 0,
-                              "title": "Page Count",
-                              "type": "integer"
-                            },
-                            "prompt_tokens": {
-                              "default": 0,
-                              "title": "Prompt Tokens",
-                              "type": "integer"
-                            },
-                            "response": {
-                              "additionalProperties": true,
-                              "title": "Response",
-                              "type": "object"
-                            },
-                            "status_code": {
-                              "default": 200,
-                              "title": "Status Code",
-                              "type": "integer"
-                            },
-                            "token_steps": {
-                              "anyOf": [
-                                {
-                                  "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
-                                  },
-                                  "type": "array"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Token Steps"
-                            },
-                            "total_tokens": {
-                              "default": 0,
-                              "title": "Total Tokens",
-                              "type": "integer"
-                            },
-                            "usage": {
-                              "anyOf": [
-                                {
-                                  "additionalProperties": true,
-                                  "type": "object"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ],
-                              "default": null,
-                              "title": "Usage"
-                            }
-                          },
-                          "required": [
-                            "response"
-                          ],
-                          "title": "Parse2Result",
-                          "type": "object"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ],
-                      "description": "Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
-                    },
-                    "status": {
-                      "enum": [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Job status / result"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found (e.g. no such job)."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Request validation failed."
-          }
-        },
-        "summary": "ADE Get Parse v1 Jobs",
-        "tags": [
-          "Parse v1"
+          "Split"
         ]
       }
     },
@@ -5961,7 +6452,7 @@
                           }
                         ],
                         "default": null,
-                        "description": "Password for encrypted PDFs. Not currently supported — providing a value returns a 422 error; decrypt the file before uploading.",
+                        "description": "Password for an encrypted PDF. The document is decrypted once at the start of processing; the password is not retained with the result. PDFs only — supplying one for an image or Office document returns a 422 (`password_unsupported_content_type`). A wrong password returns a 422 (`encrypted_pdf_wrong_password`); omitting it for a locked PDF returns a 422 (`encrypted_pdf_password_required`).",
                         "title": "Password"
                       }
                     },
@@ -6220,7 +6711,7 @@
                           }
                         ],
                         "default": null,
-                        "description": "Password for encrypted PDFs. Not currently supported — providing a value returns a 422 error; decrypt the file before uploading.",
+                        "description": "Password for an encrypted PDF. The document is decrypted once at the start of processing; the password is not retained with the result. PDFs only — supplying one for an image or Office document returns a 422 (`password_unsupported_content_type`). A wrong password returns a 422 (`encrypted_pdf_wrong_password`); omitting it for a locked PDF returns a 422 (`encrypted_pdf_password_required`).",
                         "title": "Password"
                       }
                     },

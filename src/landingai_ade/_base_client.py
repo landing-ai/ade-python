@@ -388,9 +388,7 @@ def _redact_binary_for_logging(value: object) -> object:
     if isinstance(value, list):
         return [_redact_binary_for_logging(item) for item in cast("list[object]", value)]
     if isinstance(value, dict):
-        return {
-            key: _redact_binary_for_logging(item) for key, item in cast("dict[object, object]", value).items()
-        }
+        return {key: _redact_binary_for_logging(item) for key, item in cast("dict[object, object]", value).items()}
     return value
 
 

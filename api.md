@@ -111,6 +111,8 @@ Methods:
 
   Synchronous parse. Provide exactly one of `document` (file) or `document_url`. Returns a `V2ParseResponse` on both full success (HTTP 200) and partial success (HTTP 206, where `result.metadata.failed_pages` lists unparsed pages). Raises `V2SyncTimeoutError` (from `landingai_ade.lib.v2_errors`) on a 504; use `parse_jobs` for long-running documents.
 
+  `password` unlocks an encrypted PDF. It is sent as `options.password` (an explicit `options["password"]` wins over the kwarg) and, for older gateways, also as a top-level form field; the server decrypts the document once at the start of processing and does not retain the password with the result. PDFs only -- the server answers 422 with a documented `code`: `password_unsupported_content_type` for a password supplied alongside an image or an Office document, `encrypted_pdf_wrong_password` for a wrong password, and `encrypted_pdf_password_required` for a locked PDF sent without one. `parse_jobs.create` takes the same `password` with the same semantics.
+
 - <code title="post /v2/parse/jobs">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">create</a>(\*, document=..., document_url=..., model=..., options=..., password=..., output_save_url=..., service_tier=...) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/parse/jobs/{job_id}">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">get</a>(job_id) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 - <code title="get /v2/parse/jobs">client.v2.parse_jobs.<a href="./src/landingai_ade/resources/v2/parse.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
