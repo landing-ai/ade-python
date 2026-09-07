@@ -361,6 +361,39 @@ _HttpxClientT = TypeVar("_HttpxClientT", bound=Union[httpx.Client, httpx.AsyncCl
 _DefaultStreamT = TypeVar("_DefaultStreamT", bound=Union[Stream[Any], AsyncStream[Any]])
 
 
+def _contains_binary(value: object) -> bool:
+    """Check whether `value` contains a `bytes`/`bytearray` at any depth."""
+    if isinstance(value, (bytes, bytearray)):
+        return True
+    if isinstance(value, (tuple, list)):
+        return any(_contains_binary(item) for item in cast("tuple[object, ...] | list[object]", value))
+    if isinstance(value, dict):
+        return any(_contains_binary(item) for item in cast("dict[object, object]", value).values())
+    return False
+
+
+def _redact_binary_for_logging(value: object) -> object:
+    """Replace raw binary payloads (e.g. uploaded file contents) with a short
+    placeholder so debug logs don't dump megabytes of unreadable bytes.
+
+    Returns `value` unchanged when it contains no binary data, so the common
+    case (no bytes anywhere) allocates nothing new.
+    """
+    if not _contains_binary(value):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        return f"<{len(value)} bytes>"
+    if isinstance(value, tuple):
+        return tuple(_redact_binary_for_logging(item) for item in cast("tuple[object, ...]", value))
+    if isinstance(value, list):
+        return [_redact_binary_for_logging(item) for item in cast("list[object]", value)]
+    if isinstance(value, dict):
+        return {
+            key: _redact_binary_for_logging(item) for key, item in cast("dict[object, object]", value).items()
+        }
+    return value
+
+
 class BaseClient(Generic[_HttpxClientT, _DefaultStreamT]):
     _client: _HttpxClientT
     _version: str
@@ -484,15 +517,17 @@ class BaseClient(Generic[_HttpxClientT, _DefaultStreamT]):
         if log.isEnabledFor(logging.DEBUG):
             log.debug(
                 "Request options: %s",
-                model_dump(
-                    options,
-                    exclude_unset=True,
-                    # Pydantic v1 can't dump every type we support in content, so we exclude it for now.
-                    exclude={
-                        "content",
-                    }
-                    if PYDANTIC_V1
-                    else {},
+                _redact_binary_for_logging(
+                    model_dump(
+                        options,
+                        exclude_unset=True,
+                        # Pydantic v1 can't dump every type we support in content, so we exclude it for now.
+                        exclude={
+                            "content",
+                        }
+                        if PYDANTIC_V1
+                        else {},
+                    )
                 ),
             )
         kwargs: dict[str, Any] = {}
