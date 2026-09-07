@@ -31,15 +31,24 @@ def _build_parse_body(
     options: object,
     password: object,
 ) -> dict[str, Any]:
-    # The current gateway reads the document password from `options.password`,
-    # so fold the `password` kwarg into `options` (an explicit
-    # `options["password"]` wins). The top-level `password` form field is kept
-    # too, for older gateways that read it from there.
-    if is_given(password) and password is not None:
-        opts: dict[str, Any] = {}
-        if is_given(options) and options is not None:
-            opts = dict(json.loads(options)) if isinstance(options, str) else dict(cast(Mapping[str, Any], options))
-        opts.setdefault("password", password)
+    # The document password goes on the wire TWICE: the current gateway reads it from
+    # `options.password`, older ones from a top-level `password` form field. So resolve
+    # ONE effective value here and write it to both -- an explicit `options["password"]`
+    # still wins over the kwarg, but it now wins in both places. (Sending the kwarg
+    # top-level while `options` carried a different value meant the two gateways acted
+    # on different passwords, and a password given only via `options` never reached the
+    # top-level field at all.)
+    opts: Optional[dict[str, Any]] = None
+    if is_given(options) and options is not None:
+        opts = dict(json.loads(options)) if isinstance(options, str) else dict(cast(Mapping[str, Any], options))
+    if opts is not None and "password" in opts:
+        # Explicit in `options` -- including an explicit `None`, which means "no
+        # password" and must therefore clear the top-level field too.
+        password = opts["password"]
+    elif is_given(password) and password is not None:
+        opts = {} if opts is None else opts
+        opts["password"] = password
+    if opts is not None:
         options = opts
     # `options` is a JSON-encoded string form field per the contract.
     if is_given(options) and options is not None:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from pathlib import Path
 
 import httpx
@@ -13,6 +13,26 @@ from landingai_ade.types.v2 import Job, JobStatus, V2ParseResponse
 from landingai_ade.lib.v2_errors import V2SyncTimeoutError
 
 APIKEY = "My Apikey"
+
+
+def multipart_field(body: bytes, name: str) -> Optional[str]:
+    """The value of a top-level multipart form field, or None when absent.
+
+    Substring checks on the raw body cannot tell the top-level `password` field from
+    the copy inside the JSON-encoded `options` field, and the two must agree.
+    """
+    marker = f'name="{name}"'.encode()
+    start = body.find(marker)
+    if start == -1:
+        return None
+    value_start = body.find(b"\r\n\r\n", start)
+    if value_start == -1:
+        return None
+    value_start += 4
+    value_end = body.find(b"\r\n--", value_start)
+    return body[value_start : value_end if value_end != -1 else len(body)].decode()
+
+
 PARSE_BODY: Dict[str, Any] = {
     "markdown": "# Hello",
     "structure": {"type": "document", "children": []},
@@ -200,7 +220,9 @@ def test_parse_sync_folds_password_into_options() -> None:
     client.v2.parse(document=b"pdf", password="hunter2")
     sent = route.calls.last.request.content
     assert b'{"password": "hunter2"}' in sent
-    assert b'name="password"' in sent
+    # Both wire locations, same value: the gateway that reads `options.password` and
+    # the older one that reads the top-level field must act on the same password.
+    assert multipart_field(sent, "password") == "hunter2"
 
 
 @respx.mock
@@ -223,9 +245,29 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     assert b'"pages": [2]' in sent
     assert b'"password": "pw"' in sent
 
-    client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="pw")
+    # An explicit `options["password"]` wins over the kwarg -- in BOTH locations. The
+    # kwarg value must not survive anywhere on the wire, or the older gateway would
+    # decrypt with a password the current one ignores.
+    client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="kwarg-only")
     sent = route.calls.last.request.content
     assert b'"password": "explicit"' in sent
+    assert multipart_field(sent, "password") == "explicit"
+    assert b"kwarg-only" not in sent
+
+    # A password given ONLY through `options` still reaches the top-level field, so an
+    # older gateway is not left without one.
+    client.v2.parse(document=b"pdf", options={"pages": [3], "password": "opts-only"})
+    sent = route.calls.last.request.content
+    assert b'"pages": [3]' in sent
+    assert b'"password": "opts-only"' in sent
+    assert multipart_field(sent, "password") == "opts-only"
+
+    # An explicit `options["password"] = None` means "no password": it clears the
+    # top-level field too rather than letting the kwarg through.
+    client.v2.parse(document=b"pdf", options={"password": None}, password="kwarg-only")
+    sent = route.calls.last.request.content
+    assert b"kwarg-only" not in sent
+    assert multipart_field(sent, "password") is None
 
 
 @pytest.mark.parametrize(
