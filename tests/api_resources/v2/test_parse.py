@@ -212,17 +212,16 @@ def test_parse_sync_omits_explicit_none_fields_from_multipart_body() -> None:
 
 @respx.mock
 def test_parse_sync_folds_password_into_options() -> None:
-    # The current gateway reads the document password from `options.password`;
-    # the kwarg must land there (and stay as a top-level field for older
-    # gateways).
+    # The gateway reads the document password from `options.password`; the kwarg lands
+    # there and ONLY there. A second top-level copy (which the 2026-07-13 spec had, and
+    # no snapshot since) would double the secret's exposure and could disagree with the
+    # copy in `options` -- see `_build_parse_body`. ade-typescript asserts the same.
     client = LandingAIADE(apikey=APIKEY, environment="production")
     route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
     client.v2.parse(document=b"pdf", password="hunter2")
     sent = route.calls.last.request.content
     assert b'{"password": "hunter2"}' in sent
-    # Both wire locations, same value: the gateway that reads `options.password` and
-    # the older one that reads the top-level field must act on the same password.
-    assert multipart_field(sent, "password") == "hunter2"
+    assert multipart_field(sent, "password") is None
 
 
 @respx.mock
@@ -245,25 +244,16 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     assert b'"pages": [2]' in sent
     assert b'"password": "pw"' in sent
 
-    # An explicit `options["password"]` wins over the kwarg -- in BOTH locations. The
-    # kwarg value must not survive anywhere on the wire, or the older gateway would
-    # decrypt with a password the current one ignores.
+    # An explicit `options["password"]` wins over the kwarg, and the kwarg value must
+    # not survive anywhere on the wire.
     client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="kwarg-only")
     sent = route.calls.last.request.content
     assert b'"password": "explicit"' in sent
-    assert multipart_field(sent, "password") == "explicit"
     assert b"kwarg-only" not in sent
+    assert multipart_field(sent, "password") is None
 
-    # A password given ONLY through `options` still reaches the top-level field, so an
-    # older gateway is not left without one.
-    client.v2.parse(document=b"pdf", options={"pages": [3], "password": "opts-only"})
-    sent = route.calls.last.request.content
-    assert b'"pages": [3]' in sent
-    assert b'"password": "opts-only"' in sent
-    assert multipart_field(sent, "password") == "opts-only"
-
-    # An explicit `options["password"] = None` means "no password": it clears the
-    # top-level field too rather than letting the kwarg through.
+    # An explicit `options["password"] = None` means "no password": the kwarg does not
+    # slip through behind it.
     client.v2.parse(document=b"pdf", options={"password": None}, password="kwarg-only")
     sent = route.calls.last.request.content
     assert b"kwarg-only" not in sent
@@ -600,7 +590,7 @@ def test_parse_job_create_folds_password_into_options() -> None:
     client.v2.parse_jobs.create(document=b"pdf", password="hunter2")
     sent = route.calls.last.request.content
     assert b'{"password": "hunter2"}' in sent
-    assert b'name="password"' in sent
+    assert multipart_field(sent, "password") is None  # `options` only, like the sync route
 
 
 @respx.mock

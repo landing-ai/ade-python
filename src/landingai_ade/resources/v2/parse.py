@@ -31,21 +31,21 @@ def _build_parse_body(
     options: object,
     password: object,
 ) -> dict[str, Any]:
-    # The document password goes on the wire TWICE: the current gateway reads it from
-    # `options.password`, older ones from a top-level `password` form field. So resolve
-    # ONE effective value here and write it to both -- an explicit `options["password"]`
-    # still wins over the kwarg, but it now wins in both places. (Sending the kwarg
-    # top-level while `options` carried a different value meant the two gateways acted
-    # on different passwords, and a password given only via `options` never reached the
-    # top-level field at all.)
+    # The gateway reads the document password from `options.password`, so fold the
+    # `password` kwarg in there -- and send it ONLY there. The spec has declared the
+    # field inside `options` and nowhere else since 2026-07-16; only the 2026-07-13
+    # snapshot also had a top-level `password` form field, which is why this used to
+    # send both. One copy is the safer contract: a duplicated secret doubles its
+    # exposure in logs and proxies, and the two copies could silently disagree --
+    # `extra_body` overrides raw wire fields and would have replaced one without the
+    # other, leaving two gateway versions decrypting with different passwords.
+    # ade-typescript folds it the same way (`buildParseForm`).
     opts: Optional[dict[str, Any]] = None
     if is_given(options) and options is not None:
         opts = dict(json.loads(options)) if isinstance(options, str) else dict(cast(Mapping[str, Any], options))
-    if opts is not None and "password" in opts:
-        # Explicit in `options` -- including an explicit `None`, which means "no
-        # password" and must therefore clear the top-level field too.
-        password = opts["password"]
-    elif is_given(password) and password is not None:
+    # An explicit `options["password"]` wins over the kwarg, including an explicit
+    # `None`, which means "no password".
+    if (opts is None or "password" not in opts) and is_given(password) and password is not None:
         opts = {} if opts is None else opts
         opts["password"] = password
     if opts is not None:
@@ -58,7 +58,6 @@ def _build_parse_body(
         "document_url": document_url,
         "model": model,
         "options": options,
-        "password": password,
     }
     # Multipart requests aren't run through `maybe_transform`, which is what
     # normally strips `omit`/`not_given` sentinels from a params TypedDict --
@@ -106,12 +105,11 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
               field.
 
           password: Password for an encrypted PDF. Sent to the server as `options.password`
-              (an explicit `options["password"]` takes precedence) and, for older
-              gateways, as a top-level form field. The document is decrypted once at the
-              start of processing and the password is not retained with the result. PDFs
-              only -- the server answers 422 with a documented `code`: supplying a
-              password for an image or an Office document gives
-              `password_unsupported_content_type`, a wrong password gives
+              and only there (an explicit `options["password"]` takes precedence). The
+              document is decrypted once at the start of processing and the password is
+              not retained with the result. PDFs only -- the server answers 422 with a
+              documented `code`: supplying a password for an image or an Office document
+              gives `password_unsupported_content_type`, a wrong password gives
               `encrypted_pdf_wrong_password`, and a locked PDF sent without one gives
               `encrypted_pdf_password_required`.
 
@@ -243,12 +241,11 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
               field.
 
           password: Password for an encrypted PDF. Sent to the server as `options.password`
-              (an explicit `options["password"]` takes precedence) and, for older
-              gateways, as a top-level form field. The document is decrypted once at the
-              start of processing and the password is not retained with the result. PDFs
-              only -- the server answers 422 with a documented `code`: supplying a
-              password for an image or an Office document gives
-              `password_unsupported_content_type`, a wrong password gives
+              and only there (an explicit `options["password"]` takes precedence). The
+              document is decrypted once at the start of processing and the password is
+              not retained with the result. PDFs only -- the server answers 422 with a
+              documented `code`: supplying a password for an image or an Office document
+              gives `password_unsupported_content_type`, a wrong password gives
               `encrypted_pdf_wrong_password`, and a locked PDF sent without one gives
               `encrypted_pdf_password_required`.
 

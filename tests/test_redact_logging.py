@@ -58,6 +58,15 @@ def test_a_payload_with_nothing_to_redact_is_returned_unchanged() -> None:
     assert _redact_for_logging(payload) is payload
 
 
+def test_a_json_escaped_key_is_still_redacted() -> None:
+    # A lexical search for "password" misses this: the key decodes to `password` only
+    # after parsing, which is why the pre-check parses JSON-looking strings.
+    payload = {"data": {"options": '{"pass\\u0077ord": "hunter2"}'}}
+    redacted = cast(Dict[str, Any], _redact_for_logging(payload))
+    assert "hunter2" not in json.dumps(redacted)
+    assert cast(Dict[str, Any], json.loads(redacted["data"]["options"]))["password"] == "<redacted>"
+
+
 def test_a_non_json_string_is_left_alone() -> None:
     # Rewriting only well-formed JSON keeps the redactor from mangling prose. A string
     # that merely mentions the word is not a secret this SDK serialized.

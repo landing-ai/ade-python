@@ -371,13 +371,32 @@ def _is_sensitive_key(key: object) -> bool:
     return isinstance(key, str) and key.lower() in _SENSITIVE_KEYS
 
 
+def _parse_json_container(text: str) -> dict[object, object] | list[object] | None:
+    """`text` parsed as a JSON object/array, or None when it is not one.
+
+    A JSON-encoded string field has to be PARSED, not pattern-matched, before deciding
+    it holds no secret: `{"pass\\u0077ord": "hunter2"}` carries no literal "password"
+    but decodes to exactly that key.
+    """
+    if not text.lstrip().startswith(("{", "[")):
+        return None
+    try:
+        parsed: object = json.loads(text)
+    except ValueError:
+        return None
+    if isinstance(parsed, (dict, list)):
+        return cast("dict[object, object] | list[object]", parsed)
+    return None
+
+
 def _needs_redaction(value: object) -> bool:
     """Cheap pre-check for `_redact_for_logging`: does `value` hold binary data or a
     secret at any depth? Lets the common payload be logged as-is, with no copy."""
     if isinstance(value, (bytes, bytearray)):
         return True
     if isinstance(value, str):
-        return any(key in value.lower() for key in _SENSITIVE_KEYS)
+        parsed = _parse_json_container(value)
+        return parsed is not None and _needs_redaction(parsed)
     if isinstance(value, (tuple, list)):
         return any(_needs_redaction(item) for item in cast("tuple[object, ...] | list[object]", value))
     if isinstance(value, dict):
@@ -393,23 +412,16 @@ def _redact_json_text(text: str) -> str:
 
     Needed because `/v2/parse` sends `options` as a JSON string and the document
     password rides inside it, so redacting mapping keys alone would still write the
-    secret to the log verbatim. Only well-formed JSON objects/arrays are rewritten:
-    anything else is returned untouched rather than mangled, which does mean a
-    non-JSON string that happens to contain a password is logged as-is — the fields
-    this client serializes that way are its own, so that case is a caller passing a
-    secret in free text, not this SDK's own body construction.
+    secret to the log verbatim. Only well-formed JSON objects/arrays are rewritten,
+    and only when they actually carry something to redact, so a clean payload keeps
+    its original text. A non-JSON string is returned untouched rather than mangled:
+    the fields this client serializes as JSON are its own, so a secret in free text
+    is a caller putting it there, not this SDK's body construction.
     """
-    if not any(key in text.lower() for key in _SENSITIVE_KEYS):
+    parsed = _parse_json_container(text)
+    if parsed is None or not _needs_redaction(parsed):
         return text
-    if not text.lstrip().startswith(("{", "[")):
-        return text
-    try:
-        parsed: object = json.loads(text)
-    except ValueError:
-        return text
-    if not isinstance(parsed, (dict, list)):
-        return text
-    return json.dumps(_redact(cast("dict[object, object] | list[object]", parsed)))
+    return json.dumps(_redact(parsed))
 
 
 def _redact(value: object) -> object:
