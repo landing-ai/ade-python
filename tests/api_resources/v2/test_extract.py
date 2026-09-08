@@ -274,3 +274,62 @@ def test_extract_job_list_carries_envelope() -> None:
     assert jobs.has_more is True
     assert jobs.page == 0
     assert jobs.page_size == 10
+
+
+@respx.mock
+def test_extract_job_list_sends_page_size_as_camel_case() -> None:
+    # `GET /v2/extract/jobs` declares the per-page parameter as `pageSize`; the
+    # `page_size=` keyword is the SDK surface and must not reach the wire under
+    # its snake_case name, or the gateway silently falls back to its default 10.
+    # The *response* envelope keeps `page_size` -- see the test above.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.extract_jobs.list(page=1, page_size=25, status="pending")
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "25"
+    assert params["page"] == "1"
+    assert params["status"] == "pending"
+    assert "page_size" not in params
+
+
+@respx.mock
+def test_extract_job_list_normalizes_cancelled_status() -> None:
+    # `cancelled` is a documented extract-job list status as of this snapshot. It
+    # must map to `JobStatus.CANCELLED` rather than falling into the unknown-status
+    # `pending` fallback, and it must read as terminal so `.wait()` stops polling.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [
+                    {"job_id": "e1", "status": "cancelled", "failure_reason": "cancelled by user"},
+                    {"job_id": "e2", "status": "processing"},
+                ],
+                "has_more": False,
+            },
+        )
+    )
+    jobs = client.v2.extract_jobs.list()
+    cancelled, running = jobs[0], jobs[1]
+    assert cancelled.status is JobStatus.CANCELLED
+    assert cancelled.is_terminal is True
+    # `failure_reason` is the list envelope's flat error form; the normalizer folds
+    # it into `Job.error`, which is what `raise_on_failure` keys off.
+    assert cancelled.error is not None and cancelled.error.message == "cancelled by user"
+    assert running.status is JobStatus.PROCESSING and running.is_terminal is False
+
+
+@respx.mock
+def test_extract_job_wait_stops_on_cancelled() -> None:
+    # A cancelled job is terminal, so `.wait()` returns it instead of polling until
+    # the deadline. `raise_on_failure` still keys off an attached `error`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e9").mock(
+        return_value=httpx.Response(200, json={"job_id": "e9", "status": "cancelled"})
+    )
+    waited = client.v2.extract_jobs.wait("e9", timeout=30, poll_interval=0.01)
+    assert waited.status is JobStatus.CANCELLED
+    assert waited.result is None

@@ -1,16 +1,19 @@
 # src/landingai_ade/resources/v2/_base.py
 from __future__ import annotations
 
-from typing import Any, List, Callable, Optional, Awaitable
+from typing import Any, Dict, List, Union, Callable, Optional, Awaitable
 
 import anyio
 
+from ..._types import Omit
+from ..._utils import is_given
 from ...types.v2 import Job
 from ...lib.v2_errors import JobFailedError, JobWaitTimeoutError
 
 __all__ = [
     "V2ResourceMixin",
     "JobList",
+    "build_jobs_list_query",
     "poll_until_terminal",
     "apoll_until_terminal",
     "DEFAULT_POLL_INITIAL",
@@ -37,6 +40,29 @@ class V2ResourceMixin:
 
     def _v2_url(self, path: str) -> str:
         return f"{self._client._v2_base_url}{path}"
+
+
+def build_jobs_list_query(
+    *,
+    page: Union[int, Omit],
+    page_size: Union[int, Omit],
+    status: Union[str, None, Omit],
+) -> Dict[str, Union[int, str]]:
+    """Build the query string for a V2 ``.../jobs`` list request.
+
+    The per-page parameter goes on the wire as ``pageSize``: the spec renamed it
+    from ``page_size``, and every jobs-list route in the snapshot now declares the
+    camelCase name (V1's generated list params alias it the same way). The Python
+    keyword stays ``page_size`` -- the SDK surface is unchanged, only the wire
+    name moved. Note the *response* envelope was NOT renamed and still returns
+    ``page_size``, which is what ``JobList.build`` reads.
+
+    Unset parameters are dropped rather than serialized: the gateway supplies its
+    own defaults (``page=0``, ``pageSize=10``), so sending nothing is not the same
+    as sending an empty value.
+    """
+    raw: Dict[str, Union[int, str, None, Omit]] = {"page": page, "pageSize": page_size, "status": status}
+    return {key: value for key, value in raw.items() if is_given(value) and value is not None}
 
 
 def _next_delay(current: float, poll_interval: Optional[float]) -> float:

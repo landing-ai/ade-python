@@ -507,6 +507,33 @@ def test_parse_job_list_carries_page_envelope() -> None:
 
 
 @respx.mock
+def test_parse_job_list_sends_page_size_as_camel_case() -> None:
+    # `GET /v2/parse/jobs` declares the per-page parameter as `pageSize`; the
+    # `page_size=` keyword is the SDK surface and must not reach the wire under
+    # its snake_case name, or the gateway silently falls back to its default 10.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.parse_jobs.list(page=2, page_size=5)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "5"
+    assert params["page"] == "2"
+    assert "page_size" not in params
+
+
+@respx.mock
+def test_parse_job_list_omits_unset_pagination_params() -> None:
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.parse_jobs.list()
+    params = route.calls.last.request.url.params
+    assert "pageSize" not in params and "page" not in params and "status" not in params
+
+
+@respx.mock
 def test_parse_sync_tolerates_unknown_element_type_and_extra_keys() -> None:
     # Novel element `type` values and extra keys must not break deserialization
     # (`type` is a permissive str; BaseModel retains extra keys).

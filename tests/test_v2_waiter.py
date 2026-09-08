@@ -4,6 +4,7 @@ from typing import List, Callable, Optional
 
 import pytest
 
+from landingai_ade._types import omit
 from landingai_ade.types.v2 import Job, JobError, JobStatus
 from landingai_ade.resources.v2 import _base
 from landingai_ade.lib.v2_errors import JobFailedError, JobWaitTimeoutError
@@ -289,3 +290,31 @@ def test_joblist_build_has_more_accepts_real_bool() -> None:
     result = JobList.build([], has_more=True)
 
     assert result.has_more is True
+
+
+# --------------------------------------------------------------------------
+# build_jobs_list_query
+# --------------------------------------------------------------------------
+
+
+def test_build_jobs_list_query_renames_page_size_to_camel_case() -> None:
+    # The jobs-list routes declare the per-page parameter as `pageSize`. Assert at
+    # the dict level, not through the URL, since the querystring encoder would
+    # happily serialize either name.
+    assert _base.build_jobs_list_query(page=1, page_size=25, status="failed") == {
+        "page": 1,
+        "pageSize": 25,
+        "status": "failed",
+    }
+
+
+def test_build_jobs_list_query_drops_unset_and_none() -> None:
+    # `omit` and an explicit `None` both mean "let the gateway default apply", so
+    # neither may be serialized -- an empty `pageSize=` is a 422, not a default.
+    assert _base.build_jobs_list_query(page=omit, page_size=omit, status=None) == {}
+    assert _base.build_jobs_list_query(page=0, page_size=omit, status=omit) == {"page": 0}
+
+
+def test_build_jobs_list_query_keeps_page_zero() -> None:
+    # Page 0 is the first page, not a missing value: it must survive the filter.
+    assert _base.build_jobs_list_query(page=0, page_size=10, status=omit) == {"page": 0, "pageSize": 10}

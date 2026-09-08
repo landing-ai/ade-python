@@ -10,11 +10,13 @@ what to check when the upstream spec (`specs/v2-aide.json`) changes.
 | --- | --- | --- |
 | Response models | `tests/test_v2_types.py` | Deserialization of `V2ParseResponse` / `V2ExtractResult` / `V2BuildSchemaResponse` / `V2GroundResult` and their nested models from plain dicts, including unknown-key tolerance. |
 | Job normalization | `tests/test_v2_normalize.py` | `normalize_parse_job` / `normalize_extract_job` / `normalize_build_schema_job`: envelope → unified `Job` (status, timestamps, `result`, `error`). |
-| Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, options serialization, job polling. No network. |
+| Shared job helpers | `tests/test_v2_waiter.py` | `resources/v2/_base.py` in isolation: `poll_until_terminal` (fake clock, no real sleeping), `JobList.build`, `build_jobs_list_query`. |
+| Resource wiring | `tests/api_resources/v2/` | `respx`-mocked HTTP: host routing, multipart/JSON bodies, query serialization, job polling. No network. |
 | Live smoke | `tests/contract/test_v2_smoke.py` | End-to-end calls against staging (marked `contract`; skipped unless `LANDINGAI_ADE_STAGING_APIKEY` is set). |
 
 Run the offline suites with `rye run pytest tests/test_v2_types.py
-tests/test_v2_normalize.py tests/api_resources/v2` (no credentials needed).
+tests/test_v2_normalize.py tests/test_v2_waiter.py tests/api_resources/v2` (no
+credentials needed).
 
 The live smoke suite runs only when `LANDINGAI_ADE_STAGING_APIKEY` is exported:
 
@@ -166,6 +168,67 @@ field-name drift:
 - Unknown / renamed `status` values fall back to `pending` rather than raising;
   the raw envelope is always preserved on `Job.raw`.
 
+### `cancelled` job status
+
+`cancelled` is now a documented status on the jobs-**list** routes — the current
+snapshot added it to `GET /v2/extract/jobs` (and to every V1-compat jobs-list
+route). The `202` create response and the `GET .../jobs/{job_id}` poll response
+still declare only `pending` / `processing` / `completed` / `failed`, so a job
+observed as cancelled surfaces through the list route.
+
+No model change was needed: `JobStatus` (`types/v2/job.py`) has always carried
+`CANCELLED`, and `Job.is_terminal` already counts it alongside `completed` /
+`failed`, so `.wait()` returns a cancelled job instead of polling to the
+deadline. `raise_on_failure` keys off an attached `error`, not off the status, so
+a cancellation only raises `JobFailedError` when the envelope carries an `error`
+(or a `failure_reason`, which the normalizers fold into `Job.error`).
+
+The regression guard for this is that normalization must **round-trip** the
+status rather than land on the `pending` fallback — that fallback is what would
+silently swallow a status the enum is missing:
+
+- Mocked: `test_extract_job_list_normalizes_cancelled_status` and
+  `test_extract_job_wait_stops_on_cancelled` in
+  `tests/api_resources/v2/test_extract.py`.
+- Live: `_check_job_list` in `tests/contract/test_v2_smoke.py` asserts
+  `job.status.value == job.raw["status"]` for every listed job, which fails if
+  the enum ever falls behind the gateway. It cannot assert a cancelled job is
+  *present* — whether the account has one is not a contract.
+
+## Jobs-list pagination (`pageSize` on the wire)
+
+`GET /v2/parse/jobs` and `GET /v2/extract/jobs` declare their per-page query
+parameter as **`pageSize`** (renamed from `page_size` upstream; V1's generated
+`parse_job_list_params` / `extract_job_list_params` alias it the same way). The
+SDK keyword stays `page_size=` — the public surface is release-locked, only the
+wire name moved:
+
+```python
+client.v2.parse_jobs.list(page=0, page_size=25)  # -> ?page=0&pageSize=25
+```
+
+`build_jobs_list_query` in `resources/v2/_base.py` owns that mapping for all
+three jobs resources (parse, extract, and the hidden build-schema), so the wire
+name lives in exactly one place. It also drops unset parameters instead of
+serializing them empty, letting the gateway apply its own `page=0` / `pageSize=10`
+defaults.
+
+The **response** envelope was *not* renamed and still returns `page_size`, which
+is what `JobList.build` reads onto `JobList.page_size`. Don't "fix" one to match
+the other.
+
+Testing it: the wire name is only assertable where the request is inspectable, so
+it is pinned in the mocked tests —
+`test_parse_job_list_sends_page_size_as_camel_case`,
+`test_extract_job_list_sends_page_size_as_camel_case`,
+`test_async_job_lists_send_page_size_as_camel_case`, plus dict-level cases on the
+helper in `tests/test_v2_waiter.py`. The live checks
+(`test_parse_jobs_list` / `test_extract_jobs_list`) deliberately do **not** assert
+that staging honored the page size: whether a given cluster runs the snapshot's
+gateway is an environment property, not an SDK contract. They assert only
+envelope-relative consistency (`len(jobs) <= jobs.page_size`) and absent-or-valid
+bounds on the echoed `page` / `page_size`.
+
 ## When the spec changes
 
 1. Read the mechanical diff (`git diff` on `specs/v2-aide.json` and
@@ -178,5 +241,18 @@ field-name drift:
    `src/landingai_ade/types/v2/`. Keep removed/renamed fields in place as optional
    for backward compatibility — the surface is release-locked and response parsing
    is lenient (missing fields default to `None`).
-4. Add or extend `respx` tests in `tests/api_resources/v2/` and a live assertion
+4. A **renamed request field or query parameter** changes the wire name only. The
+   Python keyword is release-locked, so map the old keyword onto the new wire name
+   (as `build_jobs_list_query` does for `page_size` → `pageSize`) rather than
+   renaming the parameter, and check whether the *response* was renamed too — the
+   two moved independently for `page_size`.
+5. A **widened enum** usually needs no model change, because the V2 job statuses
+   are normalized through the permissive `JobStatus` / `_status()` path. Confirm
+   the new member is already in `JobStatus` (and, if terminal, in
+   `Job.is_terminal`) instead of assuming it is, since an unlisted value silently
+   degrades to `pending` rather than raising.
+6. Add or extend `respx` tests in `tests/api_resources/v2/` and a live assertion
    in `tests/contract/test_v2_smoke.py`, then update `api.md` and this guide.
+   Anything environment-dependent (a model family, whether a cluster runs the
+   snapshot's gateway) belongs only in the mocked tests — see the `pageSize`
+   section above for how that line is drawn.

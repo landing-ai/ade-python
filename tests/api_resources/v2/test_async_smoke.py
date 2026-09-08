@@ -72,3 +72,27 @@ async def test_async_extract_jobs_create_get_and_wait() -> None:
     waited = await client.v2.extract_jobs.wait("e1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
     assert waited.status is JobStatus.COMPLETED
     assert isinstance(waited.result, V2ExtractResult)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_job_lists_send_page_size_as_camel_case() -> None:
+    """Both async list methods must send the spec's `pageSize` wire name, not the
+    `page_size` keyword they expose. Mirrors the sync cases in test_parse.py /
+    test_extract.py."""
+    client = AsyncLandingAIADE(apikey=APIKEY)
+
+    parse_route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    extract_route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+
+    await client.v2.parse_jobs.list(page=0, page_size=3)
+    await client.v2.extract_jobs.list(page=0, page_size=3)
+
+    for route in (parse_route, extract_route):
+        params = route.calls.last.request.url.params
+        assert params["pageSize"] == "3"
+        assert "page_size" not in params

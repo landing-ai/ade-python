@@ -16,6 +16,7 @@ from landingai_ade.types.v2 import (
     V2ParseResponse,
     V2ParseNodeGrounding,
 )
+from landingai_ade.resources.v2._base import JobList
 
 pytestmark = pytest.mark.contract
 
@@ -201,3 +202,40 @@ def test_parse_jobs(staging_client: LandingAIADE) -> None:
     # `Job.metadata` receipt (set only for `output_save_url` deliveries) is absent.
     assert done.metadata is None
     assert done.result.metadata is not None
+
+
+def _check_job_list(jobs: JobList) -> None:
+    """Assert a live jobs-list page, using only what staging is guaranteed to return.
+
+    The account may legitimately have zero jobs, and every field of the pagination
+    envelope is optional in the spec, so everything here is absent-or-valid.
+    """
+    # Absent-or-valid on the echoed envelope: `page` is 0-indexed, and the
+    # effective page size can only be one the route accepts (min 1, max 100).
+    if jobs.page is not None:
+        assert jobs.page >= 0
+    if jobs.page_size is not None:
+        assert 1 <= jobs.page_size <= 100
+        # Envelope-relative, not request-relative: whether this cluster's gateway
+        # honors the `pageSize` we sent is an environment property, so only the
+        # page's self-consistency is assertable live. The wire name itself is
+        # pinned in the mocked tests under tests/api_resources/v2/.
+        assert len(jobs) <= jobs.page_size
+    for job in jobs:
+        assert job.job_id
+        # The list route's `status` enum is closed in the spec and `JobStatus`
+        # covers every member of it, so normalization must round-trip the value
+        # exactly. A status `JobStatus` lacked would instead land on the `pending`
+        # fallback and fail here -- which is the guard that matters now that the
+        # spec's list enum has grown `cancelled`.
+        raw_status: object = job.raw.get("status")
+        if isinstance(raw_status, str):
+            assert job.status.value == raw_status
+
+
+def test_parse_jobs_list(staging_client: LandingAIADE) -> None:
+    _check_job_list(staging_client.v2.parse_jobs.list(page=0, page_size=5))
+
+
+def test_extract_jobs_list(staging_client: LandingAIADE) -> None:
+    _check_job_list(staging_client.v2.extract_jobs.list(page=0, page_size=5))

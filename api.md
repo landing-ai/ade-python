@@ -129,7 +129,7 @@ Methods:
 - <code title="get /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 
-  Same polling/timeout semantics as `parse_jobs.wait`. Extract jobs have no `cancelled` status, so `raise_on_failure` only ever triggers on `failed`.
+  Same polling/timeout semantics as `parse_jobs.wait`. `cancelled` is a documented extract-job status as of the current snapshot (it was not in earlier ones) and counts as terminal, so `wait` returns a cancelled job rather than polling to the deadline.
 
 - <code title="post /v2/ground">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">ground</a>(\*, extraction_metadata, structure) -> <a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundResult</a></code>
 
@@ -138,4 +138,5 @@ Methods:
 Notes:
 
 - `parse_jobs.list` and `extract_jobs.list` both return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
+- Both `list` methods take `page_size=` and send it on the wire as `pageSize`, which is the name `GET /v2/parse/jobs` and `GET /v2/extract/jobs` declare (V1's `client.parse_jobs.list` / `client.extract_jobs.list` alias it the same way). The keyword itself stays snake_case, as does the `page_size` field the response envelope echoes back on `JobList`. An unset `page`/`page_size`/`status` is omitted from the query rather than sent empty, so the gateway's own defaults (`page=0`, `pageSize=10`) apply.
 - All `client.v2.*` methods accept the usual `extra_headers`, `extra_query`, `extra_body`, and `timeout` overrides; sync methods additionally accept `save_to` (parse/extract only, not the job-creation methods) to write the response to disk, mirroring V1's `save_to`.
