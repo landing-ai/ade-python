@@ -742,8 +742,8 @@ class V1AdeClassifyJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
@@ -755,6 +755,7 @@ class Status1(Enum):
     processing = 'processing'
     completed = 'completed'
     failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job(BaseModel):
@@ -838,13 +839,20 @@ class V1AdeClassifyJobsPostRequest1(BaseModel):
     )
 
 
+class Status2(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V1AdeClassifyJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this v1-ade-classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status2] = None
 
 
 class Error(BaseModel):
@@ -895,7 +903,7 @@ class V1AdeClassifyJobsJobIdGetResponse(BaseModel):
     result: Optional[Result] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status1] = None
+    status: Optional[Status2] = None
 
 
 class V1AdeExtractPostRequest(BaseModel):
@@ -957,12 +965,20 @@ class V1AdeExtractJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
     )
+
+
+class Status4(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job1(BaseModel):
@@ -974,7 +990,7 @@ class Job1(BaseModel):
         description='The unique identifier for this v1-ade-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status1] = None
+    status: Optional[Status4] = None
 
 
 class V1AdeExtractJobsGetResponse(BaseModel):
@@ -1029,13 +1045,20 @@ class V1AdeExtractJobsPostRequest1(BaseModel):
     )
 
 
+class Status5(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V1AdeExtractJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this v1-ade-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status5] = None
 
 
 class Result1(BaseModel):
@@ -1077,7 +1100,7 @@ class V1AdeExtractJobsJobIdGetResponse(BaseModel):
     result: Optional[Result1] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status1] = None
+    status: Optional[Status5] = None
 
 
 class V1AdeParsePostRequest(BaseModel):
@@ -1178,12 +1201,20 @@ class V1AdeParseJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
     )
+
+
+class Status7(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job2(BaseModel):
@@ -1195,7 +1226,7 @@ class Job2(BaseModel):
         description='The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status1] = None
+    status: Optional[Status7] = None
 
 
 class V1AdeParseJobsGetResponse(BaseModel):
@@ -1281,13 +1312,20 @@ class V1AdeParseJobsPostRequest1(BaseModel):
     )
 
 
+class Status8(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V1AdeParseJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this v1-ade-parse job. Format: ``parse2-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status8] = None
 
 
 class Result2(BaseModel):
@@ -1352,7 +1390,7 @@ class V1AdeParseJobsJobIdGetResponse(BaseModel):
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status8] = None
 
 
 class V1ClassifyPostRequest(BaseModel):
@@ -1420,12 +1458,20 @@ class V1ClassifyJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
     )
+
+
+class Status10(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job3(BaseModel):
@@ -1437,7 +1483,7 @@ class Job3(BaseModel):
         description='The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status1] = None
+    status: Optional[Status10] = None
 
 
 class V1ClassifyJobsGetResponse(BaseModel):
@@ -1500,13 +1546,20 @@ class V1ClassifyJobsPostRequest1(BaseModel):
     )
 
 
+class Status11(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V1ClassifyJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this classify job. Format: ``classify-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status11] = None
 
 
 class Result3(BaseModel):
@@ -1546,7 +1599,7 @@ class V1ClassifyJobsJobIdGetResponse(BaseModel):
     result: Optional[Result3] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status1] = None
+    status: Optional[Status11] = None
 
 
 class V1ExtractBuildSchemaPostRequest(BaseModel):
@@ -1650,12 +1703,20 @@ class V1ExtractBuildSchemaJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
     )
+
+
+class Status13(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job4(BaseModel):
@@ -1667,7 +1728,7 @@ class Job4(BaseModel):
         description='The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status1] = None
+    status: Optional[Status13] = None
 
 
 class V1ExtractBuildSchemaJobsGetResponse(BaseModel):
@@ -1764,13 +1825,20 @@ class V1ExtractBuildSchemaJobsPostRequest1(BaseModel):
     )
 
 
+class Status14(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V1ExtractBuildSchemaJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this v1-build-schema job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status14] = None
 
 
 class Result4(BaseModel):
@@ -1812,7 +1880,7 @@ class V1ExtractBuildSchemaJobsJobIdGetResponse(BaseModel):
     result: Optional[Result4] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status1] = None
+    status: Optional[Status14] = None
 
 
 class V1SplitPostRequest(BaseModel):
@@ -1953,12 +2021,20 @@ class V2ExtractJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
     )
+
+
+class Status16(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job5(BaseModel):
@@ -1970,7 +2046,7 @@ class Job5(BaseModel):
         description='The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
     model_version: Optional[str] = None
-    status: Optional[Status1] = None
+    status: Optional[Status16] = None
 
 
 class V2ExtractJobsGetResponse(BaseModel):
@@ -2076,13 +2152,20 @@ class V2ExtractJobsPostRequest1(BaseModel):
     )
 
 
+class Status17(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V2ExtractJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this v2-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status17] = None
 
 
 class Result5(BaseModel):
@@ -2152,7 +2235,7 @@ class V2ExtractJobsJobIdGetResponse(BaseModel):
         None,
         description='Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead.',
     )
-    status: Optional[Status1] = None
+    status: Optional[Status17] = None
 
 
 class V2GroundPostRequest(BaseModel):
@@ -2256,8 +2339,8 @@ class V2ParseJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
@@ -2405,8 +2488,8 @@ class V2WorkflowJobsGetParametersQuery(BaseModel):
     page: Optional[int] = Field(
         0, description='Page number (0-indexed).', ge=0, title='Page'
     )
-    page_size: Optional[int] = Field(
-        10, description='Number of items per page.', ge=1, le=100, title='Page Size'
+    pageSize: Optional[int] = Field(
+        10, description='Number of items per page.', ge=1, le=100, title='Pagesize'
     )
     status: Optional[str] = Field(
         None, description='Filter by job status.', title='Status'
@@ -2418,6 +2501,7 @@ class Status22(Enum):
     processing = 'processing'
     completed = 'completed'
     failed = 'failed'
+    cancelled = 'cancelled'
 
 
 class Job7(BaseModel):
@@ -2448,13 +2532,20 @@ class ServiceTier15(Enum):
     priority = 'priority'
 
 
+class Status23(Enum):
+    pending = 'pending'
+    processing = 'processing'
+    completed = 'completed'
+    failed = 'failed'
+
+
 class V2WorkflowJobsPostResponse(BaseModel):
     created_at: Optional[str] = None
     job_id: Optional[str] = Field(
         None,
         description='The unique identifier for this v2-workflow job. Format: ``v2-workflow-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.',
     )
-    status: Optional[Status22] = None
+    status: Optional[Status23] = None
 
 
 class Error7(BaseModel):
@@ -2525,7 +2616,7 @@ class V2WorkflowJobsJobIdGetResponse(BaseModel):
     result: Optional[Result6] = Field(
         None, description='Present once status is ``completed``.'
     )
-    status: Optional[Status22] = None
+    status: Optional[Status23] = None
 
 
 class BlocksOptions(BaseModel):

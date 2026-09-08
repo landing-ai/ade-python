@@ -1676,14 +1676,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -1751,7 +1751,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -2329,14 +2330,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -2404,7 +2405,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -3214,14 +3216,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -3289,7 +3291,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -4151,14 +4154,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -4226,7 +4229,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -4844,14 +4848,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -4919,7 +4923,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -5674,14 +5679,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -5749,7 +5754,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -6524,14 +6530,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -7130,14 +7136,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -7205,7 +7211,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
