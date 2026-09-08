@@ -166,6 +166,72 @@ def test_extract_sync_parses_char_counts_and_warnings() -> None:
     assert result.warnings is not None and result.warnings[0]["code"] == "partial"
 
 
+def _real_wire_extract_body() -> Dict[str, Any]:
+    # aide's real wire shape (services/gateway/job_surface/start.py
+    # `_public_result` + `V2Billing`): the server never sends
+    # `metadata.credit_usage` or `billing.input_markdown_chars` /
+    # `billing.output_extraction_chars`. Regression fixture for aide#2013.
+    return {
+        "extraction": {"revenue": "1M"},
+        "extraction_metadata": {"revenue": {"value": "1M", "spans": []}},
+        "markdown": "# doc",
+        "metadata": {
+            "job_id": "e1",
+            "model_version": "dpt-3",
+            "duration_ms": 5,
+            "input_markdown_chars": 42,
+            "output_extraction_chars": 7,
+            "billing": {"service_tier": "priority", "total_credits": 12.5},
+        },
+    }
+
+
+def _assert_no_stale_billing_fields(dumped: Dict[str, Any]) -> None:
+    assert "credit_usage" not in dumped["metadata"]
+    billing_dump = dumped["metadata"]["billing"]
+    assert billing_dump is not None
+    assert "input_markdown_chars" not in billing_dump
+    assert "output_extraction_chars" not in billing_dump
+    assert dumped["metadata"]["input_markdown_chars"] == 42
+    assert dumped["metadata"]["output_extraction_chars"] == 7
+    assert billing_dump["service_tier"] == "priority"
+    assert billing_dump["total_credits"] == 12.5
+
+
+@respx.mock
+def test_extract_sync_wire_shape_has_no_stale_billing_fields() -> None:
+    # aide#2013: the sync `client.v2.extract(...)` response must not surface
+    # a stale `metadata.credit_usage` or `billing.*_chars`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.post("https://api.ade.landing.ai/v2/extract").mock(
+        return_value=httpx.Response(200, json=_real_wire_extract_body())
+    )
+    result = client.v2.extract(schema={"type": "object"}, markdown="x")
+    _assert_no_stale_billing_fields(result.model_dump())
+
+
+@respx.mock
+def test_extract_job_get_wire_shape_has_no_stale_billing_fields() -> None:
+    # aide#2013: the same check on the `extract_jobs.get(...)` result path,
+    # which normalizes via `V2ExtractResult.construct(...)`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs/e1").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "job_id": "e1",
+                "status": "completed",
+                "created_at": "2026-01-01T00:00:00Z",
+                "completed_at": "2026-01-01T00:00:09Z",
+                "result": _real_wire_extract_body(),
+            },
+        )
+    )
+    done = client.v2.extract_jobs.get("e1")
+    assert isinstance(done.result, V2ExtractResult)
+    _assert_no_stale_billing_fields(done.result.model_dump())
+
+
 def test_extract_job_create_sends_output_save_url(monkeypatch: pytest.MonkeyPatch) -> None:
     # The async job create body carries `output_save_url` (async jobs only).
     client = LandingAIADE(apikey=APIKEY)

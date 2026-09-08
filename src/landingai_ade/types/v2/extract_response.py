@@ -12,12 +12,6 @@ class V2ExtractBilling(BaseModel):
 
     service_tier: Optional[str] = None
     total_credits: Optional[float] = None
-    # Characters (code points) in the input markdown as submitted -- the input
-    # basis of the credit charge.
-    input_markdown_chars: Optional[int] = None
-    # Characters in the serialized extraction output -- the output basis of the
-    # credit charge.
-    output_extraction_chars: Optional[int] = None
 
 
 class V2ExtractMetadata(BaseModel):
@@ -29,9 +23,6 @@ class V2ExtractMetadata(BaseModel):
     model_version: Optional[str] = None
     duration_ms: int
     doc_id: Optional[str] = None
-    # Deprecated: superseded by `billing`; retained for backward compatibility
-    # and populated only by older gateway responses.
-    credit_usage: float = 0.0
     billing: Optional[V2ExtractBilling] = None
     # Characters (code points) in the input markdown as submitted -- the input
     # basis of the credit charge (moved here from `billing` upstream).

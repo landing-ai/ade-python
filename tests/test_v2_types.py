@@ -88,7 +88,7 @@ def test_extract_result_parses_nested_metadata() -> None:
         metadata={"job_id": "j1", "version": "extract-1", "duration_ms": 12},  # type: ignore[arg-type]
     )
     assert r.metadata.job_id == "j1"
-    assert r.metadata.credit_usage == 0.0  # default
+    assert not hasattr(r.metadata, "credit_usage")
 
 
 def test_parse_response_builds_from_dicts() -> None:
@@ -127,9 +127,11 @@ def test_parse_response_retains_unknown_fields() -> None:
 
 
 def test_extract_result_new_metadata_and_billing_fields() -> None:
-    # model_version / range_units / openapi_spec on metadata, the two new billing
-    # counters, and the top-level output_ref all deserialize -- without the
-    # legacy `version` field, which current gateway responses no longer send.
+    # model_version / range_units / openapi_spec on metadata, billing
+    # (service_tier + total_credits only -- no char counts, those live on
+    # `metadata` itself), and the top-level output_ref all deserialize --
+    # without the legacy `version` field, which current gateway responses no
+    # longer send.
     r = V2ExtractResult(
         extraction={},
         extraction_metadata={},
@@ -140,7 +142,7 @@ def test_extract_result_new_metadata_and_billing_fields() -> None:
             "duration_ms": 5,
             "range_units": "unicode_codepoints",
             "openapi_spec": "https://api.example/openapi.json",
-            "billing": {"input_markdown_chars": 100, "output_extraction_chars": 20},
+            "billing": {"service_tier": "standard", "total_credits": 1.5},
         },
         output_ref="ref-123",
     )
@@ -149,8 +151,8 @@ def test_extract_result_new_metadata_and_billing_fields() -> None:
     assert r.metadata.range_units == "unicode_codepoints"
     assert r.metadata.openapi_spec is not None and r.metadata.openapi_spec.endswith("openapi.json")
     assert r.metadata.billing is not None
-    assert r.metadata.billing.input_markdown_chars == 100
-    assert r.metadata.billing.output_extraction_chars == 20
+    assert r.metadata.billing.service_tier == "standard"
+    assert r.metadata.billing.total_credits == 1.5
     assert r.output_ref == "ref-123"
 
 
@@ -254,6 +256,40 @@ def test_extract_result_metadata_char_counts_warnings_and_schema_violation() -> 
     assert r.metadata.output_extraction_chars == 20
     assert r.schema_violation_error == "field 'foo' skipped"
     assert r.warnings is not None and r.warnings[0]["code"] == "partial"
+
+
+def test_extract_result_wire_shape_has_no_stale_billing_fields() -> None:
+    # Regression for aide#2013: the server never sends `metadata.credit_usage`
+    # or `billing.input_markdown_chars` / `billing.output_extraction_chars`.
+    # A stale default on the SDK type used to materialize them anyway on
+    # `model_dump()`. This payload matches aide's real wire shape.
+    r = V2ExtractResult(
+        extraction={"revenue": "1M"},
+        extraction_metadata={"revenue": {"value": "1M", "spans": []}},
+        markdown="# doc",
+        metadata={  # type: ignore[arg-type]
+            "job_id": "e1",
+            "model_version": "dpt-3",
+            "duration_ms": 5,
+            "doc_id": None,
+            "input_markdown_chars": 100,
+            "output_extraction_chars": 20,
+            "range_units": "unicode_codepoints",
+            "openapi_spec": "https://api.example/openapi.json",
+            "billing": {"service_tier": "standard", "total_credits": 1.5},
+        },
+    )
+    dumped = r.model_dump()
+
+    assert "credit_usage" not in dumped["metadata"]
+    billing_dump = dumped["metadata"]["billing"]
+    assert billing_dump is not None
+    assert "input_markdown_chars" not in billing_dump
+    assert "output_extraction_chars" not in billing_dump
+    assert dumped["metadata"]["input_markdown_chars"] == 100
+    assert dumped["metadata"]["output_extraction_chars"] == 20
+    assert billing_dump["service_tier"] == "standard"
+    assert billing_dump["total_credits"] == 1.5
 
 
 def test_ground_result_builds_from_dicts() -> None:

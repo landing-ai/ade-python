@@ -107,10 +107,13 @@ the field deployed ahead of the snapshot.
 fields the model could not extract — the extraction is partial), `warnings`
 (non-fatal warnings), and `metadata` (`V2ExtractMetadata`): `job_id`,
 `model_version`, `duration_ms`, `doc_id`, `input_markdown_chars`,
-`output_extraction_chars`, `credit_usage` (deprecated), `range_units`,
-`openapi_spec`, and `billing` (`V2ExtractBilling`). The `input_markdown_chars` /
-`output_extraction_chars` char counts moved from `billing` onto `metadata`
-upstream; both are retained on `V2ExtractBilling` for backward compatibility.
+`output_extraction_chars`, `range_units`, `openapi_spec`, and `billing`
+(`V2ExtractBilling`: `service_tier`, `total_credits`). The char counts live
+only on `metadata`, and credits live only on `metadata.billing.total_credits`
+— the server never sends `metadata.credit_usage` or `billing.*_chars`, so
+neither field exists on the SDK types anymore (removed in the fix for
+[aide#2013](https://github.com/landing-ai/aide/issues/2013); they used to
+show a fake `credit_usage: 0.0` and always-null `billing.*_chars`).
 
 The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
 when set, the finished result is delivered to that URL and the completed job
