@@ -107,6 +107,37 @@ The response is a `V2ParseResponse`:
 
 If some pages cannot be parsed, the request still succeeds (HTTP 206) and `metadata.failed_pages` lists the pages that failed. If a synchronous parse times out, the client raises `V2SyncTimeoutError`; use [jobs](#process-large-documents-asynchronously-jobs) instead.
 
+### Encrypted PDFs
+
+Password-protected PDFs parse directly — pass `password` and skip decrypting the file yourself. The document is decrypted once at the start of processing, and the password is not retained with the result.
+
+```python
+import os
+from pathlib import Path
+
+parsed = client.v2.parse(
+    document=Path("locked.pdf"),
+    password=os.environ["PDF_PASSWORD"],
+)
+```
+
+`password` applies to PDFs only, and the server rejects the three mistakes with a `422`, each naming its case: `password_unsupported_content_type` (a password sent with an image or an Office document), `encrypted_pdf_wrong_password` (the password does not open the PDF), and `encrypted_pdf_password_required` (a locked PDF submitted without one).
+
+`password` is shorthand for the contract field `options["password"]`, which is where the SDK puts it on the wire — and the only place it puts it. Both forms work; if you supply both, the explicit `options["password"]` wins:
+
+```python
+# sends options["password"] = "from-options"
+client.v2.parse(
+    document=Path("locked.pdf"),
+    options={"password": "from-options"},
+    password="ignored",
+)
+```
+
+That applies to an explicit `None` too: `options={"password": None}` means "no password" and silences the `password` argument behind it. `options` itself accepts a mapping or a JSON string that decodes to an object. Malformed JSON raises `json.JSONDecodeError`; a value that decodes to a non-object raises `TypeError`. Both are raised before the request is sent.
+
+[ade-typescript](https://github.com/landing-ai/ade-typescript) aligns on the same precedence rule in [#121](https://github.com/landing-ai/ade-typescript/pull/121).
+
 ## Extract
 
 Use `client.v2.extract` to pull structured fields out of Markdown (typically from a parse response) using a schema. The `schema` parameter accepts a Pydantic `BaseModel` subclass, a `dict`, or a JSON string. Provide exactly one Markdown source: `markdown` or `markdown_url`.
