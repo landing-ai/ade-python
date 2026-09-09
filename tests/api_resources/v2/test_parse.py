@@ -237,9 +237,9 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     assert b'"pages": [1]' in sent
     assert b'"password": "pw"' in sent
 
-    # A pre-serialized JSON string for `options` is tolerated at runtime (though
-    # the signature advertises a Mapping); the password must merge into it too.
-    client.v2.parse(document=b"pdf", options='{"pages": [2]}', password="pw")  # type: ignore[arg-type]
+    # `options` also accepts a pre-serialized JSON string; the password must merge
+    # into it too.
+    client.v2.parse(document=b"pdf", options='{"pages": [2]}', password="pw")
     sent = route.calls.last.request.content
     assert b'"pages": [2]' in sent
     assert b'"password": "pw"' in sent
@@ -249,7 +249,7 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     # after the parsed string and won. The input is deliberately COMPACT while the
     # assertion expects `json.dumps` spacing, so this cannot pass on a verbatim
     # pass-through -- it only passes if the string was really parsed and re-serialized.
-    client.v2.parse(document=b"pdf", options='{"password":"explicit"}', password="kwarg-only")  # type: ignore[arg-type]
+    client.v2.parse(document=b"pdf", options='{"password":"explicit"}', password="kwarg-only")
     sent = route.calls.last.request.content
     assert b'"password": "explicit"' in sent
     assert b"kwarg-only" not in sent
@@ -304,7 +304,7 @@ def test_parse_sync_malformed_options_json_raises_json_decode_error() -> None:
     # this needs both.
     client = LandingAIADE(apikey=APIKEY, environment="production")
     with pytest.raises(json.JSONDecodeError):
-        client.v2.parse(document=b"pdf", options="garbage", password="kwarg-only")  # type: ignore[arg-type]
+        client.v2.parse(document=b"pdf", options="garbage", password="kwarg-only")
 
 
 @respx.mock

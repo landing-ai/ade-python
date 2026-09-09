@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Mapping, Callable, Optional, cast
+from typing import Any, Union, Mapping, Callable, Optional, cast
 from pathlib import Path
 from typing_extensions import Literal
 
@@ -102,7 +102,7 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        options: Optional[Mapping[str, object]] | Omit = omit,
+        options: Optional[Union[str, Mapping[str, object]]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -129,8 +129,9 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
           model: The version of the model to use for parsing.
 
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
-              field. Must be a mapping, or a JSON string that decodes to an object --
-              anything else raises `TypeError` before the request is sent.
+              field. Accepts a mapping, or a JSON string that decodes to an object.
+              Malformed JSON raises `json.JSONDecodeError`; a value that decodes to a
+              non-object raises `TypeError`. Both are raised before the request is sent.
 
           password: Password for an encrypted PDF. Sent to the server as `options.password`
               and only there (an explicit `options["password"]` takes precedence). The
@@ -193,7 +194,7 @@ class AsyncParseResource(V2ResourceMixin, AsyncAPIResource):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        options: Optional[Mapping[str, object]] | Omit = omit,
+        options: Optional[Union[str, Mapping[str, object]]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -240,7 +241,7 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        options: Optional[Mapping[str, object]] | Omit = omit,
+        options: Optional[Union[str, Mapping[str, object]]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
         service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
@@ -266,8 +267,9 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
           model: The version of the model to use for parsing.
 
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
-              field. Must be a mapping, or a JSON string that decodes to an object --
-              anything else raises `TypeError` before the request is sent.
+              field. Accepts a mapping, or a JSON string that decodes to an object.
+              Malformed JSON raises `json.JSONDecodeError`; a value that decodes to a
+              non-object raises `TypeError`. Both are raised before the request is sent.
 
           password: Password for an encrypted PDF. Sent to the server as `options.password`
               and only there (an explicit `options["password"]` takes precedence). The
@@ -404,7 +406,7 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        options: Optional[Mapping[str, object]] | Omit = omit,
+        options: Optional[Union[str, Mapping[str, object]]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
         service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,

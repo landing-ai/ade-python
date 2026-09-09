@@ -48,7 +48,7 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        options: Optional[Mapping[str, object]] | Omit = omit,
+        options: Optional[Union[str, Mapping[str, object]]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -164,7 +164,7 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         document: Optional[FileTypes] | Omit = omit,
         document_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
-        options: Optional[Mapping[str, object]] | Omit = omit,
+        options: Optional[Union[str, Mapping[str, object]]] | Omit = omit,
         password: Optional[str] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.

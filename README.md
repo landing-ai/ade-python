@@ -134,7 +134,7 @@ client.v2.parse(
 )
 ```
 
-That applies to an explicit `None` too: `options={"password": None}` means "no password" and silences the `password` argument behind it. `options` itself must be a mapping, or a JSON string that decodes to an object — anything else raises `TypeError` before the request is sent.
+That applies to an explicit `None` too: `options={"password": None}` means "no password" and silences the `password` argument behind it. `options` itself accepts a mapping or a JSON string that decodes to an object. Malformed JSON raises `json.JSONDecodeError`; a value that decodes to a non-object raises `TypeError`. Both are raised before the request is sent.
 
 [ade-typescript](https://github.com/landing-ai/ade-typescript) aligns on the same precedence rule in [#121](https://github.com/landing-ai/ade-typescript/pull/121).
 
