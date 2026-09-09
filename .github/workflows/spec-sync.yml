@@ -507,6 +507,22 @@ jobs:
             ROUTES are `/v1/*` is not "nothing to do": still wire every in-scope change listed
             below (a new request field on /v2/parse, say) and leave the `/v1/*` routes alone.
 
+            SCOPE, one level down — exactly which FIELDS back a /v2 request: the TOP-LEVEL
+            properties of that operation's `requestBody` schema in this spec, and nothing else. A
+            field the spec declares inside a nested object is not a top-level field — the
+            encrypted-PDF password is declared at `options.password` on /v2/parse and
+            /v2/parse/jobs and NOWHERE else, so it is sent there and only there. Two traps, both
+            of which have bitten this repo: (a) the SAME spec declares a top-level `password` on
+            /v1/ade/parse and /v1/ade/parse/jobs — same name, different level, different route
+            family — and lifting a `/v1/*` top-level field onto a /v2 operation is the field-level
+            version of translating a /v1 route into a /v2 URL; (b) inventing a top-level
+            convenience parameter that folds one wire field into another. Exactly two exist
+            (`password` on parse, `strict` on extract); they are cross-SDK contract decisions
+            shared with ade-typescript and written down in CONTRIBUTING.md, and changing one is a
+            maintainer's call — do NOT add, remove or re-target an alias. Wire the spec's own
+            shape, and if a spec change looks like it needs a new one, leave that field unwired
+            and say so in your summary.
+
             OUT OF SCOPE — do NOT implement: /v2/workflow, /v2/workflow/jobs, and
             /v2/workflow/jobs/{job_id}. That surface is intentionally deferred; skip it entirely
             even though it appears in the spec and reference models. If the spec diff touches only
