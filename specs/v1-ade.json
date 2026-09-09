@@ -2267,6 +2267,9 @@
             },
             "description": "Extraction completed with success but there was a schema validation error."
           },
+          "415": {
+            "description": "The request body was not form-encoded. Send multipart/form-data."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -2440,6 +2443,9 @@
               }
             },
             "description": "Job queued successfully"
+          },
+          "415": {
+            "description": "The request body was not form-encoded. Send multipart/form-data."
           },
           "422": {
             "content": {
