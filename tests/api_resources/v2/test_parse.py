@@ -246,8 +246,10 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
 
     # ...and the string branch loses the tie the same way the dict branch does. This
     # is the branch that diverged in ade-typescript, where the kwarg was spread in
-    # after the parsed string and won.
-    client.v2.parse(document=b"pdf", options='{"password": "explicit"}', password="kwarg-only")  # type: ignore[arg-type]
+    # after the parsed string and won. The input is deliberately COMPACT while the
+    # assertion expects `json.dumps` spacing, so this cannot pass on a verbatim
+    # pass-through -- it only passes if the string was really parsed and re-serialized.
+    client.v2.parse(document=b"pdf", options='{"password":"explicit"}', password="kwarg-only")  # type: ignore[arg-type]
     sent = route.calls.last.request.content
     assert b'"password": "explicit"' in sent
     assert b"kwarg-only" not in sent
@@ -266,6 +268,23 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     sent = route.calls.last.request.content
     assert b"kwarg-only" not in sent
     assert multipart_field(sent, "password") is None
+
+
+@respx.mock
+def test_parse_sync_rejects_options_that_is_not_a_json_object() -> None:
+    # `dict(json.loads(...))` used to accept any pair-sequence, so a JSON *array*
+    # silently became the options dict -- and `[["password", "sneaky"]]` landed a
+    # password that then beat the caller's own `password` argument. Decoding a
+    # non-object is a caller mistake; name the field instead of guessing.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    for bad in ("[]", '[["password", "sneaky"]]', "5", '"str"'):
+        with pytest.raises(TypeError, match="options JSON string must decode to an object"):
+            client.v2.parse(document=b"pdf", options=bad, password="kwarg-only")  # type: ignore[arg-type]
+    # Malformed JSON still surfaces as the ValueError `json.loads` raises, matching
+    # `coerce_schema_to_dict`.
+    with pytest.raises(ValueError):
+        client.v2.parse(document=b"pdf", options="garbage", password="kwarg-only")  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

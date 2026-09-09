@@ -133,7 +133,7 @@ client.v2.parse(
 )
 ```
 
-[ade-typescript](https://github.com/landing-ai/ade-typescript) resolves the conflict the same way, so the two SDKs agree.
+[ade-typescript](https://github.com/landing-ai/ade-typescript) aligns on the same precedence rule in [#121](https://github.com/landing-ai/ade-typescript/pull/121).
 
 ## Extract
 

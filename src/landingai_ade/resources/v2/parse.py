@@ -24,6 +24,26 @@ from ...lib.v2_errors import raise_if_sync_timeout
 __all__ = ["ParseResource", "AsyncParseResource", "ParseJobsResource", "AsyncParseJobsResource"]
 
 
+def _coerce_options(options: object) -> dict[str, Any]:
+    """Accept a mapping or a pre-serialized JSON string; return a plain dict.
+
+    The contract sends `options` as a JSON object, so anything that does not decode to
+    one is a caller mistake -- name the field here rather than leaving the gateway to
+    reject the request without naming it. `dict(json.loads(...))` did not: `dict()`
+    accepts any pair-sequence, so `'[["password", "x"]]'` silently became an options
+    dict whose password then beat the caller's own `password` argument. Mirrors
+    `coerce_schema_to_dict` in `lib/schema_utils.py`, which does this for `schema`.
+    """
+    if isinstance(options, str):
+        parsed: Any = json.loads(options)  # raises ValueError on bad JSON
+        if not isinstance(parsed, dict):
+            raise TypeError("options JSON string must decode to an object")
+        return cast(dict[str, Any], parsed)
+    if isinstance(options, Mapping):
+        return dict(cast(Mapping[str, Any], options))
+    raise TypeError(f"Unsupported options type: {type(options)!r}")
+
+
 def _build_parse_body(
     document: object,
     document_url: object,
@@ -41,15 +61,14 @@ def _build_parse_body(
     # other, leaving two gateway versions decrypting with different passwords.
     opts: Optional[dict[str, Any]] = None
     if is_given(options) and options is not None:
-        opts = dict(json.loads(options)) if isinstance(options, str) else dict(cast(Mapping[str, Any], options))
+        opts = _coerce_options(options)
     # An explicit `options["password"]` wins over the kwarg, including an explicit
-    # `None`, which means "no password": the kwarg is only shorthand for that
-    # contract field, so the caller who wrote the field out is the deliberate one.
-    # ade-typescript's `buildParseForm` breaks the tie the same way. It used to
-    # spread the kwarg in last and let it win, so the same call decrypted with a
-    # different password depending on which SDK you called it from -- and the losing
-    # one surfaced only as a 422 `encrypted_pdf_wrong_password` naming no cause.
-    # Keep the two in step; the rule is documented in the README and the docstrings.
+    # `None`, which means "no password": the kwarg is only shorthand for that contract
+    # field, so the caller who wrote the field out is the deliberate one. ade-typescript
+    # aligns on this rule in landing-ai/ade-typescript#121; before that its
+    # `buildParseForm` let the kwarg win, so the same call decrypted with a different
+    # password depending on which SDK you called it from -- and the losing one surfaced
+    # only as a 422 `encrypted_pdf_wrong_password` naming no cause.
     if (opts is None or "password" not in opts) and is_given(password) and password is not None:
         opts = {} if opts is None else opts
         opts["password"] = password
