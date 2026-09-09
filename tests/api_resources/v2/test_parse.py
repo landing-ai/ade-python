@@ -244,6 +244,14 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
     assert b'"pages": [2]' in sent
     assert b'"password": "pw"' in sent
 
+    # ...and the string branch loses the tie the same way the dict branch does. This
+    # is the branch that diverged in ade-typescript, where the kwarg was spread in
+    # after the parsed string and won.
+    client.v2.parse(document=b"pdf", options='{"password": "explicit"}', password="kwarg-only")  # type: ignore[arg-type]
+    sent = route.calls.last.request.content
+    assert b'"password": "explicit"' in sent
+    assert b"kwarg-only" not in sent
+
     # An explicit `options["password"]` wins over the kwarg, and the kwarg value must
     # not survive anywhere on the wire.
     client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="kwarg-only")
@@ -591,6 +599,25 @@ def test_parse_job_create_folds_password_into_options() -> None:
     sent = route.calls.last.request.content
     assert b'{"password": "hunter2"}' in sent
     assert multipart_field(sent, "password") is None  # `options` only, like the sync route
+
+
+@respx.mock
+def test_parse_job_create_gives_options_password_precedence() -> None:
+    # The precedence rule is part of the contract, not an accident of the sync route:
+    # `password` is shorthand for `options["password"]`, so the explicit field wins
+    # here too. ade-typescript's `buildParseForm` breaks the tie the same way -- it
+    # used to let the kwarg win, so the same call decrypted with a different password
+    # depending on the SDK, and the losing one only ever surfaced as a 422
+    # `encrypted_pdf_wrong_password` naming no cause.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "p2", "status": "pending"})
+    )
+    client.v2.parse_jobs.create(document=b"pdf", options={"password": "explicit"}, password="kwarg-only")
+    sent = route.calls.last.request.content
+    assert b'"password": "explicit"' in sent
+    assert b"kwarg-only" not in sent
+    assert multipart_field(sent, "password") is None
 
 
 @respx.mock

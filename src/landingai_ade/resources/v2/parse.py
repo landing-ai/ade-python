@@ -39,12 +39,17 @@ def _build_parse_body(
     # exposure in logs and proxies, and the two copies could silently disagree --
     # `extra_body` overrides raw wire fields and would have replaced one without the
     # other, leaving two gateway versions decrypting with different passwords.
-    # ade-typescript folds it the same way (`buildParseForm`).
     opts: Optional[dict[str, Any]] = None
     if is_given(options) and options is not None:
         opts = dict(json.loads(options)) if isinstance(options, str) else dict(cast(Mapping[str, Any], options))
     # An explicit `options["password"]` wins over the kwarg, including an explicit
-    # `None`, which means "no password".
+    # `None`, which means "no password": the kwarg is only shorthand for that
+    # contract field, so the caller who wrote the field out is the deliberate one.
+    # ade-typescript's `buildParseForm` breaks the tie the same way. It used to
+    # spread the kwarg in last and let it win, so the same call decrypted with a
+    # different password depending on which SDK you called it from -- and the losing
+    # one surfaced only as a 422 `encrypted_pdf_wrong_password` naming no cause.
+    # Keep the two in step; the rule is documented in the README and the docstrings.
     if (opts is None or "password" not in opts) and is_given(password) and password is not None:
         opts = {} if opts is None else opts
         opts["password"] = password

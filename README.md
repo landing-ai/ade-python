@@ -107,6 +107,34 @@ The response is a `V2ParseResponse`:
 
 If some pages cannot be parsed, the request still succeeds (HTTP 206) and `metadata.failed_pages` lists the pages that failed. If a synchronous parse times out, the client raises `V2SyncTimeoutError`; use [jobs](#process-large-documents-asynchronously-jobs) instead.
 
+### Encrypted PDFs
+
+Password-protected PDFs parse directly — pass `password` and skip decrypting the file yourself. The document is decrypted once at the start of processing, and the password is not retained with the result.
+
+```python
+import os
+
+parsed = client.v2.parse(
+    document=Path("locked.pdf"),
+    password=os.environ["PDF_PASSWORD"],
+)
+```
+
+`password` applies to PDFs only, and the server rejects the three mistakes with a `422`, each naming its case: `password_unsupported_content_type` (a password sent with an image or an Office document), `encrypted_pdf_wrong_password` (the password does not open the PDF), and `encrypted_pdf_password_required` (a locked PDF submitted without one).
+
+`password` is shorthand for the contract field `options["password"]`, which is where the SDK puts it on the wire — and the only place it puts it. Both forms work; if you supply both, the explicit `options["password"]` wins:
+
+```python
+# sends options.password = "from-options"
+client.v2.parse(
+    document=Path("locked.pdf"),
+    options={"password": "from-options"},
+    password="ignored",
+)
+```
+
+[ade-typescript](https://github.com/landing-ai/ade-typescript) resolves the conflict the same way, so the two SDKs agree.
+
 ## Extract
 
 Use `client.v2.extract` to pull structured fields out of Markdown (typically from a parse response) using a schema. The `schema` parameter accepts a Pydantic `BaseModel` subclass, a `dict`, or a JSON string. Provide exactly one Markdown source: `markdown` or `markdown_url`.
