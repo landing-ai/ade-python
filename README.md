@@ -113,6 +113,7 @@ Password-protected PDFs parse directly — pass `password` and skip decrypting t
 
 ```python
 import os
+from pathlib import Path
 
 parsed = client.v2.parse(
     document=Path("locked.pdf"),
@@ -125,13 +126,15 @@ parsed = client.v2.parse(
 `password` is shorthand for the contract field `options["password"]`, which is where the SDK puts it on the wire — and the only place it puts it. Both forms work; if you supply both, the explicit `options["password"]` wins:
 
 ```python
-# sends options.password = "from-options"
+# sends options["password"] = "from-options"
 client.v2.parse(
     document=Path("locked.pdf"),
     options={"password": "from-options"},
     password="ignored",
 )
 ```
+
+That applies to an explicit `None` too: `options={"password": None}` means "no password" and silences the `password` argument behind it. `options` itself must be a mapping, or a JSON string that decodes to an object — anything else raises `TypeError` before the request is sent.
 
 [ade-typescript](https://github.com/landing-ai/ade-typescript) aligns on the same precedence rule in [#121](https://github.com/landing-ai/ade-typescript/pull/121).
 

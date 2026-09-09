@@ -29,10 +29,14 @@ def _coerce_options(options: object) -> dict[str, Any]:
 
     The contract sends `options` as a JSON object, so anything that does not decode to
     one is a caller mistake -- name the field here rather than leaving the gateway to
-    reject the request without naming it. `dict(json.loads(...))` did not: `dict()`
-    accepts any pair-sequence, so `'[["password", "x"]]'` silently became an options
-    dict whose password then beat the caller's own `password` argument. Mirrors
-    `coerce_schema_to_dict` in `lib/schema_utils.py`, which does this for `schema`.
+    reject the request without naming it. `dict()` did not: it accepts any pair-sequence
+    in either form, so both `'[["password", "x"]]'` and `[["password", "x"]]` silently
+    became an options dict whose password then beat the caller's own `password` argument.
+
+    That is why the non-string branch narrows to `Mapping` -- what the `options`
+    annotation already declares -- instead of staying on `dict()`. This otherwise mirrors
+    `coerce_schema_to_dict` in `lib/schema_utils.py`, with one deliberate difference:
+    that helper also accepts a pydantic model, and `options` has never advertised one.
     """
     if isinstance(options, str):
         parsed: Any = json.loads(options)  # raises ValueError on bad JSON
@@ -72,11 +76,10 @@ def _build_parse_body(
     if (opts is None or "password" not in opts) and is_given(password) and password is not None:
         opts = {} if opts is None else opts
         opts["password"] = password
+    # `options` is a JSON-encoded string form field per the contract. `_coerce_options`
+    # always hands back a dict, so there is no pre-serialized string left to forward.
     if opts is not None:
-        options = opts
-    # `options` is a JSON-encoded string form field per the contract.
-    if is_given(options) and options is not None:
-        options = json.dumps(options) if not isinstance(options, str) else options
+        options = json.dumps(opts)
     raw_body = {
         "document": document,
         "document_url": document_url,
@@ -126,7 +129,8 @@ class ParseResource(V2ResourceMixin, SyncAPIResource):
           model: The version of the model to use for parsing.
 
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
-              field.
+              field. Must be a mapping, or a JSON string that decodes to an object --
+              anything else raises `TypeError` before the request is sent.
 
           password: Password for an encrypted PDF. Sent to the server as `options.password`
               and only there (an explicit `options["password"]` takes precedence). The
@@ -262,7 +266,8 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
           model: The version of the model to use for parsing.
 
           options: Additional parsing options. Sent to the server as a JSON-encoded string form
-              field.
+              field. Must be a mapping, or a JSON string that decodes to an object --
+              anything else raises `TypeError` before the request is sent.
 
           password: Password for an encrypted PDF. Sent to the server as `options.password`
               and only there (an explicit `options["password"]` takes precedence). The

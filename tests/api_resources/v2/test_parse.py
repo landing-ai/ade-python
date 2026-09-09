@@ -271,20 +271,56 @@ def test_parse_sync_merges_password_into_existing_options() -> None:
 
 
 @respx.mock
-def test_parse_sync_rejects_options_that_is_not_a_json_object() -> None:
-    # `dict(json.loads(...))` used to accept any pair-sequence, so a JSON *array*
-    # silently became the options dict -- and `[["password", "sneaky"]]` landed a
-    # password that then beat the caller's own `password` argument. Decoding a
-    # non-object is a caller mistake; name the field instead of guessing.
+@pytest.mark.parametrize(
+    ("bad", "match"),
+    [
+        # `dict()` accepts any pair-sequence, in string form and in list form alike, so
+        # before `_coerce_options` BOTH of these silently became an options dict whose
+        # password then beat the caller's own `password` argument.
+        ('[["password", "sneaky"]]', "must decode to an object"),
+        ([["password", "sneaky"]], "Unsupported options type"),
+        ("[]", "must decode to an object"),
+        ("5", "must decode to an object"),
+        ('"str"', "must decode to an object"),
+        (5, "Unsupported options type"),
+        ([("a", 1)], "Unsupported options type"),
+    ],
+)
+def test_parse_sync_rejects_options_that_is_not_a_json_object(bad: object, match: str) -> None:
+    # `options` is a JSON object per the contract; decoding a non-object is a caller
+    # mistake, so name the field rather than guess at it. No route is registered on
+    # purpose -- a regression that sends the request surfaces as a respx routing error
+    # instead of quietly passing.
     client = LandingAIADE(apikey=APIKEY, environment="production")
-    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
-    for bad in ("[]", '[["password", "sneaky"]]', "5", '"str"'):
-        with pytest.raises(TypeError, match="options JSON string must decode to an object"):
-            client.v2.parse(document=b"pdf", options=bad, password="kwarg-only")  # type: ignore[arg-type]
-    # Malformed JSON still surfaces as the ValueError `json.loads` raises, matching
-    # `coerce_schema_to_dict`.
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError, match=match):
+        client.v2.parse(document=b"pdf", options=bad, password="kwarg-only")  # type: ignore[arg-type]
+
+
+@respx.mock
+def test_parse_sync_malformed_options_json_raises_json_decode_error() -> None:
+    # Malformed JSON still surfaces as the error `json.loads` raises, matching
+    # `coerce_schema_to_dict`. Note this is a ValueError while the non-object rejections
+    # above are TypeErrors -- neither is a subclass of the other, so a caller guarding
+    # this needs both.
+    client = LandingAIADE(apikey=APIKEY, environment="production")
+    with pytest.raises(json.JSONDecodeError):
         client.v2.parse(document=b"pdf", options="garbage", password="kwarg-only")  # type: ignore[arg-type]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_parse_gives_options_password_precedence() -> None:
+    # The async resources share `_build_parse_body`, but nothing pinned that -- the
+    # precedence rule has to hold on all four call sites, not just the sync two.
+    from landingai_ade import AsyncLandingAIADE
+
+    client = AsyncLandingAIADE(apikey=APIKEY, environment="production")
+    route = respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=PARSE_BODY))
+    await client.v2.parse(document=b"pdf", options={"password": "explicit"}, password="kwarg-only")
+    sent = route.calls.last.request.content
+    assert b'"password": "explicit"' in sent
+    assert b"kwarg-only" not in sent
+    assert multipart_field(sent, "password") is None
 
 
 @pytest.mark.parametrize(
