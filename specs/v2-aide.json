@@ -763,7 +763,7 @@
             "type": "integer"
           },
           "filename": {
-            "description": "Display name of the split document: the URL path's file name for `markdown_url` inputs, or a generated name for inline and uploaded Markdown.",
+            "description": "Display name of the split document: the uploaded file's name for `markdown` file uploads (`.md` is appended when the name has no suffix), the URL path's file name for `markdown_url` inputs, or a generated name for inline Markdown.",
             "title": "Filename",
             "type": "string"
           },
@@ -1676,14 +1676,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -1751,7 +1751,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -2143,7 +2144,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``. Nothing else — AIDE's own\nextras (``return_reasoning``, ``fallback_model``, ``output_save_url``) stay on\nthe R&D ``/api/extract`` contract, so the customer surface publishes the VTRA\ncontract and only that.",
+                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``, ``output_save_url``. AIDE's\nown extras (``return_reasoning``, ``fallback_model``) stay on the R&D\n``/api/extract`` contract — only ``output_save_url`` is shared with it, because\nit is also on VTRA's async wire (aide#2053, the extract half of the\n``output_save_url``/ZDR parity pair that started with parse in #2056's\npredecessor) — so the customer surface publishes the VTRA contract and only\nthat.",
                 "properties": {
                   "markdown": {
                     "anyOf": [
@@ -2329,14 +2330,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -2404,7 +2405,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -2449,7 +2451,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``. Nothing else — AIDE's own\nextras (``return_reasoning``, ``fallback_model``, ``output_save_url``) stay on\nthe R&D ``/api/extract`` contract, so the customer surface publishes the VTRA\ncontract and only that.",
+                "description": "Input to V1ExtractOperationWorkflow — the ``/v1/extract`` request body.\n\nVTRA's ``ExtractRequest`` exactly: ``model``, ``markdown`` (file part OR inline\nstring), ``markdown_url``, ``schema``, ``strict``, ``output_save_url``. AIDE's\nown extras (``return_reasoning``, ``fallback_model``) stay on the R&D\n``/api/extract`` contract — only ``output_save_url`` is shared with it, because\nit is also on VTRA's async wire (aide#2053, the extract half of the\n``output_save_url``/ZDR parity pair that started with parse in #2056's\npredecessor) — so the customer surface publishes the VTRA contract and only\nthat.",
                 "properties": {
                   "markdown": {
                     "anyOf": [
@@ -2487,6 +2489,18 @@
                     "default": null,
                     "title": "Model"
                   },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Output Save Url"
+                  },
                   "schema": {
                     "anyOf": [
                       {
@@ -2498,21 +2512,6 @@
                     ],
                     "default": null,
                     "title": "Schema"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
                   },
                   "strict": {
                     "default": false,
@@ -2558,6 +2557,19 @@
                     "description": "JSON-serialized string in form data.",
                     "title": "Model"
                   },
+                  "output_save_url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "JSON-serialized string in form data.",
+                    "title": "Output Save Url"
+                  },
                   "schema": {
                     "anyOf": [
                       {
@@ -2570,21 +2582,6 @@
                     "default": null,
                     "description": "JSON-serialized string in form data.",
                     "title": "Schema"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
                   },
                   "strict": {
                     "default": false,
@@ -2698,6 +2695,20 @@
                       "description": "The unique identifier for this v1-ade-extract job. Format: ``extract-<26-character Crockford base32 ULID>`` (``[0-9a-hjkmnp-tv-z]{26}`` tail). Opaque, server-minted, and stable for the life of the job — the same id is returned on the sync response, the async 202, and every poll. Treat it as opaque; older id formats remain accepted indefinitely and are never re-issued.",
                       "type": "string"
                     },
+                    "metadata": {
+                      "description": "The result's metadata block (billing included), present alongside ``output_url`` once a job with ``output_save_url`` has ``completed`` — the delivery moves the content, not the receipt. Same shape as the inline ``result``'s ``metadata``; inline jobs carry it there instead.",
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "output_url": {
+                      "description": "The URL the result was delivered to. Present once the job has ``completed`` and ``output_save_url`` was set, instead of inline ``result``.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "progress": {
                       "description": "Estimated completion as a decimal from 0 to 1 — an estimate, not a measurement: it typically advances between polls while the job is ``processing``, may jump forward when the service reports a real milestone (e.g. parsed pages), and approaches but never reaches 1 (long-running jobs plateau near 0.98 — completion is signaled by ``status``, and a job may complete from any progress value). Present while ``processing``.",
                       "maximum": 1,
@@ -2730,7 +2741,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "Present once status is ``completed``."
+                      "description": "Present once status is ``completed`` and ``output_save_url`` was not set. When ``output_save_url`` was set, the result is delivered there and ``output_url`` is returned instead."
                     },
                     "status": {
                       "enum": [
@@ -2812,7 +2823,7 @@
                     "title": "Filename",
                     "type": "string"
                   },
-                  "job_id": {
+                  "model": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -2822,22 +2833,7 @@
                       }
                     ],
                     "default": null,
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Model Versions"
+                    "title": "Version"
                   },
                   "password": {
                     "anyOf": [
@@ -2851,16 +2847,6 @@
                     "default": null,
                     "title": "Password"
                   },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
                   "split": {
                     "anyOf": [
                       {
@@ -2872,30 +2858,6 @@
                     ],
                     "default": null,
                     "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "X Request Id"
                   }
                 },
                 "required": [
@@ -2943,7 +2905,7 @@
                     "title": "Filename",
                     "type": "string"
                   },
-                  "job_id": {
+                  "model": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -2954,23 +2916,7 @@
                     ],
                     "default": null,
                     "description": "JSON-serialized string in form data.",
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Model Versions"
+                    "title": "Version"
                   },
                   "password": {
                     "anyOf": [
@@ -2985,17 +2931,6 @@
                     "description": "JSON-serialized string in form data.",
                     "title": "Password"
                   },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
                   "split": {
                     "anyOf": [
                       {
@@ -3008,32 +2943,6 @@
                     "default": null,
                     "description": "JSON-serialized string in form data.",
                     "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "X Request Id"
                   }
                 },
                 "required": [
@@ -3214,14 +3123,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -3289,7 +3198,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -3362,7 +3272,7 @@
                     "title": "Filename",
                     "type": "string"
                   },
-                  "job_id": {
+                  "model": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -3372,22 +3282,7 @@
                       }
                     ],
                     "default": null,
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Model Versions"
+                    "title": "Version"
                   },
                   "output_save_url": {
                     "anyOf": [
@@ -3413,31 +3308,6 @@
                     "default": null,
                     "title": "Password"
                   },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
-                  },
                   "split": {
                     "anyOf": [
                       {
@@ -3449,30 +3319,6 @@
                     ],
                     "default": null,
                     "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "title": "X Request Id"
                   }
                 },
                 "required": [
@@ -3520,7 +3366,7 @@
                     "title": "Filename",
                     "type": "string"
                   },
-                  "job_id": {
+                  "model": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -3531,23 +3377,7 @@
                     ],
                     "default": null,
                     "description": "JSON-serialized string in form data.",
-                    "title": "Job Id"
-                  },
-                  "model_versions": {
-                    "anyOf": [
-                      {
-                        "additionalProperties": {
-                          "type": "string"
-                        },
-                        "type": "object"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Model Versions"
+                    "title": "Version"
                   },
                   "output_save_url": {
                     "anyOf": [
@@ -3575,32 +3405,6 @@
                     "description": "JSON-serialized string in form data.",
                     "title": "Password"
                   },
-                  "pricing_multiplier": {
-                    "default": 1.0,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Pricing Multiplier",
-                    "type": "number"
-                  },
-                  "processing_mode": {
-                    "default": "sync",
-                    "title": "Processing Mode",
-                    "type": "string"
-                  },
-                  "service_tier": {
-                    "anyOf": [
-                      {
-                        "enum": [
-                          "standard",
-                          "priority"
-                        ],
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Async service tier. ``priority`` runs in the fast lane at the sync billing rate; absent → ``standard``."
-                  },
                   "split": {
                     "anyOf": [
                       {
@@ -3613,32 +3417,6 @@
                     "default": null,
                     "description": "JSON-serialized string in form data.",
                     "title": "Split"
-                  },
-                  "version": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "Version"
-                  },
-                  "x_request_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "default": null,
-                    "description": "JSON-serialized string in form data.",
-                    "title": "X Request Id"
                   }
                 },
                 "required": [
@@ -4151,14 +3929,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -4226,7 +4004,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -4844,14 +4623,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -4919,7 +4698,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -5674,14 +5454,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -5749,7 +5529,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
@@ -6524,14 +6305,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -7130,14 +6911,14 @@
           {
             "description": "Number of items per page.",
             "in": "query",
-            "name": "page_size",
+            "name": "pageSize",
             "required": false,
             "schema": {
               "default": 10,
               "description": "Number of items per page.",
               "maximum": 100,
               "minimum": 1,
-              "title": "Page Size",
+              "title": "Pagesize",
               "type": "integer"
             }
           },
@@ -7205,7 +6986,8 @@
                               "pending",
                               "processing",
                               "completed",
-                              "failed"
+                              "failed",
+                              "cancelled"
                             ],
                             "type": "string"
                           }
