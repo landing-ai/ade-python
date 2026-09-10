@@ -201,3 +201,27 @@ def test_parse_jobs(staging_client: LandingAIADE) -> None:
     # `Job.metadata` receipt (set only for `output_save_url` deliveries) is absent.
     assert done.metadata is None
     assert done.result.metadata is not None
+
+
+@pytest.mark.parametrize("resource", ["parse", "extract"])
+def test_job_list_honors_page_size(staging_client: LandingAIADE, resource: str) -> None:
+    # Both list routes take the page size as `pageSize` on the wire (the SDK kwarg
+    # stays `page_size`). Live, the assertable half is that the gateway honors the
+    # cap: a misspelled param is ignored and the default page of 10 comes back, so a
+    # page of at most 1 is evidence the name landed. Nothing here pins a count --
+    # this key may legitimately have no jobs at all -- and the exact wire spelling is
+    # pinned deterministically in tests/api_resources/v2/.
+    jobs = (
+        staging_client.v2.parse_jobs.list(page=0, page_size=1)
+        if resource == "parse"
+        else staging_client.v2.extract_jobs.list(page=0, page_size=1)
+    )
+    assert len(jobs) <= 1
+    # The *response* envelope still reports snake_case `page_size`, and it is
+    # optional: assert absent-or-valid rather than that it echoes the request.
+    if jobs.page_size is not None:
+        assert 1 <= jobs.page_size <= 100
+    if jobs.page is not None:
+        assert jobs.page == 0
+    for job in jobs:
+        assert job.job_id

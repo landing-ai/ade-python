@@ -743,6 +743,42 @@ def test_parse_job_list_carries_envelope() -> None:
 
 
 @respx.mock
+def test_parse_job_list_sends_page_size_as_camel_case() -> None:
+    # `GET /v2/parse/jobs` names the page-size parameter `pageSize` on the wire; the
+    # public kwarg stays `page_size`. A wrong name here fails silently -- the gateway
+    # ignores the unknown param and answers with the default page size -- so pin both
+    # the presence of `pageSize` and the absence of the snake_case spelling.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.parse_jobs.list(page=2, page_size=5)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "5"
+    assert params["page"] == "2"
+    assert "page_size" not in params
+
+
+def test_parse_job_list_page_size_omitted_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Query-dict level (the URL encoder drops `None`, which would mask a regression):
+    # an unset `page_size` must not be sent under either spelling.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_get(path: str, *, cast_to: Any, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["params"] = dict(options or {}).get("params", {})
+        return {"jobs": [], "has_more": False}
+
+    monkeypatch.setattr(client.v2.parse_jobs, "_get", fake_get)
+
+    client.v2.parse_jobs.list()
+    assert "pageSize" not in captured["params"] and "page_size" not in captured["params"]
+
+    client.v2.parse_jobs.list(page_size=7)
+    assert captured["params"]["pageSize"] == 7
+
+
+@respx.mock
 def test_parse_job_wait_polls_until_completed() -> None:
     client = LandingAIADE(apikey=APIKEY)
     responses = [

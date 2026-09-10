@@ -9,7 +9,14 @@ from typing_extensions import Literal
 
 import httpx
 
-from ._base import DEFAULT_WAIT_TIMEOUT, JobList, V2ResourceMixin, poll_until_terminal, apoll_until_terminal
+from ._base import (
+    DEFAULT_WAIT_TIMEOUT,
+    JobList,
+    V2ResourceMixin,
+    build_list_query,
+    poll_until_terminal,
+    apoll_until_terminal,
+)
 from ..._files import deepcopy_with_paths
 from ..._types import Body, Omit, Query, Headers, NotGiven, FileTypes, omit, not_given
 from ..._utils import is_given, extract_files
@@ -345,11 +352,7 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """List async parse jobs associated with your API key, newest first."""
-        query = {
-            key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if is_given(value) and value is not None
-        }
+        query = build_list_query(page=page, page_size=page_size, status=status)
         raw = self._get(
             self._v2_url("/v2/parse/jobs"),
             options=make_request_options(
@@ -470,11 +473,7 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """Async mirror of `ParseJobsResource.list`. See there for full documentation."""
-        query = {
-            key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if is_given(value) and value is not None
-        }
+        query = build_list_query(page=page, page_size=page_size, status=status)
         raw = await self._get(
             self._v2_url("/v2/parse/jobs"),
             options=make_request_options(
