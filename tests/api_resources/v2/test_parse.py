@@ -570,6 +570,25 @@ def test_parse_job_list_carries_page_envelope() -> None:
 
 
 @respx.mock
+def test_parse_job_list_sends_page_size_as_pagesize() -> None:
+    # The spec renamed the per-page query parameter to `pageSize` on every V2
+    # `*/jobs` list route. The Python keyword stays `page_size`, so the rename is
+    # only observable on the wire -- and sending the old `page_size` would be
+    # silently ignored by the gateway, which is exactly what this pins. The
+    # response envelope's `page_size` field was NOT renamed; it is read back as-is.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "page": 1, "page_size": 5, "has_more": False})
+    )
+    jobs = client.v2.parse_jobs.list(page=1, page_size=5)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "5"
+    assert params["page"] == "1"
+    assert "page_size" not in params
+    assert jobs.page_size == 5
+
+
+@respx.mock
 def test_parse_sync_tolerates_unknown_element_type_and_extra_keys() -> None:
     # Novel element `type` values and extra keys must not break deserialization
     # (`type` is a permissive str; BaseModel retains extra keys).

@@ -345,9 +345,13 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """List async parse jobs associated with your API key, newest first."""
+        # `pageSize` is the wire name of the per-page query parameter on every V2
+        # `*/jobs` list route; the spec renamed it from `page_size`. Only the query
+        # parameter moved -- the Python keyword and the response envelope's own
+        # `page_size` field (read back below) both keep the snake_case spelling.
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = self._get(
@@ -470,9 +474,10 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """Async mirror of `ParseJobsResource.list`. See there for full documentation."""
+        # `pageSize` on the wire; see `ParseJobsResource.list`.
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = await self._get(

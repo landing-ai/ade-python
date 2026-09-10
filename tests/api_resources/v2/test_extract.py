@@ -274,3 +274,41 @@ def test_extract_job_list_carries_envelope() -> None:
     assert jobs.has_more is True
     assert jobs.page == 0
     assert jobs.page_size == 10
+
+
+@respx.mock
+def test_extract_job_list_sends_page_size_as_pagesize() -> None:
+    # The spec renamed the per-page query parameter to `pageSize` on every V2
+    # `*/jobs` list route. The Python keyword stays `page_size`, so the rename is
+    # only observable on the wire -- and sending the old `page_size` would be
+    # silently ignored by the gateway, which is exactly what this pins.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.extract_jobs.list(page=2, page_size=5)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "5"
+    assert params["page"] == "2"
+    assert "page_size" not in params
+
+
+@respx.mock
+def test_extract_job_list_normalizes_cancelled_status() -> None:
+    # `cancelled` joined the status enum on the extract job *list* response; it is
+    # terminal, so a waiter that sees it stops rather than polling forever.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [{"job_id": "e9", "status": "cancelled", "failure_reason": "cancelled by user"}],
+                "has_more": False,
+            },
+        )
+    )
+    jobs = client.v2.extract_jobs.list()
+    assert len(jobs) == 1
+    assert jobs[0].status is JobStatus.CANCELLED
+    assert jobs[0].is_terminal is True
+    assert jobs[0].error is not None and jobs[0].error.message == "cancelled by user"

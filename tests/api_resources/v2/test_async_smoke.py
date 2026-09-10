@@ -72,3 +72,30 @@ async def test_async_extract_jobs_create_get_and_wait() -> None:
     waited = await client.v2.extract_jobs.wait("e1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
     assert waited.status is JobStatus.COMPLETED
     assert isinstance(waited.result, V2ExtractResult)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_job_lists_send_page_size_as_pagesize() -> None:
+    """The `page_size` -> `pageSize` query-parameter rename has to reach the async
+    list mirrors too; they build their own query dict rather than sharing the sync
+    one, so a rename applied to only half the resource would go unnoticed."""
+    client = AsyncLandingAIADE(apikey=APIKEY)
+
+    parse_route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    await client.v2.parse_jobs.list(page=0, page_size=3)
+    assert parse_route.calls.last.request.url.params["pageSize"] == "3"
+    assert "page_size" not in parse_route.calls.last.request.url.params
+
+    extract_route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={"jobs": [{"job_id": "e2", "status": "cancelled"}], "has_more": False},
+        )
+    )
+    jobs = await client.v2.extract_jobs.list(page=0, page_size=3)
+    assert extract_route.calls.last.request.url.params["pageSize"] == "3"
+    assert "page_size" not in extract_route.calls.last.request.url.params
+    assert jobs[0].status is JobStatus.CANCELLED and jobs[0].is_terminal is True

@@ -187,6 +187,33 @@ def test_ground_sync(staging_client: LandingAIADE) -> None:
     assert grounded.metadata.job_id
 
 
+def test_job_lists_honor_page_size(staging_client: LandingAIADE) -> None:
+    # The per-page query parameter is `pageSize` on the wire (the spec renamed it
+    # from `page_size` on every V2 `*/jobs` list route). Staging defaults to 10
+    # items per page, so asking for 1 and getting at most 1 back is the live
+    # evidence that the gateway actually read the parameter under its new name --
+    # the old spelling would be ignored and this page could come back with 10.
+    #
+    # Everything else here is absent-or-valid: a fresh key's job history may be
+    # empty, so nothing asserts that any job exists or that it has any particular
+    # status. Concrete statuses -- `cancelled` included, which joined the extract
+    # list enum in this snapshot -- are pinned against controlled response bodies in
+    # the mocked tests under tests/api_resources/v2/ instead.
+    for jobs in (
+        staging_client.v2.parse_jobs.list(page=0, page_size=1),
+        staging_client.v2.extract_jobs.list(page=0, page_size=1),
+    ):
+        assert len(jobs) <= 1
+        for job in jobs:
+            assert job.job_id
+            # `_status()` downgrades a status it does not recognize to `pending`
+            # instead of raising, so a new gateway status would otherwise pass here
+            # unnoticed. Compare against the raw envelope to catch that.
+            raw_status = job.raw.get("status")
+            if raw_status is not None:
+                assert raw_status == job.status.value
+
+
 def test_parse_jobs(staging_client: LandingAIADE) -> None:
     pdf = Path(__file__).parent / "sample.pdf"
     job = staging_client.v2.parse_jobs.create(document=pdf)

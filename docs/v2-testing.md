@@ -151,6 +151,36 @@ each extracted field back to the `structure` blocks it was quoted from:
 accepts a plain `dict` or a pydantic model (so a parse response's `.structure` can
 be passed directly). `/v2/ground` is synchronous-only (no async jobs route).
 
+## Listing jobs (`parse_jobs.list` / `extract_jobs.list`)
+
+Both list routes (`GET /v2/parse/jobs`, `GET /v2/extract/jobs`) take `page`,
+`page_size` and `status`, and return a `JobList` — a `list[Job]` subclass carrying
+`.has_more`, `.org_id`, `.page` and `.page_size`.
+
+- **The per-page query parameter is `pageSize` on the wire.** The spec renamed it
+  from `page_size` on every `*/jobs` list route; the SDK keyword stays `page_size`
+  (renaming it would break callers, and the surface is release-locked), so the
+  rename is only visible in the request URL. The **response** envelope's own
+  `page_size` field was *not* renamed and is read back as-is into
+  `JobList.page_size` — do not "fix" that to camelCase.
+  Sending the old spelling is not an error the gateway reports: the parameter is
+  optional, so an unrecognized name is ignored and the page silently comes back at
+  the default size of 10. That is why the rename is pinned on the request URL in
+  `tests/api_resources/v2/test_parse.py` and `test_extract.py`
+  (`test_*_job_list_sends_page_size_as_pagesize`), on both async mirrors in
+  `test_async_smoke.py` (they build their own query dict), and live in
+  `tests/contract/test_v2_smoke.py` (`test_job_lists_honor_page_size`, which asks
+  for one item and asserts at most one comes back).
+- **`cancelled` is a status the extract job list can return.** It joined
+  `GET /v2/extract/jobs` in the current snapshot; `GET /v2/parse/jobs` still
+  documents only `pending`/`processing`/`completed`/`failed`. No code change was
+  needed — `JobStatus` has carried `CANCELLED` all along and `Job.is_terminal`
+  already treats it as terminal alongside `completed`/`failed` — but the extract
+  waiter's docs no longer claim extract jobs cannot be cancelled.
+- The `/v2/*/jobs/{job_id}` poll and the `POST` create responses do **not** list
+  `cancelled`; only the list envelopes do. The unified `Job` accepts it from any of
+  them regardless, since `_status()` is tolerant by design.
+
 ## Async job envelopes
 
 `normalize_parse_job`, `normalize_extract_job`, and `normalize_build_schema_job`
@@ -174,6 +204,9 @@ field-name drift:
 2. Additive **request** fields become new optional keyword params on the
    corresponding `run` / `create` method (parse forwards free-form `options`
    through as a JSON string, so most parse-option additions need no code change).
+   A renamed **query parameter** is a wire-only change: update the key the resource
+   puts in its `query` dict and leave the Python keyword alone, since the surface is
+   release-locked (see the `pageSize` note above).
 3. Additive **response** fields are added to the matching model under
    `src/landingai_ade/types/v2/`. Keep removed/renamed fields in place as optional
    for backward compatibility — the surface is release-locked and response parsing

@@ -267,10 +267,18 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
-        """List async extract jobs associated with your API key, newest first."""
+        """List async extract jobs associated with your API key, newest first.
+
+        A listed job's `status` may be `cancelled` as well as
+        `pending`/`processing`/`completed`/`failed`.
+        """
+        # `pageSize` is the wire name of the per-page query parameter on every V2
+        # `*/jobs` list route; the spec renamed it from `page_size`. Only the query
+        # parameter moved -- the Python keyword and the response envelope's own
+        # `page_size` field (read back below) both keep the snake_case spelling.
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = self._get(
@@ -301,8 +309,9 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
         Raises `JobWaitTimeoutError` if `timeout` seconds elapse before the job
         reaches a terminal state, and `JobFailedError` if `raise_on_failure` is
-        set and the job ends failed with an error attached. Extract jobs have no
-        `cancelled` status.
+        set and the job ends failed/cancelled with an error attached. `cancelled`
+        joined the extract job statuses in the current spec snapshot; it is
+        terminal like `completed`/`failed`.
 
         `_monotonic` is a test seam for injecting a fake clock; production
         callers should leave it unset (defaults to `time.monotonic`).
@@ -382,9 +391,10 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """Async mirror of `ExtractJobsResource.list`. See there for full documentation."""
+        # `pageSize` on the wire; see `ExtractJobsResource.list`.
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = await self._get(
