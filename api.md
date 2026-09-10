@@ -129,7 +129,7 @@ Methods:
 - <code title="get /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 
-  Same polling/timeout semantics as `parse_jobs.wait`. Extract jobs have no `cancelled` status, so `raise_on_failure` only ever triggers on `failed`.
+  Same polling/timeout semantics as `parse_jobs.wait`. `cancelled` is a terminal extract status (the list-jobs envelope reports it alongside `pending` / `processing` / `completed` / `failed`), so waiting stops on it like any other terminal state.
 
 - <code title="post /v2/ground">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">ground</a>(\*, extraction_metadata, structure) -> <a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundResult</a></code>
 
@@ -138,4 +138,5 @@ Methods:
 Notes:
 
 - `parse_jobs.list` and `extract_jobs.list` both return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
+- The `page_size` keyword on both `list` methods is sent to the gateway as the query parameter `pageSize`; the SDK keeps the snake_case spelling, and the response envelope's own `page_size` field is unchanged.
 - All `client.v2.*` methods accept the usual `extra_headers`, `extra_query`, `extra_body`, and `timeout` overrides; sync methods additionally accept `save_to` (parse/extract only, not the job-creation methods) to write the response to disk, mirroring V1's `save_to`.

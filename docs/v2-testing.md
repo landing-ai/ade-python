@@ -166,6 +166,47 @@ field-name drift:
 - Unknown / renamed `status` values fall back to `pending` rather than raising;
   the raw envelope is always preserved on `Job.raw`.
 
+### Terminal statuses
+
+`JobStatus` covers `pending` / `processing` / `completed` / `failed` /
+`cancelled`, and `Job.is_terminal` is true for the last three. The gateway does
+not offer the same set on every route: as of the 2026-09-10 snapshot the
+`/v2/extract/jobs` list envelope reports `cancelled`, while `/v2/parse/jobs`
+does not, and neither *get-job* envelope does. The unified `Job` deliberately
+does not model that per-route split — a status the route never emits simply
+never arrives, and `_status()` already folds anything unrecognized back to
+`pending`. So a route gaining a status needs no SDK change; it needs a test
+(`test_extract_job_list_normalizes_cancelled_status` in
+`tests/api_resources/v2/test_extract.py`) proving the value survives
+normalization and counts as terminal, so `wait()` stops on it instead of polling
+to its deadline.
+
+## Listing jobs (`pageSize` on the wire)
+
+`parse_jobs.list` / `extract_jobs.list` (and the hidden `build_schema_jobs.list`)
+take `page`, `page_size` and `status`. The gateway names the page size
+**`pageSize`** as a query parameter, so `build_list_query` in
+`resources/v2/_base.py` translates the SDK's snake_case kwarg once for all three
+resources. Only the parameter is camelCase — the *response* envelope still
+reports `page_size`, which is what `JobList.build` reads and what `.page_size`
+exposes.
+
+This is the failure mode worth testing for: an unrecognized query parameter is
+ignored rather than rejected, so a wrong name yields a valid-looking response
+carrying the default page of 10. Coverage is split accordingly:
+
+- Deterministic, in `tests/api_resources/v2/`: assert `pageSize` is on the
+  request URL, that `page_size` is *not*, and — at the query-dict level, since
+  the URL encoder drops `None` and would mask it — that an unset `page_size` is
+  sent under neither spelling. `tests/api_resources/v2/test_async_smoke.py`
+  repeats the check on the async mirrors, which is where a wire-name fix
+  typically lands only half.
+- Live, in `tests/contract/test_v2_smoke.py`
+  (`test_job_list_honors_page_size`): request `page_size=1` and assert the page
+  came back capped at one entry. Do not assert a job count — the staging key may
+  have no jobs — and do not assert that the response echoes the requested
+  `page_size`; that field is optional, so treat it absent-or-valid.
+
 ## When the spec changes
 
 1. Read the mechanical diff (`git diff` on `specs/v2-aide.json` and
@@ -174,9 +215,12 @@ field-name drift:
 2. Additive **request** fields become new optional keyword params on the
    corresponding `run` / `create` method (parse forwards free-form `options`
    through as a JSON string, so most parse-option additions need no code change).
-3. Additive **response** fields are added to the matching model under
+3. A renamed **query parameter** changes the wire name only. The public kwarg is
+   surface-locked, so translate at the call site (see `build_list_query`) rather
+   than renaming the parameter.
+4. Additive **response** fields are added to the matching model under
    `src/landingai_ade/types/v2/`. Keep removed/renamed fields in place as optional
    for backward compatibility — the surface is release-locked and response parsing
    is lenient (missing fields default to `None`).
-4. Add or extend `respx` tests in `tests/api_resources/v2/` and a live assertion
+5. Add or extend `respx` tests in `tests/api_resources/v2/` and a live assertion
    in `tests/contract/test_v2_smoke.py`, then update `api.md` and this guide.

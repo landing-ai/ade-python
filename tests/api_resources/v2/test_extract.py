@@ -274,3 +274,65 @@ def test_extract_job_list_carries_envelope() -> None:
     assert jobs.has_more is True
     assert jobs.page == 0
     assert jobs.page_size == 10
+
+
+@respx.mock
+def test_extract_job_list_sends_page_size_as_camel_case() -> None:
+    # `GET /v2/extract/jobs` names the page-size parameter `pageSize` on the wire; the
+    # public kwarg stays `page_size`. A wrong name here fails silently -- the gateway
+    # ignores the unknown param and answers with the default page size -- so pin both
+    # the presence of `pageSize` and the absence of the snake_case spelling.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.extract_jobs.list(page=1, page_size=25)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "25"
+    assert params["page"] == "1"
+    assert "page_size" not in params
+
+
+def test_extract_job_list_page_size_omitted_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Query-dict level (the URL encoder drops `None`, which would mask a regression):
+    # an unset `page_size` must not be sent under either spelling.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_get(path: str, *, cast_to: Any, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["params"] = dict(options or {}).get("params", {})
+        return {"jobs": [], "has_more": False}
+
+    monkeypatch.setattr(client.v2.extract_jobs, "_get", fake_get)
+
+    client.v2.extract_jobs.list()
+    assert "pageSize" not in captured["params"] and "page_size" not in captured["params"]
+
+    client.v2.extract_jobs.list(page_size=7)
+    assert captured["params"]["pageSize"] == 7
+
+
+@respx.mock
+def test_extract_job_list_normalizes_cancelled_status() -> None:
+    # `cancelled` joined the `/v2/extract/jobs` list-item status enum in the
+    # 2026-09-10 snapshot. It maps onto the unified `JobStatus.CANCELLED` and counts
+    # as terminal, so `wait()` stops on it instead of polling to the deadline.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [
+                    {"job_id": "e1", "status": "cancelled", "failure_reason": "cancelled by user"},
+                    {"job_id": "e2", "status": "completed"},
+                ],
+                "has_more": False,
+            },
+        )
+    )
+    jobs = client.v2.extract_jobs.list()
+    cancelled = jobs[0]
+    assert cancelled.status is JobStatus.CANCELLED
+    assert cancelled.is_terminal is True
+    assert cancelled.error is not None and cancelled.error.message == "cancelled by user"
+    assert jobs[1].status is JobStatus.COMPLETED

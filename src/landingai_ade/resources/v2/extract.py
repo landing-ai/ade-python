@@ -8,7 +8,14 @@ from typing_extensions import Literal
 import httpx
 from pydantic import BaseModel
 
-from ._base import DEFAULT_WAIT_TIMEOUT, JobList, V2ResourceMixin, poll_until_terminal, apoll_until_terminal
+from ._base import (
+    DEFAULT_WAIT_TIMEOUT,
+    JobList,
+    V2ResourceMixin,
+    build_list_query,
+    poll_until_terminal,
+    apoll_until_terminal,
+)
 from ..._types import Body, Omit, Query, Headers, NotGiven, omit, not_given
 from ..._utils import is_given
 from ...types.v2 import Job, V2ExtractResult
@@ -268,11 +275,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """List async extract jobs associated with your API key, newest first."""
-        query = {
-            key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if is_given(value) and value is not None
-        }
+        query = build_list_query(page=page, page_size=page_size, status=status)
         raw = self._get(
             self._v2_url("/v2/extract/jobs"),
             options=make_request_options(
@@ -301,8 +304,9 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
         Raises `JobWaitTimeoutError` if `timeout` seconds elapse before the job
         reaches a terminal state, and `JobFailedError` if `raise_on_failure` is
-        set and the job ends failed with an error attached. Extract jobs have no
-        `cancelled` status.
+        set and the job ends failed/cancelled with an error attached. `cancelled`
+        is a terminal extract status (the spec added it to the list-jobs envelope
+        on 2026-09-10), so waiting stops on it like any other terminal state.
 
         `_monotonic` is a test seam for injecting a fake clock; production
         callers should leave it unset (defaults to `time.monotonic`).
@@ -382,11 +386,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """Async mirror of `ExtractJobsResource.list`. See there for full documentation."""
-        query = {
-            key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
-            if is_given(value) and value is not None
-        }
+        query = build_list_query(page=page, page_size=page_size, status=status)
         raw = await self._get(
             self._v2_url("/v2/extract/jobs"),
             options=make_request_options(

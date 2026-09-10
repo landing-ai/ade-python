@@ -1,16 +1,19 @@
 # src/landingai_ade/resources/v2/_base.py
 from __future__ import annotations
 
-from typing import Any, List, Callable, Optional, Awaitable
+from typing import Any, Dict, List, Union, Callable, Optional, Awaitable
 
 import anyio
 
+from ..._types import Omit
+from ..._utils import is_given
 from ...types.v2 import Job
 from ...lib.v2_errors import JobFailedError, JobWaitTimeoutError
 
 __all__ = [
     "V2ResourceMixin",
     "JobList",
+    "build_list_query",
     "poll_until_terminal",
     "apoll_until_terminal",
     "DEFAULT_POLL_INITIAL",
@@ -37,6 +40,25 @@ class V2ResourceMixin:
 
     def _v2_url(self, path: str) -> str:
         return f"{self._client._v2_base_url}{path}"
+
+
+def build_list_query(
+    *,
+    page: Union[int, Omit],
+    page_size: Union[int, Omit],
+    status: Union[str, None, Omit],
+) -> Dict[str, object]:
+    """Query params for a V2 list-jobs route, dropping unset and ``None`` values.
+
+    The gateway spells the page size ``pageSize`` on the wire, so the snake_case
+    ``page_size`` kwarg every list method exposes is translated here -- once, rather
+    than at each of the three call sites, since getting the name wrong fails silently
+    (an unrecognized query param is ignored and the default page size comes back).
+    Only the *parameter* is camelCase: the response envelope still reports
+    ``page_size``, which is what ``JobList.build`` reads.
+    """
+    raw: Dict[str, object] = {"page": page, "pageSize": page_size, "status": status}
+    return {key: value for key, value in raw.items() if is_given(value) and value is not None}
 
 
 def _next_delay(current: float, poll_interval: Optional[float]) -> float:

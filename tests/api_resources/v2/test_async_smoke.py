@@ -72,3 +72,26 @@ async def test_async_extract_jobs_create_get_and_wait() -> None:
     waited = await client.v2.extract_jobs.wait("e1", timeout=30, poll_interval=0.01, _monotonic=lambda: next(ticks))
     assert waited.status is JobStatus.COMPLETED
     assert isinstance(waited.result, V2ExtractResult)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_job_lists_send_page_size_as_camel_case() -> None:
+    """The async list mirrors must translate `page_size` to the wire's `pageSize`
+    too -- the sync/async pair is the usual place a wire-name fix lands only half."""
+    client = AsyncLandingAIADE(apikey=APIKEY)
+    empty: Dict[str, Any] = {"jobs": [], "has_more": False}
+
+    parse_route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json=empty)
+    )
+    await client.v2.parse_jobs.list(page=0, page_size=3)
+    assert parse_route.calls.last.request.url.params["pageSize"] == "3"
+    assert "page_size" not in parse_route.calls.last.request.url.params
+
+    extract_route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json=empty)
+    )
+    await client.v2.extract_jobs.list(page=0, page_size=3)
+    assert extract_route.calls.last.request.url.params["pageSize"] == "3"
+    assert "page_size" not in extract_route.calls.last.request.url.params
