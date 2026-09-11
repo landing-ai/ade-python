@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.18.0 (2026-09-11)
+
+Full Changelog: [v1.17.1...v1.18.0](https://github.com/landing-ai/ade-python/compare/v1.17.1...v1.18.0)
+
+### Bug Fixes
+
+* **v2:** pin the parse password precedence rule and reject a non-object options (#160) ([af899a6](https://github.com/landing-ai/ade-python/commit/af899a6bb12cd5dd55f72a633c3d3dd162d1e5ce))
+* **v2:** keep the parse password out of debug logs and consistent on the wire (#157) ([6cfb1cf](https://github.com/landing-ai/ade-python/commit/6cfb1cf53a2ddfa173bcb0fa212b4ca0725af402))
+* **spec-sync:** scope V2 wiring to /v2 routes, gate wired paths, pin opus-5 (#155) ([c64e667](https://github.com/landing-ai/ade-python/commit/c64e667ee398c212cdebdab69e538f6587f110fa))
+* redact binary payloads in debug request logging (#154) ([fe129b0](https://github.com/landing-ai/ade-python/commit/fe129b0ceccab0cd87accbdb592f593f2e8a9907))
+
+### Documentation
+
+* **spec-sync:** scope the wiring prompt to request fields, record the aliases (#161) ([d493727](https://github.com/landing-ai/ade-python/commit/d493727037ebfdd10d5da1ce68769e8a2d6c7d9d))
+
+### Other Changes
+
+* spec-sync(v2): support encrypted-pdf password option in parse and parse_jobs (#156) ([fdfde6a](https://github.com/landing-ai/ade-python/commit/fdfde6ad852f58a75a887be578da315b392ef935))
+
 ## 1.17.1 (2026-08-28)
 
 Full Changelog: [v1.17.0...v1.17.1](https://github.com/landing-ai/ade-python/compare/v1.17.0...v1.17.1)
