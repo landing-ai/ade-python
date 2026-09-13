@@ -1,4 +1,4 @@
 configured_endpoints: 9
-openapi_spec_url: https://storage.googleapis.com/stainless-sdk-openapi-specs/landingai/ade-01ce724ecd99c32b78188edb388b532c95927b012607ae96a407bb68e91236d8.yml
-openapi_spec_hash: c1beafa45f4fb1c4efa01b32a761e902
+openapi_spec_url: https://storage.googleapis.com/stainless-sdk-openapi-specs/landingai/ade-b84d2bac2b026dc34c8d2c3a0d0dc59cac7318f5d29624a5a56b4b9f6e818422.yml
+openapi_spec_hash: cafe6ff8b991f76dd9576cad85f652e3
 config_hash: d3c62c183c1d0f73f5d04504a415859b
