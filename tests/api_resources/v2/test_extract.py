@@ -256,6 +256,42 @@ def test_extract_job_list_status_given_includes_query_param() -> None:
 
 
 @respx.mock
+def test_extract_job_list_sends_page_size_as_camel_case() -> None:
+    # The spec renamed the list query parameter `page_size` -> `pageSize`. The
+    # `page_size` keyword is unchanged (surface-locked); only the wire name moved,
+    # so the old snake_case key must not be sent alongside it.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.extract_jobs.list(page=2, page_size=25)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "25"
+    assert params["page"] == "2"
+    assert "page_size" not in params
+
+
+@respx.mock
+def test_extract_job_list_normalizes_cancelled_status() -> None:
+    # `cancelled` was added to the /v2/extract/jobs list status enum. It maps to
+    # `JobStatus.CANCELLED` and counts as terminal.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [{"job_id": "e9", "status": "cancelled", "completed_at": "2026-01-01T00:00:09Z"}],
+                "has_more": False,
+            },
+        )
+    )
+    jobs = client.v2.extract_jobs.list()
+    assert len(jobs) == 1
+    assert jobs[0].status is JobStatus.CANCELLED
+    assert jobs[0].is_terminal is True
+
+
+@respx.mock
 def test_extract_job_list_carries_envelope() -> None:
     client = LandingAIADE(apikey=APIKEY)
     respx.get("https://api.ade.landing.ai/v2/extract/jobs").mock(

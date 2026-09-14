@@ -129,7 +129,7 @@ Methods:
 - <code title="get /v2/extract/jobs">client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">list</a>(\*, page=..., page_size=..., status=...) -> JobList[<a href="./src/landingai_ade/types/v2/job.py">Job</a>]</code>
 - <code>client.v2.extract_jobs.<a href="./src/landingai_ade/resources/v2/extract.py">wait</a>(job_id, \*, timeout=600, poll_interval=None, raise_on_failure=False) -> <a href="./src/landingai_ade/types/v2/job.py">Job</a></code>
 
-  Same polling/timeout semantics as `parse_jobs.wait`. Extract jobs have no `cancelled` status, so `raise_on_failure` only ever triggers on `failed`.
+  Same polling/timeout semantics as `parse_jobs.wait`. `/v2/extract/jobs` documents a `cancelled` status on the **list** route only; the single-job GET that `wait` polls declares `pending`/`processing`/`completed`/`failed`, so `raise_on_failure` only ever triggers on `failed`. A `cancelled` job in a `list` result still normalizes to `JobStatus.CANCELLED` and is terminal.
 
 - <code title="post /v2/ground">client.v2.<a href="./src/landingai_ade/resources/v2/v2.py">ground</a>(\*, extraction_metadata, structure) -> <a href="./src/landingai_ade/types/v2/ground_response.py">V2GroundResult</a></code>
 
@@ -137,5 +137,6 @@ Methods:
 
 Notes:
 
-- `parse_jobs.list` and `extract_jobs.list` both return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`.
+- `parse_jobs.list` and `extract_jobs.list` both return a `JobList` (a `list[Job]` subclass) carrying pagination metadata: `.has_more`, `.org_id`, `.page`, `.page_size`. The `page_size=` keyword is sent on the wire as the `pageSize` query parameter (the spec renamed it, matching the V1 list routes); the keyword and the response envelope's `page_size` field are unchanged.
+- `options.grounding` (added upstream to `/v2/extract` and `/v2/extract/jobs`) is **not** exposed. It is nested inside `options`, which `client.v2.extract` does not surface — reaching it would need a third hand-written top-level shorthand alongside `password` and `strict`, and per CONTRIBUTING.md that is a cross-SDK decision to make with `ade-typescript` first. Until then, send it with `extra_body={"options": {"grounding": False}}` — note that `extra_body` merges at the top level only, so that replaces the whole `options` object and you must repeat `strict` in it rather than passing `strict=`.
 - All `client.v2.*` methods accept the usual `extra_headers`, `extra_query`, `extra_body`, and `timeout` overrides; sync methods additionally accept `save_to` (parse/extract only, not the job-creation methods) to write the response to disk, mirroring V1's `save_to`.

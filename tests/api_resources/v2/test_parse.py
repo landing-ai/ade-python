@@ -550,6 +550,22 @@ def test_parse_job_get_result_envelope_and_error() -> None:
 
 
 @respx.mock
+def test_parse_job_list_sends_page_size_as_camel_case() -> None:
+    # The spec renamed the list query parameter `page_size` -> `pageSize`. The
+    # `page_size` keyword is unchanged (surface-locked); only the wire name moved,
+    # so the old snake_case key must not be sent alongside it.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.get("https://api.ade.landing.ai/v2/parse/jobs").mock(
+        return_value=httpx.Response(200, json={"jobs": [], "has_more": False})
+    )
+    client.v2.parse_jobs.list(page=1, page_size=5)
+    params = route.calls.last.request.url.params
+    assert params["pageSize"] == "5"
+    assert params["page"] == "1"
+    assert "page_size" not in params
+
+
+@respx.mock
 def test_parse_job_list_carries_page_envelope() -> None:
     # The current list envelope exposes `page` / `page_size` (org_id was dropped).
     client = LandingAIADE(apikey=APIKEY)
