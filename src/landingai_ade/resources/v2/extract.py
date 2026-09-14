@@ -267,10 +267,19 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
-        """List async extract jobs associated with your API key, newest first."""
+        """List async extract jobs associated with your API key, newest first.
+
+        This route documents a `cancelled` status alongside
+        `pending`/`processing`/`completed`/`failed`; it normalizes to
+        `JobStatus.CANCELLED`, which `Job.is_terminal` already treats as terminal.
+        """
+        # The query parameter is spelled `pageSize` on the wire -- the spec renamed it
+        # from `page_size`, matching the V1 list routes. Only the wire name moved: the
+        # `page_size` keyword here and the `page_size` field of the response envelope
+        # below are both unchanged.
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = self._get(
@@ -301,8 +310,11 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
         Raises `JobWaitTimeoutError` if `timeout` seconds elapse before the job
         reaches a terminal state, and `JobFailedError` if `raise_on_failure` is
-        set and the job ends failed with an error attached. Extract jobs have no
-        `cancelled` status.
+        set and the job ends failed with an error attached. `cancelled` is now a
+        documented extract status, but only on the list route: the single-job GET
+        this polls still declares `pending`/`processing`/`completed`/`failed`, so
+        `wait` only ever settles on `completed` or `failed`. A `cancelled` value
+        still normalizes (`JobStatus.CANCELLED`, terminal) if one does arrive.
 
         `_monotonic` is a test seam for injecting a fake clock; production
         callers should leave it unset (defaults to `time.monotonic`).
@@ -384,7 +396,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         """Async mirror of `ExtractJobsResource.list`. See there for full documentation."""
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = await self._get(

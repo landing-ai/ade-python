@@ -345,9 +345,13 @@ class ParseJobsResource(V2ResourceMixin, SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> JobList:
         """List async parse jobs associated with your API key, newest first."""
+        # The query parameter is spelled `pageSize` on the wire -- the spec renamed it
+        # from `page_size`, matching the V1 list routes. Only the wire name moved: the
+        # `page_size` keyword here and the `page_size` field of the response envelope
+        # below are both unchanged.
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = self._get(
@@ -472,7 +476,7 @@ class AsyncParseJobsResource(V2ResourceMixin, AsyncAPIResource):
         """Async mirror of `ParseJobsResource.list`. See there for full documentation."""
         query = {
             key: value
-            for key, value in {"page": page, "page_size": page_size, "status": status}.items()
+            for key, value in {"page": page, "pageSize": page_size, "status": status}.items()
             if is_given(value) and value is not None
         }
         raw = await self._get(

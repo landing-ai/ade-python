@@ -201,3 +201,29 @@ def test_parse_jobs(staging_client: LandingAIADE) -> None:
     # `Job.metadata` receipt (set only for `output_save_url` deliveries) is absent.
     assert done.metadata is None
     assert done.result.metadata is not None
+
+
+def test_job_lists_honor_page_size(staging_client: LandingAIADE) -> None:
+    # The list query parameter is spelled `pageSize` on the wire (the spec renamed it
+    # from `page_size`; the SDK keyword is unchanged). Sending the wrong name is not
+    # an error the gateway reports -- it silently falls back to its default page size
+    # of 10 -- so the only way to catch it live is to assert the page that came back
+    # honors the requested size.
+    #
+    # Everything else here is absent-or-valid: the envelope's `page` / `page_size` are
+    # optional, and a key with no jobs yet legitimately returns an empty page. Pinning
+    # a specific job or status belongs in the mocked tests under tests/api_resources/.
+    for jobs in (
+        staging_client.v2.parse_jobs.list(page=0, page_size=1),
+        staging_client.v2.extract_jobs.list(page=0, page_size=1),
+    ):
+        assert len(jobs) <= 1
+        if jobs.page is not None:
+            assert jobs.page == 0
+        if jobs.page_size is not None:
+            assert jobs.page_size == 1
+        for job in jobs:
+            # Any documented status normalizes, `cancelled` (new on the extract list
+            # route) included; an undocumented one falls back to `pending`.
+            assert isinstance(job.status, JobStatus)
+            assert job.job_id

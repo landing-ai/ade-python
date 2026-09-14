@@ -112,6 +112,30 @@ fields the model could not extract — the extraction is partial), `warnings`
 `output_extraction_chars` char counts moved from `billing` onto `metadata`
 upstream; both are retained on `V2ExtractBilling` for backward compatibility.
 
+### Extraction options (`strict`, and the unwired `grounding`)
+
+`/v2/extract` and `/v2/extract/jobs` take a nested `options` object. Unlike parse,
+extract does **not** expose `options` as a keyword — the only nested option the SDK
+reaches is `strict`, through a hand-written top-level shorthand that folds into
+`options.strict`.
+
+The snapshot added a second option, `options.grounding` (default `true`; set it
+`false` to skip the grounding stage, which makes every `extraction_metadata` leaf
+carry `ranges: null` and returns faster — marked Preview upstream). **It is
+deliberately not wired.** It is nested, not a top-level `requestBody` property, so
+surfacing it would mean adding a third hand-written alias next to `password` and
+`strict`. CONTRIBUTING.md pins those two as a cross-SDK contract shared with
+`ade-typescript`, and says in as many words that exposing `options` on extract
+"becomes a real tie-break and needs a rule here first" — so adding one is a
+maintainer's call, not a spec-sync one. Callers who need it today can send
+`extra_body={"options": {"grounding": False}}`; `extra_body` merges at the top level
+only, so that replaces the whole `options` object and `strict` has to be repeated
+inside it rather than passed as `strict=`.
+
+Nothing about the **response** changed: `grounding=false` only nulls out `ranges`
+inside `extraction_metadata`, which `V2ExtractResult` already models as an untyped
+`Dict[str, object]`.
+
 The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
 when set, the finished result is delivered to that URL and the completed job
 reports `output_url` (on `Job.raw`) instead of an inline `result`. The metadata
@@ -166,14 +190,42 @@ field-name drift:
 - Unknown / renamed `status` values fall back to `pending` rather than raising;
   the raw envelope is always preserved on `Job.raw`.
 
+### Listing jobs
+
+`parse_jobs.list` / `extract_jobs.list` take `page`, `page_size` and `status` and
+return a `JobList` (`list[Job]` plus `.has_more`, `.org_id`, `.page`,
+`.page_size`).
+
+- **`page_size` is sent as `pageSize`.** The snapshot renamed the query parameter
+  on `GET /v2/parse/jobs` and `GET /v2/extract/jobs` (the V1 list routes already
+  used the camelCase name — see the `PropertyInfo(alias="pageSize")` on
+  `types/parse_job_list_params.py`). Only the wire name moved: the `page_size`
+  keyword is surface-locked and unchanged, and the *response* envelope still
+  returns `page_size`. A wrong name is not an error the gateway reports — it just
+  falls back to a default page of 10 — so it is asserted both ways: the mocked
+  `test_*_job_list_sends_page_size_as_camel_case` cases check the query string
+  directly, and `test_job_lists_honor_page_size` in the contract suite checks live
+  staging returns a page of the requested size.
+- **`cancelled` is now a documented extract status, on the list route only.**
+  `GET /v2/extract/jobs` added it to its status enum; `GET /v2/extract/jobs/{job_id}`
+  still declares `pending`/`processing`/`completed`/`failed`, and `/v2/parse/jobs`
+  was not changed. No code change was needed — `JobStatus.CANCELLED` already exists
+  and `Job.is_terminal` already counts it — but because `wait()` polls the
+  single-job GET, an extract wait still only settles on `completed` or `failed`.
+  `test_extract_job_list_normalizes_cancelled_status` pins the list-route mapping.
+
 ## When the spec changes
 
 1. Read the mechanical diff (`git diff` on `specs/v2-aide.json` and
    `specs/_generated/v2_models.py`), including component-schema-only changes: a
    response field can change only a `$ref`'d component and its generated model.
 2. Additive **request** fields become new optional keyword params on the
-   corresponding `run` / `create` method (parse forwards free-form `options`
-   through as a JSON string, so most parse-option additions need no code change).
+   corresponding `run` / `create` method — but only **top-level** `requestBody`
+   properties. Parse forwards free-form `options` through as a JSON string, so most
+   parse-option additions need no code change. Extract does not expose `options`, so
+   a new *nested* extract option cannot be wired without adding a hand-written alias,
+   which CONTRIBUTING.md reserves for a joint decision with `ade-typescript`; leave
+   it unwired and say so in the PR (see the extract-options section above).
 3. Additive **response** fields are added to the matching model under
    `src/landingai_ade/types/v2/`. Keep removed/renamed fields in place as optional
    for backward compatibility — the surface is release-locked and response parsing
