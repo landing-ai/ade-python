@@ -112,29 +112,29 @@ fields the model could not extract — the extraction is partial), `warnings`
 `output_extraction_chars` char counts moved from `billing` onto `metadata`
 upstream; both are retained on `V2ExtractBilling` for backward compatibility.
 
-### Extraction options (`strict`, and the unwired `grounding`)
+### Extraction options (`strict`)
 
 `/v2/extract` and `/v2/extract/jobs` take a nested `options` object. Unlike parse,
 extract does **not** expose `options` as a keyword — the only nested option the SDK
 reaches is `strict`, through a hand-written top-level shorthand that folds into
 `options.strict`.
 
-The snapshot added a second option, `options.grounding` (default `true`; set it
-`false` to skip the grounding stage, which makes every `extraction_metadata` leaf
-carry `ranges: null` and returns faster — marked Preview upstream). **It is
-deliberately not wired.** It is nested, not a top-level `requestBody` property, so
-surfacing it would mean adding a third hand-written alias next to `password` and
-`strict`. CONTRIBUTING.md pins those two as a cross-SDK contract shared with
-`ade-typescript`, and says in as many words that exposing `options` on extract
-"becomes a real tie-break and needs a rule here first" — so adding one is a
-maintainer's call, not a spec-sync one. Callers who need it today can send
-`extra_body={"options": {"grounding": False}}`; `extra_body` merges at the top level
-only, so that replaces the whole `options` object and `strict` has to be repeated
-inside it rather than passed as `strict=`.
+`strict` is once again the **only** member of that object. A previous snapshot had
+briefly added a second, `options.grounding` (a Preview flag that skipped the
+grounding stage so every `extraction_metadata` leaf came back with `ranges: null`).
+It was deliberately never wired — it is nested, not a top-level `requestBody`
+property, so surfacing it would have meant a third hand-written alias next to
+`password` and `strict`, which CONTRIBUTING.md pins as a maintainer's call rather
+than a spec-sync one. This snapshot drops `grounding` from the spec altogether, so
+there is nothing left to decide and no SDK surface to retire.
 
-Nothing about the **response** changed: `grounding=false` only nulls out `ranges`
-inside `extraction_metadata`, which `V2ExtractResult` already models as an untyped
-`Dict[str, object]`.
+One consequence worth knowing when re-running older scratch scripts: the `options`
+schema is `additionalProperties: false`, so the `extra_body={"options": {"grounding":
+False}}` escape hatch that reached the flag against the previous snapshot is now an
+unknown key and is rejected by the gateway. Drop it; pass `strict=` as usual.
+
+Nothing about the **response** changed — `extraction_metadata` is unaffected, and
+`V2ExtractResult` already models it as an untyped `Dict[str, object]`.
 
 The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
 when set, the finished result is delivered to that URL and the completed job

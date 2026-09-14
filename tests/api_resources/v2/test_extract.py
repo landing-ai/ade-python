@@ -52,6 +52,38 @@ def test_extract_sync_strict_option() -> None:
 
 
 @respx.mock
+def test_extract_options_carries_only_strict() -> None:
+    # `V2ExtractOptions` is `additionalProperties: false` upstream and `strict` is
+    # its only member: the spec briefly carried a second option (`grounding`) and
+    # has since dropped it, so anything the SDK folds in beyond `strict` would now
+    # be rejected as an unknown key. Pin the exact key set rather than just
+    # `strict`, so a stray option reintroduced here fails at this seam instead of
+    # against the live gateway.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+        return_value=httpx.Response(200, json=EXTRACT_BODY)
+    )
+    client.v2.extract(schema={"type": "object"}, markdown="# doc", strict=False)
+    req = json.loads(route.calls.last.request.content)
+    assert set(req["options"]) == {"strict"}
+
+
+def test_extract_job_create_options_carries_only_strict(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Same `additionalProperties: false` contract on the async job route, which
+    # shares `_build_extract_body` with the sync one.
+    client = LandingAIADE(apikey=APIKEY)
+    captured: Dict[str, Any] = {}
+
+    def fake_post(path: str, *, cast_to: Any, body: Any = None, options: Any = None, **kwargs: Any) -> Any:  # noqa: ARG001
+        captured["body"] = body
+        return {"job_id": "e1", "status": "pending"}
+
+    monkeypatch.setattr(client.v2.extract_jobs, "_post", fake_post)
+    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", strict=True)
+    assert set(captured["body"]["options"]) == {"strict"}
+
+
+@respx.mock
 def test_extract_requires_a_markdown_source() -> None:
     # api.md documents the contract: provide exactly one of markdown /
     # markdown_url. Omitting both used to send a sourceless
