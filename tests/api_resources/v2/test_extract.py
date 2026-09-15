@@ -53,12 +53,13 @@ def test_extract_sync_strict_option() -> None:
 
 @respx.mock
 def test_extract_options_carries_only_strict() -> None:
-    # `V2ExtractOptions` is `additionalProperties: false` upstream and `strict` is
-    # its only member: the spec briefly carried a second option (`grounding`) and
-    # has since dropped it, so anything the SDK folds in beyond `strict` would now
-    # be rejected as an unknown key. Pin the exact key set rather than just
-    # `strict`, so a stray option reintroduced here fails at this seam instead of
-    # against the live gateway.
+    # `V2ExtractOptions` is `additionalProperties: false` upstream and now carries
+    # two members, `strict` and the re-added Preview flag `grounding`. Only
+    # `strict` is wired: `grounding` is nested rather than a top-level
+    # `requestBody` property, so reaching it would need a third hand-written alias,
+    # which CONTRIBUTING.md reserves for a joint call with `ade-typescript`. Pin
+    # the exact key set rather than just `strict`, so neither a stray option nor an
+    # unreviewed `grounding` alias can start riding along unnoticed.
     client = LandingAIADE(apikey=APIKEY)
     route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
@@ -66,6 +67,29 @@ def test_extract_options_carries_only_strict() -> None:
     client.v2.extract(schema={"type": "object"}, markdown="# doc", strict=False)
     req = json.loads(route.calls.last.request.content)
     assert set(req["options"]) == {"strict"}
+
+
+@respx.mock
+def test_extract_grounding_reachable_only_via_extra_body() -> None:
+    # `options.grounding` is deliberately unwired (nested, not top-level), so
+    # `extra_body` is the documented escape hatch -- api.md and docs/v2-testing.md
+    # both point at it. `extra_body` merges at the top level only
+    # (`_merge_mappings` is a shallow `{**a, **b}`), so the caller's `options`
+    # replaces the one `_build_extract_body` assembled and must repeat `strict`.
+    # Pin that here: if the merge ever went deep, the documented snippet would
+    # start sending a different body than it advertises.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+        return_value=httpx.Response(200, json=EXTRACT_BODY)
+    )
+    client.v2.extract(
+        schema={"type": "object"},
+        markdown="# doc",
+        strict=True,
+        extra_body={"options": {"grounding": False, "strict": False}},
+    )
+    req = json.loads(route.calls.last.request.content)
+    assert req["options"] == {"grounding": False, "strict": False}
 
 
 def test_extract_job_create_options_carries_only_strict(monkeypatch: pytest.MonkeyPatch) -> None:
