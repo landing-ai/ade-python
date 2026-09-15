@@ -559,11 +559,6 @@ class V2ExtractOptions(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    grounding: Optional[bool] = Field(
-        True,
-        description='When ``true`` (default), the grounding stage runs and each extracted leaf carries ``ranges`` into the source Markdown where a reference was found (``ranges`` is ``null`` for a value that could not be located). When ``false``, the grounding stage is skipped: every ``extraction_metadata`` leaf has ``ranges: null`` and the request completes faster. Preview.',
-        title='Grounding',
-    )
     strict: Optional[bool] = Field(
         False,
         description='When ``true``, a schema containing fields the model cannot extract fails with a validation error — HTTP 422 on the sync route, or a failed job (``status: "failed"``) on the async ``/jobs`` route. When ``false`` (default), unsupported fields are skipped and extraction continues.',
@@ -1898,8 +1893,7 @@ class V2ExtractPostRequest(BaseModel):
         title='Model',
     )
     options: Optional[V2ExtractOptions] = Field(
-        None,
-        description='Extraction options (``strict``, ``grounding``). Omit for defaults.',
+        None, description='Extraction options (``strict``). Omit for defaults.'
     )
     schema_: dict[str, Any] = Field(
         ...,
@@ -1932,7 +1926,7 @@ class V2ExtractPostRequest1(BaseModel):
     )
     options: Optional[V2ExtractOptions] = Field(
         None,
-        description='Extraction options (``strict``, ``grounding``). Omit for defaults. JSON-serialized string in form data.',
+        description='Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data.',
     )
     schema_: dict[str, Any] = Field(
         ...,
@@ -2053,8 +2047,7 @@ class V2ExtractJobsPostRequest(BaseModel):
         title='Model',
     )
     options: Optional[V2ExtractOptions] = Field(
-        None,
-        description='Extraction options (``strict``, ``grounding``). Omit for defaults.',
+        None, description='Extraction options (``strict``). Omit for defaults.'
     )
     output_save_url: Optional[str] = Field(
         None,
@@ -2096,7 +2089,7 @@ class V2ExtractJobsPostRequest1(BaseModel):
     )
     options: Optional[V2ExtractOptions] = Field(
         None,
-        description='Extraction options (``strict``, ``grounding``). Omit for defaults. JSON-serialized string in form data.',
+        description='Extraction options (``strict``). Omit for defaults. JSON-serialized string in form data.',
     )
     output_save_url: Optional[str] = Field(
         None,
