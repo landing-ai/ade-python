@@ -119,19 +119,40 @@ extract does **not** expose `options` as a keyword — the only nested option th
 reaches is `strict`, through a hand-written top-level shorthand that folds into
 `options.strict`.
 
-`strict` is once again the **only** member of that object. A previous snapshot had
-briefly added a second, `options.grounding` (a Preview flag that skipped the
-grounding stage so every `extraction_metadata` leaf came back with `ranges: null`).
-It was deliberately never wired — it is nested, not a top-level `requestBody`
-property, so surfacing it would have meant a third hand-written alias next to
-`password` and `strict`, which CONTRIBUTING.md pins as a maintainer's call rather
-than a spec-sync one. This snapshot drops `grounding` from the spec altogether, so
-there is nothing left to decide and no SDK surface to retire.
+That object now has a second member again: this snapshot **re-adds**
+`options.grounding`, a Preview flag that skips the grounding stage so every
+`extraction_metadata` leaf comes back with `ranges: null` (and the request finishes
+faster). It has now been added, dropped, and re-added across three snapshots; the
+SDK's answer has not moved, and `strict` remains the only option the SDK itself
+folds in.
 
-One consequence worth knowing when re-running older scratch scripts: the `options`
-schema is `additionalProperties: false`, so the `extra_body={"options": {"grounding":
-False}}` escape hatch that reached the flag against the previous snapshot is now an
-unknown key and is rejected by the gateway. Drop it; pass `strict=` as usual.
+`grounding` stays **unwired**, for the same reason as before: it is nested inside
+`options`, not a top-level `requestBody` property, so surfacing it would mean a
+third hand-written alias next to `password` and `strict`. CONTRIBUTING.md pins that
+as a maintainer's call to be made jointly with `ade-typescript`, not a spec-sync
+one. Exposing `options` on extract instead is not a way around it — CONTRIBUTING.md
+calls that out explicitly, because it would turn the `strict` shorthand into a real
+precedence tie-break that needs a written rule in that file first.
+
+To reach the flag today, use `extra_body`:
+
+```python
+client.v2.extract(
+    schema=..., markdown="# doc",
+    extra_body={"options": {"grounding": False, "strict": False}},
+)
+```
+
+`extra_body` merges at the **top level only**, so it replaces the whole `options`
+object — repeat `strict` inside it rather than also passing `strict=`, or the
+keyword's value is silently discarded. (The escape hatch was rejected by the gateway
+under the previous snapshot, where `grounding` was absent and `options` is
+`additionalProperties: false`; it works again now.)
+
+`test_extract_options_carries_only_strict` pins the exact key set the SDK folds in,
+so an unreviewed `grounding` alias cannot start riding along unnoticed, and
+`test_extract_grounding_reachable_only_via_extra_body` pins the snippet above —
+including the shallow merge that makes repeating `strict` necessary.
 
 Nothing about the **response** changed — `extraction_metadata` is unaffected, and
 `V2ExtractResult` already models it as an untyped `Dict[str, object]`.
