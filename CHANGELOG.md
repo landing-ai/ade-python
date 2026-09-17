@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.18.1 (2026-09-17)
+
+Full Changelog: [v1.18.0...v1.18.1](https://github.com/landing-ai/ade-python/compare/v1.18.0...v1.18.1)
+
+### Features
+
+* **v2:** expose extract grounding as a top-level keyword (#168) ([ac4dbbf](https://github.com/landing-ai/ade-python/commit/ac4dbbf503c1a826d432f01ca775783ece777470))
+
+### Chores
+
+* **spec-sync:** update V1 spec snapshot + regenerated reference models (#162) ([6f9a5fa](https://github.com/landing-ai/ade-python/commit/6f9a5fa83b25a305c5872b4d422d041961c8c7bf))
+
+### Other Changes
+
+* spec-sync(v2): document extract options.grounding (unwired, use extra_body) (#167) ([9b6d7f3](https://github.com/landing-ai/ade-python/commit/9b6d7f3245163e2af29f6eb6906597d50757bc00))
+* spec-sync(v2): remove unwired extract options.grounding flag from spec (#166) ([c4e0c1d](https://github.com/landing-ai/ade-python/commit/c4e0c1d044af1fee31eb3af6e6cc200aefbeb681))
+* spec-sync(v2): send job list page_size as pageSize query param (#165) ([af20008](https://github.com/landing-ai/ade-python/commit/af20008df8b5c3b0ad563fd1f58e32293f23b688))
+
 ## 1.18.0 (2026-09-11)
 
 Full Changelog: [v1.17.1...v1.18.0](https://github.com/landing-ai/ade-python/compare/v1.17.1...v1.18.0)
