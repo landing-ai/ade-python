@@ -92,6 +92,7 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
+        grounding: Optional[bool] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -107,6 +108,7 @@ class V2Resource(SyncAPIResource, V2ResourceMixin):
             markdown_url=markdown_url,
             model=model,
             strict=strict,
+            grounding=grounding,
             save_to=save_to,
             extra_headers=extra_headers,
             extra_query=extra_query,
@@ -208,6 +210,7 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
+        grounding: Optional[bool] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -223,6 +226,7 @@ class AsyncV2Resource(AsyncAPIResource, V2ResourceMixin):
             markdown_url=markdown_url,
             model=model,
             strict=strict,
+            grounding=grounding,
             save_to=save_to,
             extra_headers=extra_headers,
             extra_query=extra_query,

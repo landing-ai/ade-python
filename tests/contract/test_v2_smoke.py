@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Iterator, Optional
+from typing import Any, Dict, List, Iterator, Optional, cast
 from pathlib import Path
 
 import pytest
@@ -227,3 +227,25 @@ def test_job_lists_honor_page_size(staging_client: LandingAIADE) -> None:
             # route) included; an undocumented one falls back to `pending`.
             assert isinstance(job.status, JobStatus)
             assert job.job_id
+
+
+def test_extract_grounding_false_nulls_every_range(staging_client: LandingAIADE) -> None:
+    # `grounding=False` folds into `options.grounding` and switches the grounding
+    # stage off, so every `extraction_metadata` leaf comes back with `ranges: null`.
+    # That is the whole point of a live check here: a shorthand that never reached
+    # the wire -- wrong nesting, dropped `False`, a name the gateway doesn't know --
+    # is not an error staging reports. `options` is `additionalProperties: false`,
+    # so a misspelled key 422s, but a silently ignored one just grounds anyway and
+    # comes back with real ranges. Assert the ranges, not the status code.
+    res = staging_client.v2.extract(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN, grounding=False)
+    assert isinstance(res, V2ExtractResult)
+    metadata = cast(Dict[str, Any], res.extraction_metadata)
+    assert metadata, "extraction returned no metadata leaves to check"
+    # `RevenueSchema` is flat, so every top-level entry IS a leaf. With grounding off
+    # each one carries `ranges: null` -- a null value, not a missing key. Assert the
+    # key's presence separately from its value: skipping leaves that lack `ranges`
+    # would let a leaf that dropped it pass as if it had been checked.
+    for name, value in metadata.items():
+        leaf = cast(Dict[str, Any], value)
+        assert "ranges" in leaf, f"leaf {name!r} carries no `ranges`: {leaf}"
+        assert leaf["ranges"] is None, f"leaf {name!r} was grounded anyway: {leaf}"

@@ -516,8 +516,8 @@ jobs:
             /v1/ade/parse and /v1/ade/parse/jobs — same name, different level, different route
             family — and lifting a `/v1/*` top-level field onto a /v2 operation is the field-level
             version of translating a /v1 route into a /v2 URL; (b) inventing a top-level
-            convenience parameter that folds one wire field into another. Exactly two exist
-            (`password` on parse, `strict` on extract); they are cross-SDK contract decisions
+            convenience parameter that folds one wire field into another. Exactly three exist
+            (`password` on parse, `strict` and `grounding` on extract); they are cross-SDK decisions
             shared with ade-typescript and written down in CONTRIBUTING.md, and changing one is a
             maintainer's call — do NOT add, remove or re-target an alias. Wire the spec's own
             shape, and if a spec change looks like it needs a new one, leave that field unwired

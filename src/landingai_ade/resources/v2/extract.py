@@ -28,6 +28,7 @@ def _build_extract_body(
     markdown_url: object,
     model: object,
     strict: object,
+    grounding: object = omit,
     service_tier: object = omit,
 ) -> Dict[str, Any]:
     provided = [
@@ -52,8 +53,19 @@ def _build_extract_body(
     ):
         if value is not omit and value is not None:
             body[key] = value
-    if strict is not omit and strict is not None:
-        body["options"] = {"strict": bool(strict)}
+    # `strict` and `grounding` are hand-written top-level shorthands that both fold into
+    # the SAME nested `options` object (CONTRIBUTING.md -> "V2 request fields"), so they
+    # are collected and attached once: assigning `body["options"]` per key would drop
+    # whichever landed first. `options` is `additionalProperties: false` upstream, so
+    # nothing beyond these two may ride along. An omitted or `None` value leaves the key
+    # out entirely and the server default applies (`strict` false, `grounding` true) --
+    # `bool()` rather than truthiness so an explicit `False` is sent, not dropped.
+    options: Dict[str, Any] = {}
+    for key, value in (("strict", strict), ("grounding", grounding)):
+        if value is not omit and value is not None:
+            options[key] = bool(value)
+    if options:
+        body["options"] = options
     return body
 
 
@@ -66,6 +78,7 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
+        grounding: Optional[bool] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -96,6 +109,12 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
               False, prune unsupported fields and continue. Sent as
               `options.strict`.
 
+          grounding: If False, skip the grounding stage: every `extraction_metadata`
+              leaf comes back with `ranges: None` and the request finishes faster.
+              Defaults to True server-side. Sent as `options.grounding`. Preview --
+              the extraction itself can differ slightly from a grounded run (empty
+              leaves are not nulled and all-empty array rows are not dropped).
+
           save_to: Optional output path. If a directory, auto-generates the filename
               (e.g. {input_file}_extract_output.json, or extract_output.json when no
               input filename is available). If a full path ending in .json, saves there
@@ -109,7 +128,7 @@ class ExtractResource(V2ResourceMixin, SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict)
+        body = _build_extract_body(schema, markdown, markdown_url, model, strict, grounding=grounding)
         try:
             result = self._post(
                 self._v2_url("/v2/extract"),
@@ -139,6 +158,7 @@ class AsyncExtractResource(V2ResourceMixin, AsyncAPIResource):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
+        grounding: Optional[bool] | Omit = omit,
         save_to: str | Path | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -148,7 +168,7 @@ class AsyncExtractResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> V2ExtractResult:
         """Async mirror of `ExtractResource.run`. See there for full documentation."""
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict)
+        body = _build_extract_body(schema, markdown, markdown_url, model, strict, grounding=grounding)
         try:
             result = await self._post(
                 self._v2_url("/v2/extract"),
@@ -178,6 +198,7 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
+        grounding: Optional[bool] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
         service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -208,6 +229,12 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
               False, prune unsupported fields and continue. Sent as
               `options.strict`.
 
+          grounding: If False, skip the grounding stage: every `extraction_metadata`
+              leaf comes back with `ranges: None` and the request finishes faster.
+              Defaults to True server-side. Sent as `options.grounding`. Preview --
+              the extraction itself can differ slightly from a grounded run (empty
+              leaves are not nulled and all-empty array rows are not dropped).
+
           output_save_url: URL the result should be saved to (e.g. a presigned S3 PUT
               URL) instead of being returned inline. Async jobs only. When set, the
               completed job reports `output_url` instead of an inline `result`.
@@ -222,7 +249,9 @@ class ExtractJobsResource(V2ResourceMixin, SyncAPIResource):
 
           timeout: Override the client-level default timeout for this request, in seconds
         """
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict, service_tier)
+        body = _build_extract_body(
+            schema, markdown, markdown_url, model, strict, grounding=grounding, service_tier=service_tier
+        )
         if is_given(output_save_url) and output_save_url is not None:
             body["output_save_url"] = output_save_url
         raw = self._post(
@@ -338,6 +367,7 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
         strict: Optional[bool] | Omit = omit,
+        grounding: Optional[bool] | Omit = omit,
         output_save_url: Optional[str] | Omit = omit,
         service_tier: Optional[Literal["standard", "priority"]] | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
@@ -348,7 +378,9 @@ class AsyncExtractJobsResource(V2ResourceMixin, AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Job:
         """Async mirror of `ExtractJobsResource.create`. See there for full documentation."""
-        body = _build_extract_body(schema, markdown, markdown_url, model, strict, service_tier)
+        body = _build_extract_body(
+            schema, markdown, markdown_url, model, strict, grounding=grounding, service_tier=service_tier
+        )
         if is_given(output_save_url) and output_save_url is not None:
             body["output_save_url"] = output_save_url
         raw = await self._post(

@@ -223,9 +223,21 @@ conveniences that fold into nested fields, and these must stay identical in `ade
   its key beats the caller's own kwarg. `ade-typescript` carries the mirror-image trap — there
   `{password: undefined}` is how JS spells "absent" and `JSON.stringify` drops the key, so testing
   key *presence* rather than value would suppress the shorthand **and** send no password at all.
-- `strict` on `/v2/extract` and `/v2/extract/jobs` → `options.strict`. No conflict is possible —
-  neither SDK exposes `options` on extract, so the shorthand is the only way to reach the field. If
-  either SDK ever exposes it, that becomes a real tie-break and needs a rule here first.
+- `strict` and `grounding` on `/v2/extract` and `/v2/extract/jobs` → `options.strict` and
+  `options.grounding`. No conflict is possible — neither SDK exposes `options` on extract, so the
+  shorthands are the only way to reach those fields. If either SDK ever exposes it, that becomes a
+  real tie-break and needs a rule here first. Three rules bind both repos: both shorthands fold into
+  the **same** `options` object, so build it once and attach it once (a per-shorthand
+  `body["options"] = {...}` drops whichever landed first); coerce with `bool()` / `Boolean()` rather
+  than truthiness, because `grounding=False` is the only value that flag is ever passed; and an
+  omitted or `None`/`undefined` value leaves its key out so the server default applies (`strict`
+  false, `grounding` true), with `options` omitted entirely when neither is given.
+
+  `grounding` was wired in both SDKs together, at the API owners' request, after three snapshots of
+  arriving/being dropped/being re-added while unwired (it skips the grounding stage, so every
+  `extraction_metadata` leaf comes back with `ranges: null`). It is a Preview flag: it reached
+  staging ahead of production, and with grounding off the `extraction` itself can differ slightly
+  from a grounded run.
 
 **Nothing in CI checks this** — `check-v2-paths` covers routes only, and a hand-written alias is not
 spec-derived, so neither repo's CI can see the other's choice. A PR that adds or touches a top-level

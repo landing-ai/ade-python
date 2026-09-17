@@ -52,32 +52,61 @@ def test_extract_sync_strict_option() -> None:
 
 
 @respx.mock
-def test_extract_options_carries_only_strict() -> None:
-    # `V2ExtractOptions` is `additionalProperties: false` upstream and now carries
-    # two members, `strict` and the re-added Preview flag `grounding`. Only
-    # `strict` is wired: `grounding` is nested rather than a top-level
-    # `requestBody` property, so reaching it would need a third hand-written alias,
-    # which CONTRIBUTING.md reserves for a joint call with `ade-typescript`. Pin
-    # the exact key set rather than just `strict`, so neither a stray option nor an
-    # unreviewed `grounding` alias can start riding along unnoticed.
+def test_extract_sync_grounding_option() -> None:
+    # `grounding=False` skips the grounding stage server-side (every
+    # `extraction_metadata` leaf comes back with `ranges: null`). It folds into
+    # `options.grounding`, the second hand-written top-level shorthand on extract
+    # alongside `strict` -- `bool()`, not truthiness, so `False` is SENT rather
+    # than dropped, which is the only value anyone passes this for.
     client = LandingAIADE(apikey=APIKEY)
     route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
     )
-    client.v2.extract(schema={"type": "object"}, markdown="# doc", strict=False)
+    client.v2.extract(schema={"type": "object"}, markdown="# doc", grounding=False)
     req = json.loads(route.calls.last.request.content)
-    assert set(req["options"]) == {"strict"}
+    assert req["options"] == {"grounding": False}
 
 
 @respx.mock
-def test_extract_grounding_reachable_only_via_extra_body() -> None:
-    # `options.grounding` is deliberately unwired (nested, not top-level), so
-    # `extra_body` is the documented escape hatch -- api.md and docs/v2-testing.md
-    # both point at it. `extra_body` merges at the top level only
-    # (`_merge_mappings` is a shallow `{**a, **b}`), so the caller's `options`
-    # replaces the one `_build_extract_body` assembled and must repeat `strict`.
-    # Pin that here: if the merge ever went deep, the documented snippet would
-    # start sending a different body than it advertises.
+def test_extract_options_carries_only_the_wired_shorthands() -> None:
+    # `V2ExtractOptions` is `additionalProperties: false` upstream and carries
+    # exactly two members, `strict` and `grounding`, both wired as top-level
+    # shorthands. Pin the exact object rather than one key: the two fold into the
+    # SAME nested object, so a regression that assigns `options` per shorthand
+    # instead of merging would silently drop one, and any third key riding along
+    # would be rejected by the gateway.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+        return_value=httpx.Response(200, json=EXTRACT_BODY)
+    )
+    client.v2.extract(schema={"type": "object"}, markdown="# doc", strict=False, grounding=False)
+    req = json.loads(route.calls.last.request.content)
+    assert req["options"] == {"strict": False, "grounding": False}
+
+
+@respx.mock
+def test_extract_omits_options_when_no_shorthand_given() -> None:
+    # Neither shorthand given -> no `options` at all, so the server's own defaults
+    # apply (`strict` false, `grounding` true). `None` means "not given" for both,
+    # the same as omitting them: there is no null to send here -- `options` is
+    # where a caller would express "default", and leaving it out IS that.
+    client = LandingAIADE(apikey=APIKEY)
+    route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+        return_value=httpx.Response(200, json=EXTRACT_BODY)
+    )
+    client.v2.extract(schema={"type": "object"}, markdown="# doc", strict=None, grounding=None)
+    req = json.loads(route.calls.last.request.content)
+    assert "options" not in req
+
+
+@respx.mock
+def test_extract_extra_body_options_replaces_the_shorthands() -> None:
+    # `extra_body` merges at the top level only (`_merge_mappings` is a shallow
+    # `{**a, **b}`), so an `options` supplied there replaces the one the shorthands
+    # assembled rather than merging into it. Both shorthands are now keywords, so
+    # nobody needs `extra_body` to reach `grounding` -- but the shallow merge is
+    # still the documented behavior of `extra_body` everywhere, and a caller who
+    # mixes the two gets the override, not a union.
     client = LandingAIADE(apikey=APIKEY)
     route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
         return_value=httpx.Response(200, json=EXTRACT_BODY)
@@ -86,15 +115,17 @@ def test_extract_grounding_reachable_only_via_extra_body() -> None:
         schema={"type": "object"},
         markdown="# doc",
         strict=True,
-        extra_body={"options": {"grounding": False, "strict": False}},
+        grounding=True,
+        extra_body={"options": {"grounding": False}},
     )
     req = json.loads(route.calls.last.request.content)
-    assert req["options"] == {"grounding": False, "strict": False}
+    assert req["options"] == {"grounding": False}
 
 
-def test_extract_job_create_options_carries_only_strict(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_extract_job_create_carries_both_shorthands(monkeypatch: pytest.MonkeyPatch) -> None:
     # Same `additionalProperties: false` contract on the async job route, which
-    # shares `_build_extract_body` with the sync one.
+    # shares `_build_extract_body` with the sync one -- including the merge that
+    # keeps both shorthands in one `options` object.
     client = LandingAIADE(apikey=APIKEY)
     captured: Dict[str, Any] = {}
 
@@ -103,8 +134,8 @@ def test_extract_job_create_options_carries_only_strict(monkeypatch: pytest.Monk
         return {"job_id": "e1", "status": "pending"}
 
     monkeypatch.setattr(client.v2.extract_jobs, "_post", fake_post)
-    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", strict=True)
-    assert set(captured["body"]["options"]) == {"strict"}
+    client.v2.extract_jobs.create(schema={"type": "object"}, markdown="x", strict=True, grounding=False)
+    assert captured["body"]["options"] == {"strict": True, "grounding": False}
 
 
 @respx.mock
