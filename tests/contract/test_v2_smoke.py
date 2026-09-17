@@ -240,7 +240,12 @@ def test_extract_grounding_false_nulls_every_range(staging_client: LandingAIADE)
     res = staging_client.v2.extract(schema=RevenueSchema, markdown=SAMPLE_MARKDOWN, grounding=False)
     assert isinstance(res, V2ExtractResult)
     metadata = cast(Dict[str, Any], res.extraction_metadata)
-    leaves: List[Dict[str, Any]] = [cast(Dict[str, Any], value) for value in metadata.values()]
-    ranges = [leaf["ranges"] for leaf in leaves if "ranges" in leaf]
-    assert ranges, f"no grounded leaves to check in {metadata}"
-    assert all(value is None for value in ranges)
+    assert metadata, "extraction returned no metadata leaves to check"
+    # `RevenueSchema` is flat, so every top-level entry IS a leaf. With grounding off
+    # each one carries `ranges: null` -- a null value, not a missing key. Assert the
+    # key's presence separately from its value: skipping leaves that lack `ranges`
+    # would let a leaf that dropped it pass as if it had been checked.
+    for name, value in metadata.items():
+        leaf = cast(Dict[str, Any], value)
+        assert "ranges" in leaf, f"leaf {name!r} carries no `ranges`: {leaf}"
+        assert leaf["ranges"] is None, f"leaf {name!r} was grounded anyway: {leaf}"
