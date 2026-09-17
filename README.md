@@ -177,6 +177,8 @@ The response is a `V2ExtractResult`:
 
 By default, unsupported schema fields are skipped and extraction continues. Pass `strict=True` to reject such schemas with an error (HTTP 422) instead.
 
+Pass `grounding=False` to skip the grounding stage: extraction runs as usual and finishes faster, but every `extraction_metadata` field comes back with `ranges: None` instead of pointing into the Markdown. Preview — with grounding off the `extraction` itself can differ slightly from a grounded run. `extract_jobs.create` takes both options too.
+
 ## Process Large Documents Asynchronously (Jobs)
 
 For documents that take longer than a synchronous request allows, create a job and wait for it. `client.v2.parse_jobs` and `client.v2.extract_jobs` share the same shape: `create`, `get`, `list`, and `wait`.

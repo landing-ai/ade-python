@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Dict
 
 import httpx
@@ -42,6 +43,28 @@ async def test_async_extract() -> None:
     respx.post("https://api.ade.landing.ai/v2/extract").mock(return_value=httpx.Response(200, json=EXTRACT_BODY))
     r = await client.v2.extract(schema={"type": "object"}, markdown="m")
     assert isinstance(r, V2ExtractResult)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_extract_folds_both_option_shorthands() -> None:
+    # The async mirrors share `_build_extract_body` with the sync methods, but the
+    # kwargs are declared four times over (sync/async x run/create) -- a shorthand
+    # added to only some of them is exactly the kind of drift that reads fine in a
+    # diff. Pin both async entry points.
+    client = AsyncLandingAIADE(apikey=APIKEY)
+
+    sync_route = respx.post("https://api.ade.landing.ai/v2/extract").mock(
+        return_value=httpx.Response(200, json=EXTRACT_BODY)
+    )
+    await client.v2.extract(schema={"type": "object"}, markdown="m", strict=True, grounding=False)
+    assert json.loads(sync_route.calls.last.request.content)["options"] == {"strict": True, "grounding": False}
+
+    job_route = respx.post("https://api.ade.landing.ai/v2/extract/jobs").mock(
+        return_value=httpx.Response(202, json={"job_id": "e1", "status": "pending"})
+    )
+    await client.v2.extract_jobs.create(schema={"type": "object"}, markdown="m", grounding=False)
+    assert json.loads(job_route.calls.last.request.content)["options"] == {"grounding": False}
 
 
 @respx.mock

@@ -112,50 +112,51 @@ fields the model could not extract — the extraction is partial), `warnings`
 `output_extraction_chars` char counts moved from `billing` onto `metadata`
 upstream; both are retained on `V2ExtractBilling` for backward compatibility.
 
-### Extraction options (`strict`)
+### Extraction options (`strict`, `grounding`)
 
-`/v2/extract` and `/v2/extract/jobs` take a nested `options` object. Unlike parse,
-extract does **not** expose `options` as a keyword — the only nested option the SDK
-reaches is `strict`, through a hand-written top-level shorthand that folds into
-`options.strict`.
+`/v2/extract` and `/v2/extract/jobs` take a nested `options` object with exactly two
+members, `strict` and `grounding`. Unlike parse, extract does **not** expose `options`
+as a keyword: both are reached through hand-written top-level shorthands that fold
+into it.
 
-That object now has a second member again: this snapshot **re-adds**
-`options.grounding`, a Preview flag that skips the grounding stage so every
-`extraction_metadata` leaf comes back with `ranges: null` (and the request finishes
-faster). It has now been added, dropped, and re-added across three snapshots; the
-SDK's answer has not moved, and `strict` remains the only option the SDK itself
-folds in.
+`grounding` is the newer of the two. It is a Preview flag that skips the grounding
+stage, so every `extraction_metadata` leaf comes back with `ranges: null` and the
+request finishes faster. It arrived, was dropped, and was re-added across three
+snapshots while staying unwired; it is wired now because the API owners asked both
+SDKs to expose it as a top-level keyword, matching `strict` (the decision, and the
+`ade-typescript` half of it, is recorded in CONTRIBUTING.md — that file is where a
+shorthand like this has to be agreed before it ships).
 
-`grounding` stays **unwired**, for the same reason as before: it is nested inside
-`options`, not a top-level `requestBody` property, so surfacing it would mean a
-third hand-written alias next to `password` and `strict`. CONTRIBUTING.md pins that
-as a maintainer's call to be made jointly with `ade-typescript`, not a spec-sync
-one. Exposing `options` on extract instead is not a way around it — CONTRIBUTING.md
-calls that out explicitly, because it would turn the `strict` shorthand into a real
-precedence tie-break that needs a written rule in that file first.
+Two behaviors are worth knowing:
 
-To reach the flag today, use `extra_body`:
+- **Both shorthands fold into the SAME `options` object**, so `_build_extract_body`
+  collects them and attaches the object once. Assigning `body["options"]` per
+  shorthand — which is what the code did while `strict` was alone — would silently
+  drop whichever landed first. `test_extract_options_carries_only_the_wired_shorthands`
+  pins the assembled object exactly, which also catches a third key riding along:
+  `options` is `additionalProperties: false` upstream, so an extra one is a 422.
+- **`False` must survive.** The fold is `bool(value)`, not a truthiness test, and an
+  omitted or `None` value leaves the key out entirely so the server default applies
+  (`strict` false, `grounding` true). `grounding=False` is the only value anyone
+  passes this flag for, so a truthiness regression would make the keyword a silent
+  no-op.
 
-```python
-client.v2.extract(
-    schema=..., markdown="# doc",
-    extra_body={"options": {"grounding": False, "strict": False}},
-)
-```
+`extra_body` still merges at the **top level only**, so an `options` passed there
+replaces the assembled one rather than merging into it
+(`test_extract_extra_body_options_replaces_the_shorthands`). Nobody needs it to reach
+`grounding` any more, but a caller who mixes the two gets the override, not a union.
 
-`extra_body` merges at the **top level only**, so it replaces the whole `options`
-object — repeat `strict` inside it rather than also passing `strict=`, or the
-keyword's value is silently discarded. (The escape hatch was rejected by the gateway
-under the previous snapshot, where `grounding` was absent and `options` is
-`additionalProperties: false`; it works again now.)
+The live check is `test_extract_grounding_false_nulls_every_range` in
+`tests/contract/test_v2_smoke.py`: it asserts the returned `ranges` are all `null`
+rather than asserting a 2xx. A shorthand that never reached the wire — wrong nesting,
+a dropped `False` — is not an error staging reports; it just grounds anyway and comes
+back with real ranges.
 
-`test_extract_options_carries_only_strict` pins the exact key set the SDK folds in,
-so an unreviewed `grounding` alias cannot start riding along unnoticed, and
-`test_extract_grounding_reachable_only_via_extra_body` pins the snippet above —
-including the shallow merge that makes repeating `strict` necessary.
-
-Nothing about the **response** changed — `extraction_metadata` is unaffected, and
-`V2ExtractResult` already models it as an untyped `Dict[str, object]`.
+Nothing about the **response** changed — `extraction_metadata` is still an untyped
+`Dict[str, object]` on `V2ExtractResult`. Note that with grounding off the
+`extraction` itself can differ slightly from a grounded run (empty leaves are not
+nulled and all-empty array rows are not dropped), which is upstream behavior, not
+something the SDK normalizes.
 
 The async `extract_jobs.create` also accepts `output_save_url` (async jobs only):
 when set, the finished result is delivered to that URL and the completed job
