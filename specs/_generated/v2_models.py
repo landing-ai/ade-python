@@ -151,6 +151,15 @@ class Status(Enum):
     failed = 'failed'
 
 
+class Type1(Enum):
+    """
+    The node type. `page` is a page of a parsed document. `sheet` is one sheet of a parsed spreadsheet.
+    """
+
+    page = 'page'
+    sheet = 'sheet'
+
+
 class ServiceTier(Enum):
     """
     The service tier the request ran in: `standard` or `priority`. A sync request reports `priority` (same lane, same price).
@@ -2614,18 +2623,23 @@ class Grounding(BaseModel):
     can be lifted out of the tree and still locates its content.
     """
 
-    box: Box = Field(
+    address: Optional[str] = Field(
+        None,
+        description='Spreadsheet only. Excel-style reference of the content this grounding covers, with the sheet name: `Sales!C5` for a cell, `Sales!C5:F20` for a table, the anchor cell (`Sales!B2`) for content parsed out of an embedded image. Stable across re-parses of the same file. Omitted for page-based documents.',
+        title='Address',
+    )
+    box: Optional[Box] = Field(
         ...,
-        description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 5 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`.",
+        description="Bounding box in normalized page coordinates (`0`–`1` fractions of page width/height, at most 5 decimal places). A page node's box is always the full page `{0, 0, 1, 1}`. `null` (omitted from the response) when the source is a workbook, which has no visual position. For content parsed out of an image embedded in a spreadsheet, this is the fraction of that image, not of a page.",
     )
     confidence: Optional[float] = Field(
         None,
         description='How sure the model is of the text in this segment, in `[0, 1]`. Present only on word-granularity `atomic_grounding` entries (`dpt-3-verity`), where it is the lowest per-character OCR confidence in the word — so a word is only as trustworthy as its weakest character. Omitted on node-level grounding and on models that ground at line granularity.',
         title='Confidence',
     )
-    page: int = Field(
+    page: Optional[int] = Field(
         ...,
-        description="1-indexed page number this grounding is on. On a page node, the page's own number.",
+        description="1-indexed page number this grounding is on. On a page node, the page's own number. `null` (omitted from the response) when the source is a workbook, which has no page.",
         title='Page',
     )
     range: Range = Field(
@@ -2983,7 +2997,7 @@ class Element(BaseModel):
     )
     id: str = Field(
         ...,
-        description='Semantic element id, unique within the document. Format `<type>-<index>`, where `<index>` is a per-type 0-based counter assigned in reading order — `text-0` is the first text element in the document, `figure-0` the first figure, `table_cell-0` the first cell of the first table. Stable within a response but not across re-parses of the same document.',
+        description='Element id, unique within the document. An opaque string — do not parse it or assume a format. Stable within a response but not across re-parses of the same document; for spreadsheet content, use `grounding.address` instead, which IS stable across re-parses.',
         title='Id',
     )
     markdown: Optional[str] = Field(
@@ -3016,7 +3030,12 @@ class Page(BaseModel):
     )
     grounding: Grounding = Field(
         ...,
-        description="The page's spatial data: `page` is the 1-indexed page number in the source document (not contiguous when `options.pages` filters out some pages); `range` covers this page's content in the top-level `markdown` string (zero-length `start == end` for failed pages); `box` is always the full page `{0, 0, 1, 1}`.",
+        description="The node's spatial data. On a `page` node: `page` is the 1-indexed page number in the source document (not contiguous when `options.pages` filters out some pages); `range` covers this page's content in the top-level `markdown` string (zero-length `start == end` for failed pages); `box` is always the full page `{0, 0, 1, 1}`. On a `sheet` node: `page` and `box` are both `null` (a spreadsheet sheet has no page number or visual position); `range` covers the sheet's content in the top-level `markdown` string.",
+    )
+    id: Optional[str] = Field(
+        None,
+        description='The sheet name, present only on a `sheet` node. `null` (omitted from the response) on a `page` node.',
+        title='Id',
     )
     markdown: Optional[str] = Field(
         None,
@@ -3033,9 +3052,9 @@ class Page(BaseModel):
         description='Whether this page was parsed successfully (`ok`) or failed (`failed`).',
         title='Status',
     )
-    type: Literal['page'] = Field(
+    type: Optional[Type1] = Field(
         'page',
-        description='The node type. Identifies this node as a page in the structure tree.',
+        description='The node type. `page` is a page of a parsed document. `sheet` is one sheet of a parsed spreadsheet.',
         title='Type',
     )
 
