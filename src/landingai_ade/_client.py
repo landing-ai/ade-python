@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import importlib.metadata
 from typing import TYPE_CHECKING, Any, Dict, Union, Mapping, Iterable, Optional, cast
 from pathlib import Path
@@ -794,7 +795,7 @@ class LandingAIADE(SyncAPIClient):
     def split(
         self,
         *,
-        split_class: Iterable[client_split_params.SplitClass],
+        split_class: Union[str, Iterable[client_split_params.SplitClass]],
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -844,7 +845,9 @@ class LandingAIADE(SyncAPIClient):
         original_markdown_url = markdown_url
         body = deepcopy_with_paths(
             {
-                "split_class": split_class,
+                # The API expects split_class as a single JSON string form field,
+                # not flattened multipart fields (https://github.com/landing-ai/ade-python/issues/76).
+                "split_class": split_class if isinstance(split_class, str) else json.dumps(list(split_class)),
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
@@ -1509,7 +1512,7 @@ class AsyncLandingAIADE(AsyncAPIClient):
     async def split(
         self,
         *,
-        split_class: Iterable[client_split_params.SplitClass],
+        split_class: Union[str, Iterable[client_split_params.SplitClass]],
         markdown: Union[FileTypes, str, None] | Omit = omit,
         markdown_url: Optional[str] | Omit = omit,
         model: Optional[str] | Omit = omit,
@@ -1559,7 +1562,9 @@ class AsyncLandingAIADE(AsyncAPIClient):
         original_markdown_url = markdown_url
         body = deepcopy_with_paths(
             {
-                "split_class": split_class,
+                # The API expects split_class as a single JSON string form field,
+                # not flattened multipart fields (https://github.com/landing-ai/ade-python/issues/76).
+                "split_class": split_class if isinstance(split_class, str) else json.dumps(list(split_class)),
                 "markdown": markdown,
                 "markdown_url": markdown_url,
                 "model": model,
