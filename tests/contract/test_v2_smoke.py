@@ -154,6 +154,52 @@ def test_parse_atomic_grounding_confidence(staging_client: LandingAIADE) -> None
         _walk(page.children)
 
 
+def test_parse_node_locators_match_the_source_kind(staging_client: LandingAIADE) -> None:
+    # The structure tree now covers spreadsheets as well as page-based documents: a
+    # node is a `page` or a `sheet`, a `sheet` node names itself in `id`, and a
+    # grounding locates spreadsheet content by the Excel-style `grounding.address`
+    # instead of `page` + `box`, which a workbook has neither of.
+    #
+    # The fixture here is a PDF, so only the page-based half is assertable, and it is
+    # a spec guarantee rather than an environment property: `id` and `address` are
+    # documented as spreadsheet-only, so they are absent on every node of this
+    # response, while `page` and `box` are present. The spreadsheet half needs a
+    # workbook fixture staging is not guaranteed to accept; it is pinned
+    # deterministically instead by `test_parse_sync_spreadsheet_sheet_nodes_and_addresses`
+    # in tests/api_resources/v2/test_parse.py.
+    pdf = Path(__file__).parent / "sample.pdf"
+    resp = staging_client.v2.parse(document=pdf)
+    assert isinstance(resp, V2ParseResponse)
+    assert resp.structure is not None and resp.structure.children
+
+    def _check_grounding(grounding: Optional[V2ParseNodeGrounding]) -> None:
+        if grounding is None:
+            return
+        # Spreadsheet-only locator: absent for a page-based document.
+        assert grounding.address is None
+        # Absent-or-valid: a page-based node that carries a page carries a 1-indexed one.
+        if grounding.page is not None:
+            assert grounding.page >= 1
+
+    def _walk(elements: List[V2ParseElement]) -> None:
+        for el in elements:
+            _check_grounding(el.grounding)
+            for seg in el.atomic_grounding or []:
+                _check_grounding(seg)
+            _walk(el.children or [])
+
+    for page in resp.structure.children:
+        # A novel node type must not fail the client, but this PDF yields `page` nodes.
+        assert page.type in ("page", "sheet")
+        if page.type == "page":
+            # The sheet name is `sheet`-only, and a page node is grounded on a page.
+            assert page.id is None
+            assert page.grounding is not None and page.grounding.page is not None
+            assert page.grounding.box is not None
+        _check_grounding(page.grounding)
+        _walk(page.children)
+
+
 def test_parse_sync_password_requires_pdf(staging_client: LandingAIADE) -> None:
     # `options.password` is now a supported parse option (an earlier snapshot
     # documented it as unimplemented). The one half of its contract staging is

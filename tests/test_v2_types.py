@@ -233,6 +233,74 @@ def test_parse_response_inline_grounding_and_metadata() -> None:
     assert r.metadata.openapi_spec is not None
 
 
+def test_parse_response_spreadsheet_sheet_nodes() -> None:
+    # A parsed spreadsheet comes back as the same tree with `sheet` nodes instead of
+    # `page` nodes: the node carries the sheet name as `id`, and its grounding has no
+    # `page` and no `box` (a sheet has no page number or visual position) -- the
+    # Excel-style `grounding.address` locates the content instead.
+    r = V2ParseResponse(
+        markdown="| Q1 |\n| --- |\n| 1250000 |",
+        structure={  # type: ignore[arg-type]
+            "type": "document",
+            "children": [
+                {
+                    "type": "sheet",
+                    "id": "Sales",
+                    "status": "ok",
+                    "grounding": {"range": {"start": 0, "end": 26}, "address": "Sales"},
+                    "children": [
+                        {
+                            "type": "table",
+                            "id": "9f2c1b",
+                            "grounding": {
+                                "range": {"start": 0, "end": 26},
+                                "address": "Sales!C5:F20",
+                            },
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    assert r.structure is not None
+    sheet = r.structure.children[0]
+    assert sheet.type == "sheet" and sheet.id == "Sales"
+    assert sheet.grounding is not None
+    # Both absent on a workbook, not merely falsy.
+    assert sheet.grounding.page is None and sheet.grounding.box is None
+    assert sheet.grounding.address == "Sales"
+    table = sheet.children[0]
+    assert table.grounding is not None and table.grounding.address == "Sales!C5:F20"
+    # `id` is an opaque string now -- no `<type>-<index>` format to key off.
+    assert table.id == "9f2c1b"
+
+
+def test_parse_response_page_nodes_omit_the_spreadsheet_locators() -> None:
+    # The page-based half of the same shape: a `page` node has no sheet name and its
+    # grounding has no `address`, so both read as `None` rather than raising.
+    r = V2ParseResponse(
+        markdown="# hi",
+        structure={  # type: ignore[arg-type]
+            "type": "document",
+            "children": [
+                {
+                    "type": "page",
+                    "grounding": {
+                        "page": 1,
+                        "range": {"start": 0, "end": 4},
+                        "box": {"xmin": 0, "ymin": 0, "xmax": 1, "ymax": 1},
+                    },
+                }
+            ],
+        },
+    )
+    assert r.structure is not None
+    page = r.structure.children[0]
+    assert page.type == "page" and page.id is None
+    assert page.grounding is not None and page.grounding.address is None
+    assert page.grounding.page == 1 and page.grounding.box is not None
+
+
 def test_extract_result_metadata_char_counts_warnings_and_schema_violation() -> None:
     # The char counters moved onto `metadata` (from `billing`) upstream, and
     # `schema_violation_error` / `warnings` were added to the result.
