@@ -129,9 +129,17 @@ the environment.
 
 ## Spec-sync pipeline
 
+**Day-to-day operation** — which Slack channel carries the drift alerts, what to do when new drift
+lands behind an open sync PR, and the QA/release handoff after merge — is in
+[docs/spec-sync-runbook.md](./docs/spec-sync-runbook.md). This section describes the mechanism.
+
 The SDK tracks the live ADE OpenAPI spec automatically via `.github/workflows/spec-sync.yml`
 (hourly cron + manual `workflow_dispatch`). It is driven by the **staging** spec; releases gate on
-the **production** spec ("staging in, production out").
+the **production** API ("staging in, production out") — concretely the production e2e suite that
+`release.yml` runs before anything is stamped or tagged. The route-level variant of that idea,
+`scripts/spec-sync/release-gate.sh` (every route in the staging snapshot must exist in the
+production spec), is committed but **not wired** into `release.yml` — deferred, and the runbook's
+"Known gaps" explains what to fix before wiring it.
 
 It runs **two independent loops** (one job each): the **V1** loop tracks the V1 spec against
 `specs/v1-ade.json`, and the **V2** loop tracks the V2 spec on the AIDE gateway
