@@ -56,9 +56,16 @@ what is and is not in review scope; the short version:
   They mirror the upstream spec verbatim and cannot be fixed here.
 - **Do review** everything hand-maintained the PR touched: `src/`, `tests/`, `api.md`, `README.md`,
   `docs/`.
-- The AI step runs with **no shell**, so its commit was never lint- or test-verified locally by the
-  agent. Check what CI cannot: pyright-strict escapes (`object` + `type: ignore`), optionality that
-  disagrees with the spec's `required`, model-pinned smoke tests, and invented URL paths.
+- **How much the agent could check its own work differs by loop.** The V1 AI step has a shell
+  (`Bash(rye *)`, `Bash(./scripts/*)`) and is told to run `./scripts/format` and `./scripts/lint`
+  and fix what they report. The V2 step has **no shell at all** — it works from a precomputed
+  `.spec-sync-diff.txt` and can run nothing, so its commit was never lint- or test-verified by the
+  agent. Apply more suspicion to a V2 wiring commit. (`ade-typescript` differs again: neither of its
+  loops can lint.)
+- Check what CI cannot: pyright-strict escapes (`object` + `type: ignore`), optionality that
+  disagrees with the spec's `required`, and model-pinned smoke tests. Invented URL paths *are*
+  caught for `client.v2` by `check-v2-paths.sh` in the `lint` job — but **not** for V1 resources,
+  so check those by hand.
 - Cross-SDK parity on hand-written top-level params (`password`, `strict`, `grounding`) has **no
   gate at all** — it has to be diffed against `ade-typescript` by hand. CONTRIBUTING's "V2 request
   fields" section has the rules and the incident that produced them.
@@ -138,12 +145,12 @@ be reissued by whoever takes the repo over.
 | `RELEASE_TOKEN` | release.yml: push `release: x.y.z`, tag, GitHub Release | **person.** `Contents: write`, **and its owner must be able to bypass the `main` ruleset** (the ruleset requires PRs; org admins have "always" bypass) or the direct push is rejected. Also must not be `GITHUB_TOKEN`: releases it creates do not trigger `publish-pypi.yml`. |
 | `ANTHROPIC_API_KEY` | spec-sync AI step | Billed per run. `--max-turns` caps it. |
 | `LANDINGAI_ADE_STAGING_APIKEY` | pr-gates `contract-tests` | Gated behind the **`spec-sync-contract`** Environment. Configure a **required reviewer** there — this job executes AI-authored code with the staging key in env. |
-| `LANDINGAI_ADE_PRODUCTION_APIKEY` | `e2e-production.yml` (release gate 0) | Gated behind the **`production-e2e`** Environment. |
+| `LANDINGAI_ADE_PRODUCTION_APIKEY` | `e2e-production.yml` (release gate 0) | **Environment secret on `production-e2e` only — do not also store it as a repo secret**, which every branch can read and which defeats the branch rule. Under that Environment's "Deployment branches and tags", restrict to **`main`**: that rule, not the workflow's `if`, is the real control — a `workflow_dispatch` runs the selected ref's copy of the workflow file, which could drop the `if`. Unlike the staging Environment, do **not** add required reviewers here: `release.yml` blocks on this job, so every release would pause for a manual approval. |
 | `SLACK_BOT_TOKEN` | `.github/actions/slack-notify` | `xoxb-…`. Threading exists **only** on this path. Must be in `#ade-sdk-pipeline`. |
-| `SLACK_SPEC_SYNC_WEBHOOK` | same, fallback | Incoming webhook, used only when the bot token is empty. Flat, no threading. |
+| `SLACK_SPEC_SYNC_WEBHOOK` | `spec-sync.yml` only | Incoming webhook, used only when the bot token is empty. Flat, no threading — and **not a general fallback**: `spec-sync-lifecycle.yml` (gate failures, aging nudge, PR merged) passes only the bot token, so a webhook-only setup silently loses those three messages. |
 | `LANDINGAI_ADE_PYPI_TOKEN` (or `PYPI_TOKEN`) | `publish-pypi.yml`, `release-doctor.yml` | PyPI publish token. |
 
-Not a secret but part of the handoff: the **required reviewers** on the `spec-sync-contract` and
+Not a secret but part of the handoff: the **required reviewer** on the `spec-sync-contract` Environment is a named person too (`production-e2e` deliberately has none — see its row above).
 `production-e2e` Environments are named people too.
 
 ## 7. Known gaps — do not mistake these for bugs
