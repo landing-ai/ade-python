@@ -14,7 +14,7 @@ are maintained as a pair and most decisions here apply to both.
 **staging** spec drifts from the committed snapshot, it opens one PR on a fixed branch
 (`spec-sync/v1` or `spec-sync/v2`) and announces it in Slack. You review and merge it — the wiring
 commit is AI-drafted and **always** needs human review. Merging publishes nothing: QA tests merged
-`main` against staging first, and a maintainer dispatches the release only after the API has reached
+`main` against staging first, and QA cuts the release themselves once the API has reached
 production.
 
 ## 1. Where the signal is: `#ade-sdk-pipeline`
@@ -118,11 +118,12 @@ out"):
    ```
 
 4. The API reaches **production**.
-5. A maintainer dispatches Actions → **Release** → Run workflow and picks the bump
-   (patch / minor / major). Dispatching **is** the release decision — there is no release PR and no
-   second confirmation. The workflow stamps the version, prepends the changelog, pushes
-   `release: x.y.z` to `main`, tags it, and creates the GitHub Release, which triggers
-   `publish-pypi.yml`.
+5. **QA** cuts the release once they have signed off — this step is theirs, not yours:
+   Actions → **Release** → Run workflow, picking the bump (patch / minor / major). Dispatching
+   **is** the release decision: there is no release PR and no second confirmation. The workflow
+   stamps the version, prepends the changelog, pushes `release: x.y.z` to `main`, tags it, and
+   creates the GitHub Release, which triggers `publish-pypi.yml`. Know this step even though you do
+   not run it — when a release goes red, diagnosing it usually comes back to you.
 
 **A red release is usually not a bug.** The Release workflow's gate 0 is the full V1 + V2 e2e suite
 against the **live production API**, and nothing downstream runs if it goes red. Two ordinary causes:
