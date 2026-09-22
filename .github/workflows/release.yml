@@ -1,8 +1,9 @@
 # Manual, dispatch-only release automation (replaces the Stainless-run
 # release-please after the platform sunset on 2026-09-01).
 #
-# A maintainer runs this workflow (Actions -> Release -> Run workflow) and
-# picks the bump: patch / minor / major. The workflow then, in one shot:
+# QA runs this workflow (Actions -> Release -> Run workflow) after they have
+# validated merged `main` against staging, and picks the bump: patch / minor /
+# major. The workflow then, in one shot:
 #   0. runs the V1 + V2 production e2e suite (.github/workflows/e2e-production.yml)
 #      against the live API — nothing below runs if it goes red,
 #   1. computes the next version from the latest git tag,

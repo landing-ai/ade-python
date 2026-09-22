@@ -4,6 +4,7 @@
 - **Date**: 2026-07-06
 - **Scope**: [ade-python](https://github.com/landing-ai/ade-python), [ade-typescript](https://github.com/landing-ai/ade-typescript), one small change in `aide`
 - **Context**: Stainless (acquired by Anthropic, 2026-05-18) sunsets its platform for our account on **2026-09-01**.
+- **Standing**: a dated decision record, not operating documentation. It describes the plan as approved in July 2026; where the pipeline has since moved on, [CONTRIBUTING.md](../../CONTRIBUTING.md#spec-sync-pipeline) and [the spec-sync runbook](../spec-sync-runbook.md) are authoritative and this document is not updated to match. Known divergences: QA cuts releases (this doc says a maintainer does), and the production-spec release gate described below was built as `scripts/spec-sync/release-gate.sh` but never wired into `release.yml`.
 
 This design covers three separable problems. They share a deadline and a theme, but each can be discussed, approved, and executed independently:
 
