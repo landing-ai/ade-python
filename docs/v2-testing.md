@@ -28,15 +28,18 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
 `V2ParseResponse` with:
 
 - `markdown` -- the full document as one Markdown string.
-- `structure` (`V2ParseStructure`) -- the `document → page → element` tree.
+- `structure` (`V2ParseStructure`) -- the `document → page | sheet → element` tree.
   **Every node below the root carries its spatial data inline** in a
   `V2ParseNodeGrounding` object (`grounding`):
-  - `page` -- 1-indexed page number.
+  - `page` -- 1-indexed page number. `None` for spreadsheet content (see below).
   - `range` (`V2ParseRange`) -- `{start, end}` code-point offsets into
     `markdown` (`metadata.range_units` names the unit, always
     `"unicode_codepoints"`).
   - `box` (`V2ParseBox`) -- `{xmin, ymin, xmax, ymax}` as `[0, 1]` fractions of
     the page width/height (a page node's box is the full page `{0, 0, 1, 1}`).
+    `None` for spreadsheet content.
+  - `address` -- spreadsheet-only Excel-style reference; `None` for page-based
+    documents (see below).
   - `confidence` -- an optional `[0, 1]` probability. It is present **only** on
     word-granularity `atomic_grounding` segments (`dpt-3-verity`), where it is the
     lowest per-character OCR confidence in the word -- so a word is only as
@@ -58,6 +61,45 @@ LANDINGAI_ADE_STAGING_APIKEY=... rye run pytest tests/contract/test_v2_smoke.py 
 The legacy top-level `grounding` tree (`V2ParseGrounding` and friends) is retained
 on the model for backward compatibility with older gateway responses; current
 responses omit it in favor of the inline `grounding` above.
+
+### Spreadsheets: `sheet` nodes and `grounding.address`
+
+The tree under `structure` now covers workbooks as well as page-based documents.
+Nothing was renamed — a spreadsheet reuses `V2ParsePage` and
+`V2ParseNodeGrounding`, with a different set of fields populated:
+
+- **`V2ParsePage.type` is `"page"` or `"sheet"`.** It was a `const: "page"` in the
+  previous snapshot and is an enum now. The SDK already typed it as a permissive
+  `str` (not a `Literal`), so `"sheet"` deserializes without a model change —
+  but code that *compared* against `"page"` to find the page nodes will silently
+  skip every sheet.
+- **`V2ParsePage.id`** (new) is the sheet name, e.g. `"Sales"`. It is present only
+  on a `sheet` node and `None` on a `page` node.
+- **`V2ParseNodeGrounding.address`** (new) is the Excel-style reference of the
+  content, sheet name included: `Sales!C5` for a cell, `Sales!C5:F20` for a table,
+  the anchor cell (`Sales!B2`) for content parsed out of an embedded image. It is
+  `None` for page-based documents, and unlike `V2ParseElement.id` it is **stable
+  across re-parses of the same file** — it is the right key to join a re-parse on.
+- **`grounding.page` and `grounding.box` are now `Optional`** on the wire, not just
+  in the model: a workbook has no page number and no visual position, so both come
+  back `null`/omitted for spreadsheet content. (The model already declared them
+  `Optional[...] = None`, so this needed no code change; treat missing and `None`
+  alike.) The exception is content parsed out of an image embedded in a
+  spreadsheet, where `box` is the fraction *of that image*, not of a page.
+- **`V2ParseElement.id` is documented as opaque.** The `<type>-<index>` format
+  (`text-0`, `table_cell-0`) is gone from the spec — do not parse it or assume a
+  shape. It is still unique within a response and still unstable across re-parses.
+
+Testing it: the live suite parses a PDF, so only the page-based half is assertable
+there, and only as absence — `test_parse_node_locators_match_the_source_kind` in
+`tests/contract/test_v2_smoke.py` walks the tree and asserts `address` and the node
+`id` are `None` while `page`/`box` are populated. That much is a spec guarantee for
+a page-based document. The spreadsheet half needs a workbook fixture staging is not
+guaranteed to accept, so it is pinned deterministically against a mocked body
+instead: `test_parse_sync_spreadsheet_sheet_nodes_and_addresses` in
+`tests/api_resources/v2/test_parse.py` (plus `test_parse_response_spreadsheet_sheet_nodes`
+in `tests/test_v2_types.py`) asserts the `sheet` node, its `id`, the per-node
+`address`, and the `None` `page`/`box`.
 
 ### Encrypted PDFs (`password`)
 
