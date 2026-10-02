@@ -298,15 +298,17 @@ jobs:
   # and a separate sync branch, with a V2-tailored wiring prompt. Kept as a distinct job (not a
   # matrix) so the proven V1 loop is untouched and the two prompts can diverge freely.
   #
-  # HOSTS (do not conflate): the V2 *spec* is published at aide.[env]/openapi.json; the V2 *API*
-  # (what the SDK and contract tests call) is api.ade.[env]. We fetch drift from aide; the SDK
-  # never talks to aide (its paths are staff-SSO-gated).
+  # SOURCE: the V2 spec is the FULL customer surface aide's publish-openapi.yml generates from
+  # release/staging and uploads to public S3 — including routes that are not documented yet
+  # (v2 workflow, v2 build-schema). The gateways' own /openapi.json serves only the documented
+  # subset, so it is not a drift source. The V2 *API* (what the SDK and contract tests call)
+  # is api.ade.[env].
   spec-sync-v2:
     if: github.repository == 'landing-ai/ade-python'
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V2_SPEC_URL: https://aide.staging.landing.ai/openapi.json  # staging drives the loop
+      V2_SPEC_URL: https://ade-specs.s3.amazonaws.com/v2/staging/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v2   # separate branch so V1 and V2 sync PRs never collide
       SPEC_LABEL: V2   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:
@@ -339,22 +341,16 @@ jobs:
         if: steps.drift.outputs.code == '0'
         run: echo "specs in sync; nothing to do."
 
-      # An unavailable spec source (check-drift exit 20) is the EXPECTED case on staging, not an
-      # incident: staging auto-reclaims and must be booked to come back — an unbooked cluster serves a
-      # 404 (or the host stops answering entirely). Treat ONLY this as a no-op — log and end the run
-      # cleanly (no drift, no PR, no Slack); the next hourly run picks up any drift once staging is
-      # booked. Every other failure (a reachable source returning 401/403/5xx, an empty/invalid spec,
-      # or a script error) falls through to "Fail on spec error" below and alerts.
-      - name: Spec source unavailable — skip
-        if: steps.drift.outputs.code == '20'
-        run: echo "spec source unavailable (exit 20); staging is likely unbooked — skipping this run."
+      # The V2 source is a published S3 artifact, not a bookable cluster: it does not go away
+      # when staging is unbooked, so an unavailable source (exit 20) is an incident like any
+      # other fetch failure, not an expected no-op.
 
       # A reachable-but-invalid spec (empty/whitespace body, malformed JSON) or a script error is a
-      # real problem — fail loudly so the catch-all alert fires. Distinct from the exit-20 skip above.
+      # real problem — fail loudly so the catch-all alert fires.
       - name: Fail on spec error
-        if: steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10' && steps.drift.outputs.code != '20'
+        if: steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10'
         run: |
-          echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }}); staging was reachable but returned an error status (401/403/5xx), an empty/invalid spec, or a script errored."
+          echo "spec fetch/normalize failed (exit ${{ steps.drift.outputs.code }}); the published S3 spec was unreachable, returned an error status, was empty/invalid, or a script errored."
           exit 1
 
       - name: Check for an open sync PR
@@ -966,9 +962,8 @@ jobs:
           text: ${{ steps.ai_commit.outputs.summary }}
           thread_ts: ${{ steps.root.outputs.ts }}
 
-      # Catch-all failure alert for this job. An unavailable spec source (exit 20) is skipped earlier
-      # and never reaches here; what this calls out is a reachable source that errored — an HTTP error
-      # status / empty / invalid spec, or a script error (exit not 0/10/20) — and an AI-wiring crash
+      # Catch-all failure alert for this job: a spec fetch that failed — the S3 source unreachable,
+      # an HTTP error status / empty / invalid spec, or a script error (exit not 0/10) — and an AI-wiring crash
       # (PR left mechanical-only), with a generic fallback.
       - name: Slack — spec-sync failed
         if: failure()
@@ -979,8 +974,8 @@ jobs:
           status: failure
           title: 'spec-sync ${{ env.SPEC_LABEL }}: run failed'
           text: >-
-            ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10' && steps.drift.outputs.code != '20')
-            && format('Spec fetch/normalize failed (exit {0}) — staging was reachable but returned an error status (401/403/5xx), an empty/invalid spec, or a script errored (an unbooked cluster 404s → exit 20, skipped, not alerted). Investigate.', steps.drift.outputs.code)
+            ${{ (steps.drift.outputs.code != '' && steps.drift.outputs.code != '0' && steps.drift.outputs.code != '10')
+            && format('Spec fetch/normalize failed (exit {0}) — the published S3 spec was unreachable, returned an error status, was empty/invalid, or a script errored. Investigate.', steps.drift.outputs.code)
             || (steps.ai_wiring.outcome == 'failure'
             && 'AI wiring step failed. Any open sync PR has only the mechanical commit and needs manual wiring.'
             || 'spec-sync run failed. See the workflow run for details.') }}

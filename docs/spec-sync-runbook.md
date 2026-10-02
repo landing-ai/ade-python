@@ -44,7 +44,8 @@ Silence is also information — but not always: an unavailable staging spec sour
 404) is a deliberate **no-op with no Slack alert**, so "no messages" can mean either "no drift" or
 "staging is unbooked". A staging cluster that stays unbooked for days silently stops all drift
 detection. If the channel has been quiet for an unusually long stretch, check that staging is booked
-before assuming the spec is stable.
+before assuming the spec is stable. This applies to the V1 loop only: the V2 loop reads a
+published S3 artifact, and an unavailable V2 source fails and alerts.
 
 ## 2. Reviewing a drift PR
 

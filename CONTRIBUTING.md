@@ -144,16 +144,18 @@ production spec), is committed but **not wired** into `release.yml` — deferred
 "Known gaps" explains what to fix before wiring it.
 
 It runs **two independent loops** (one job each): the **V1** loop tracks the V1 spec against
-`specs/v1-ade.json`, and the **V2** loop tracks the V2 spec on the AIDE gateway
-(`aide.[env]/openapi.json`) against `specs/v2-aide.json` on a separate `spec-sync/v2` branch. Both
-reuse the same scripts. (Note the host split: the V2 *spec* is published at `aide.[env]`, but the
-V2 *API* the SDK calls is `api.ade.[env]`.)
+`specs/v1-ade.json`, and the **V2** loop tracks the full V2 customer spec aide publishes to
+`https://ade-specs.s3.amazonaws.com/v2/staging/openapi.json` against `specs/v2-aide.json` on a
+separate `spec-sync/v2` branch. Both reuse the same scripts. (The gateway's own `/openapi.json`
+serves only the documented subset, so it is not the V2 drift source; the V2 *API* the SDK calls
+is `api.ade.[env]`.)
 
 On each run a loop fetches and normalizes its live spec (`scripts/spec-sync/fetch-normalize.sh`) and
-diffs it against its committed snapshot (`scripts/spec-sync/check-drift.sh`). Staging auto-reclaims
+diffs it against its committed snapshot (`scripts/spec-sync/check-drift.sh`). For the V1 loop, staging auto-reclaims
 and must be booked, so an unavailable spec source (an unbooked cluster 404s, or the host stops
 answering) is treated as an expected no-op — the run ends cleanly with no PR and no Slack alert, and
-the next run picks up drift once staging is booked. A reachable source that returns an error status
+the next run picks up drift once staging is booked. The V2 loop reads a published S3 artifact that
+does not depend on staging being booked, so an unavailable V2 source fails and alerts. A reachable source that returns an error status
 (401/403/5xx) or an empty/invalid spec still fails loudly and alerts. On drift it opens one PR with
 two attributed commits (paths shown for V1; the V2 loop uses the `v2-aide`/`v2_models` equivalents):
 
