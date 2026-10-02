@@ -298,15 +298,17 @@ jobs:
   # and a separate sync branch, with a V2-tailored wiring prompt. Kept as a distinct job (not a
   # matrix) so the proven V1 loop is untouched and the two prompts can diverge freely.
   #
-  # HOSTS (do not conflate): the V2 *spec* is published at aide.[env]/openapi.json; the V2 *API*
-  # (what the SDK and contract tests call) is api.ade.[env]. We fetch drift from aide; the SDK
-  # never talks to aide (its paths are staff-SSO-gated).
+  # SOURCE: the V2 spec is the FULL customer surface aide's publish-openapi.yml generates from
+  # release/staging and uploads to public S3 — including routes that are not documented yet
+  # (v2 workflow, v2 build-schema). The gateways' own /openapi.json serves only the documented
+  # subset, so it is not a drift source. The V2 *API* (what the SDK and contract tests call)
+  # is api.ade.[env].
   spec-sync-v2:
     if: github.repository == 'landing-ai/ade-python'
     runs-on: ubuntu-latest
     timeout-minutes: 60   # headroom for the AI wiring step (up to --max-turns 250) plus rye sync
     env:
-      V2_SPEC_URL: https://aide.staging.landing.ai/openapi.json  # staging drives the loop
+      V2_SPEC_URL: https://ade-specs.s3.amazonaws.com/v2/staging/openapi.json  # staging drives the loop
       SYNC_BRANCH: spec-sync/v2   # separate branch so V1 and V2 sync PRs never collide
       SPEC_LABEL: V2   # used only in Slack/PR-comment copy to disambiguate the two jobs
     steps:

@@ -144,10 +144,11 @@ production spec), is committed but **not wired** into `release.yml` — deferred
 "Known gaps" explains what to fix before wiring it.
 
 It runs **two independent loops** (one job each): the **V1** loop tracks the V1 spec against
-`specs/v1-ade.json`, and the **V2** loop tracks the V2 spec on the AIDE gateway
-(`aide.[env]/openapi.json`) against `specs/v2-aide.json` on a separate `spec-sync/v2` branch. Both
-reuse the same scripts. (Note the host split: the V2 *spec* is published at `aide.[env]`, but the
-V2 *API* the SDK calls is `api.ade.[env]`.)
+`specs/v1-ade.json`, and the **V2** loop tracks the full V2 customer spec aide publishes to
+`https://ade-specs.s3.amazonaws.com/v2/staging/openapi.json` against `specs/v2-aide.json` on a
+separate `spec-sync/v2` branch. Both reuse the same scripts. (The gateway's own `/openapi.json`
+serves only the documented subset, so it is not the V2 drift source; the V2 *API* the SDK calls
+is `api.ade.[env]`.)
 
 On each run a loop fetches and normalizes its live spec (`scripts/spec-sync/fetch-normalize.sh`) and
 diffs it against its committed snapshot (`scripts/spec-sync/check-drift.sh`). Staging auto-reclaims
