@@ -165,6 +165,50 @@ INLINE_PARSE_BODY: Dict[str, Any] = {
 }
 
 
+# A ParseResponse for a parsed spreadsheet: the `structure` tree holds `sheet` nodes
+# (named by `id`) rather than `page` nodes, and each grounding locates its content by
+# Excel-style `address` instead of `page` + `box`, both of which a workbook lacks.
+SHEET_PARSE_BODY: Dict[str, Any] = {
+    "markdown": "| Q1 |\n| --- |\n| 1250000 |",
+    "metadata": {
+        "req_id": "r1",
+        "job_id": "parse-2",
+        "model_version": "dpt-3",
+        "page_count": 1,
+        "failed_pages": [],
+        "output_markdown_chars": 26,
+        "range_units": "unicode_codepoints",
+    },
+    "structure": {
+        "type": "document",
+        "children": [
+            {
+                "type": "sheet",
+                "id": "Sales",
+                "status": "ok",
+                "grounding": {"range": {"start": 0, "end": 26}, "address": "Sales"},
+                "children": [
+                    {
+                        "type": "table",
+                        "id": "9f2c1b",
+                        "grounding": {"range": {"start": 0, "end": 26}, "address": "Sales!C5:F20"},
+                        "children": [
+                            {
+                                "type": "table_cell",
+                                "id": "4ae07d",
+                                "row": 0,
+                                "col": 0,
+                                "grounding": {"range": {"start": 0, "end": 6}, "address": "Sales!C5"},
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    },
+}
+
+
 @respx.mock
 def test_parse_sync_ok_routes_to_v2_and_sends_options_json() -> None:
     client = LandingAIADE(apikey=APIKEY, environment="production")
@@ -512,6 +556,51 @@ def test_parse_sync_inline_grounding_structure() -> None:
     assert result.metadata.output_markdown_chars == 9
     assert result.metadata.range_units == "unicode_codepoints"
     assert result.metadata.openapi_spec is not None
+
+
+@respx.mock
+def test_parse_sync_spreadsheet_sheet_nodes_and_addresses() -> None:
+    # A parsed workbook uses the same typed tree: `sheet` nodes carrying the sheet
+    # name as `id`, and grounding located by the Excel-style `address` instead of
+    # `page` + `box`, which a workbook has neither of.
+    from landingai_ade.types.v2 import V2ParseStructure, V2ParseNodeGrounding
+
+    client = LandingAIADE(apikey=APIKEY)
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=SHEET_PARSE_BODY))
+    result = client.v2.parse(document=b"xlsx")
+
+    assert isinstance(result.structure, V2ParseStructure)
+    sheet = result.structure.children[0]
+    assert sheet.type == "sheet" and sheet.id == "Sales"
+    assert isinstance(sheet.grounding, V2ParseNodeGrounding)
+    assert sheet.grounding.address == "Sales"
+    # Absent on a workbook, not merely empty.
+    assert sheet.grounding.page is None and sheet.grounding.box is None
+    assert sheet.grounding.range is not None and sheet.grounding.range.end == 26
+
+    table = sheet.children[0]
+    assert table.grounding is not None and table.grounding.address == "Sales!C5:F20"
+    assert table.children is not None
+    cell = table.children[0]
+    assert cell.grounding is not None and cell.grounding.address == "Sales!C5"
+    # Element ids are opaque -- `4ae07d` has no `<type>-<index>` shape to parse.
+    assert cell.id == "4ae07d"
+
+
+@respx.mock
+def test_parse_sync_page_nodes_omit_the_spreadsheet_locators() -> None:
+    # The page-based half of the same shape: `id` on the node and `address` on the
+    # grounding are spreadsheet-only, so a PDF response leaves both `None`.
+    client = LandingAIADE(apikey=APIKEY)
+    respx.post("https://api.ade.landing.ai/v2/parse").mock(return_value=httpx.Response(200, json=INLINE_PARSE_BODY))
+    result = client.v2.parse(document=b"pdf")
+
+    assert result.structure is not None
+    page = result.structure.children[0]
+    assert page.type == "page" and page.id is None
+    assert page.grounding is not None and page.grounding.address is None
+    el = page.children[0]
+    assert el.grounding is not None and el.grounding.address is None
 
 
 @respx.mock

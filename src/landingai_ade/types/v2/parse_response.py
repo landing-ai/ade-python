@@ -71,11 +71,23 @@ class V2ParseRange(BaseModel):
 
 
 class V2ParseNodeGrounding(BaseModel):
-    """Where a node lives: its 1-indexed `page`, its `range` in `markdown`, and its `box`."""
+    """Where a node lives: its 1-indexed `page`, its `range` in `markdown`, and its `box`.
 
+    Spreadsheet sources have no pages and no visual layout, so `page` and `box` are
+    both omitted there and the Excel-style `address` locates the content instead."""
+
+    # `null`/omitted when the source is a workbook, which has no page.
     page: Optional[int] = None
     range: Optional[V2ParseRange] = None
+    # `null`/omitted when the source is a workbook, which has no visual position. For
+    # content parsed out of an image embedded in a spreadsheet, this is the fraction
+    # of that image, not of a page.
     box: Optional[V2ParseBox] = None
+    # Spreadsheet only. Excel-style reference of the content this grounding covers,
+    # with the sheet name: `Sales!C5` for a cell, `Sales!C5:F20` for a table, the
+    # anchor cell (`Sales!B2`) for content parsed out of an embedded image. Stable
+    # across re-parses of the same file. Omitted for page-based documents.
+    address: Optional[str] = None
     # How sure the model is of the text in this segment, in `[0, 1]`.
     # Present only on word-granularity `atomic_grounding` entries
     # (`dpt-3-verity`), where it is the lowest per-character OCR confidence in the
@@ -96,6 +108,10 @@ class V2ParseElement(BaseModel):
     optional fields are only present for the relevant element types."""
 
     type: str
+    # Element id, unique within the document. An opaque string -- do not parse it or
+    # assume a format. Stable within a response but not across re-parses of the same
+    # document; for spreadsheet content, `grounding.address` IS stable across
+    # re-parses.
     id: str
     # Deprecated: replaced by `grounding.range` upstream; populated only by older
     # gateway responses.
@@ -120,7 +136,14 @@ class V2ParseElement(BaseModel):
 
 
 class V2ParsePage(BaseModel):
+    """A node of the document tree: a `page` of a parsed document, or a `sheet` of a
+    parsed spreadsheet."""
+
+    # `page` for a page of a parsed document, `sheet` for one sheet of a parsed
+    # spreadsheet.
     type: str = "page"
+    # The sheet name, present only on a `sheet` node; omitted on a `page` node.
+    id: Optional[str] = None
     # Deprecated: page number is now carried on `grounding.page` (1-indexed);
     # populated only by older responses.
     page: Optional[int] = None
@@ -131,7 +154,10 @@ class V2ParsePage(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
     dpi: Optional[int] = None
-    # The page's spatial data (`{page, range, box}`); `box` is the full page.
+    # The node's spatial data. On a `page` node `box` is the full page
+    # `{0, 0, 1, 1}` and `page` is the 1-indexed page number; on a `sheet` node both
+    # are omitted (a sheet has no page number or visual position) and only `range`
+    # is meaningful.
     grounding: Optional[V2ParseNodeGrounding] = None
     # This page's slice of the top-level `markdown`; only when
     # `options.inline_markdown` is true.
@@ -142,7 +168,7 @@ class V2ParsePage(BaseModel):
 
 
 class V2ParseStructure(BaseModel):
-    """Root of the `structure` tree (`document -> page -> element`)."""
+    """Root of the `structure` tree (`document -> page | sheet -> element`)."""
 
     type: str = "document"
     # The full document markdown; only when `options.inline_markdown` is true.
