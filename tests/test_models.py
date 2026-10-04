@@ -180,6 +180,27 @@ def test_aliases() -> None:
     assert cast(Any, m.my_field) == {"hello": False}
 
 
+def test_aliased_field_not_duplicated_in_dump() -> None:
+    class Model(BaseModel):
+        my_field: int = Field(alias="myField")
+
+    m = Model.construct(myField=1)
+    dumped = m.model_dump()
+    assert dumped == {"my_field": 1}
+    assert json.loads(m.model_dump_json()) == {"my_field": 1}
+
+    dumped_alias = m.model_dump(by_alias=True)
+    assert dumped_alias == {"myField": 1}
+
+
+def test_validate_aliased_field_by_name() -> None:
+    class Model(BaseModel):
+        my_field: int = Field(alias="myField")
+
+    m = parse_obj(Model, {"my_field": 1})
+    assert m.my_field == 1
+
+
 def test_repr() -> None:
     model = BasicModel(foo="bar")
     assert str(model) == "BasicModel(foo='bar')"
