@@ -105,9 +105,16 @@ class BaseModel(pydantic.BaseModel):
 
         class Config(pydantic.BaseConfig):  # pyright: ignore[reportDeprecated]
             extra: Any = pydantic.Extra.allow  # type: ignore
+            # accept field names as well as API aliases, so a model dumped by field name
+            # can be validated again (https://github.com/landing-ai/ade-python/issues/64)
+            allow_population_by_field_name: bool = True
     else:
         model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="allow", defer_build=coerce_boolean(os.environ.get("DEFER_PYDANTIC_BUILD", "true"))
+            extra="allow",
+            # accept field names as well as API aliases, so a model dumped by field name
+            # can be validated again (https://github.com/landing-ai/ade-python/issues/64)
+            populate_by_name=True,
+            defer_build=coerce_boolean(os.environ.get("DEFER_PYDANTIC_BUILD", "true")),
         )
 
     def to_dict(
@@ -224,9 +231,15 @@ class BaseModel(pydantic.BaseModel):
 
         extra_field_type = _get_extra_fields_type(__cls)
 
+        # Keys that mapped onto a field by its alias are already consumed above. Without this
+        # they are also captured as extra fields, so a model built from an API response
+        # serializes the same value twice — once per field name and once per alias
+        # (https://github.com/landing-ai/ade-python/issues/64).
+        field_aliases = {field.alias for field in model_fields.values() if field.alias is not None}
+
         _extra = {}
         for key, value in values.items():
-            if key not in model_fields:
+            if key not in model_fields and key not in field_aliases:
                 parsed = construct_type(value=value, type_=extra_field_type) if extra_field_type is not None else value
 
                 if PYDANTIC_V1:
