@@ -12,6 +12,10 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
+    # Gated: deploys only from a v* tag, after a required reviewer approves.
+    environment: release
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
