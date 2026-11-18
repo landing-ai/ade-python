@@ -8,10 +8,18 @@ on:
   release:
     types: [published]
 
+# One release at a time; never cancel a publish midway.
+concurrency:
+  group: pypi-publish
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
+    # Also enforced by the environment; this catches a run from another ref
+    # if that setting ever changes.
+    if: startsWith(github.ref, 'refs/tags/v')
     # Gated: deploys only from a v* tag, after a required reviewer approves.
     environment: release
     permissions:
