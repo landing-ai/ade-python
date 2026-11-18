@@ -1,5 +1,6 @@
 # This workflow is triggered when a GitHub release is created.
-# It can also be run manually to re-publish to PyPI in case it failed for some reason.
+# It can also be run manually to re-publish to PyPI in case it failed for some reason;
+# choose the release's v* tag (not a branch) in "Use workflow from", or the job is skipped.
 # You can run this workflow by navigating to https://www.github.com/landing-ai/ade-python/actions/workflows/publish-pypi.yml
 name: Publish PyPI
 on:
@@ -8,21 +9,30 @@ on:
   release:
     types: [published]
 
+# One release at a time; never cancel a publish midway.
+concurrency:
+  group: pypi-publish
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
+    # Also enforced by the environment; this catches a run from another ref
+    # if that setting ever changes.
+    if: startsWith(github.ref, 'refs/tags/v')
+    # Gated: deploys only from a v* tag, after a required reviewer approves.
+    environment: release
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Rye
-        run: |
-          curl -sSf https://rye.astral.sh/get | bash
-          echo "$HOME/.rye/shims" >> $GITHUB_PATH
-        env:
-          RYE_VERSION: '0.44.0'
-          RYE_INSTALL_OPTION: '--yes'
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.13.6'
 
       - name: Publish to PyPI
         run: |
