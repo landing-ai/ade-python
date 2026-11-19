@@ -180,6 +180,38 @@ def test_aliases() -> None:
     assert cast(Any, m.my_field) == {"hello": False}
 
 
+def test_aliases_not_duplicated_into_extra() -> None:
+    """An aliased key must not also be captured as an extra field.
+
+    https://github.com/landing-ai/ade-python/issues/64
+    """
+
+    class Model(BaseModel):
+        my_field: int = Field(alias="myField")
+
+    m = Model.construct(myField=1)
+    assert m.my_field == 1
+    assert json.loads(model_json(m)) == {"my_field": 1}
+
+    if not PYDANTIC_V1:
+        assert m.__pydantic_extra__ == {}
+
+
+def test_aliased_field_round_trips_by_field_name() -> None:
+    """A model dumped by field name must validate again without ``by_name=True``.
+
+    https://github.com/landing-ai/ade-python/issues/64
+    """
+
+    class Model(BaseModel):
+        my_field: int = Field(alias="myField")
+
+    dumped = model_json(Model.construct(myField=1))
+    assert parse_obj(Model, json.loads(dumped)).my_field == 1
+    # the API name keeps working too
+    assert parse_obj(Model, {"myField": 1}).my_field == 1
+
+
 def test_repr() -> None:
     model = BasicModel(foo="bar")
     assert str(model) == "BasicModel(foo='bar')"
